@@ -1,0 +1,20 @@
+[0.036s] Invoking command in '/home/yzz/219_ws/build/hardware_unitree_mujoco': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/yzz/219_ws/build/hardware_unitree_mujoco -- -j2 -l2
+[0.183s] [35m[1mConsolidate compiler generated dependencies of target hardware_unitree_mujoco[0m
+[0.263s] [ 20%] [32mBuilding CXX object CMakeFiles/hardware_unitree_mujoco.dir/src/crc_table.cpp.o[0m
+[0.271s] [ 40%] [32mBuilding CXX object CMakeFiles/hardware_unitree_mujoco.dir/src/imu.cpp.o[0m
+[0.400s] [ 60%] [32mBuilding CXX object CMakeFiles/hardware_unitree_mujoco.dir/src/motor_hw.cpp.o[0m
+[0.445s] [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/motor_hw.cpp:1:10:[m[K [01;31m[Kfatal error: [m[Krobot_hardware/motor_hw.hpp: No such file or directory
+[0.445s]     1 | #include [01;31m[K"robot_hardware/motor_hw.hpp"[m[K
+[0.445s]       |          [01;31m[K^~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+[0.445s] compilation terminated.
+[0.448s] gmake[2]: *** [CMakeFiles/hardware_unitree_mujoco.dir/build.make:118: CMakeFiles/hardware_unitree_mujoco.dir/src/motor_hw.cpp.o] Error 1
+[0.448s] gmake[2]: *** Waiting for unfinished jobs....
+[0.924s] In file included from [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/imu.cpp:1[m[K:
+[0.924s] [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/include/hardware_unitree_mujoco/imu.hpp:20:10:[m[K [01;31m[Kfatal error: [m[Krobot_hardware/crc_table.hpp: No such file or directory
+[0.924s]    20 | #include [01;31m[K<robot_hardware/crc_table.hpp>[m[K
+[0.924s]       |          [01;31m[K^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+[0.925s] compilation terminated.
+[0.929s] gmake[2]: *** [CMakeFiles/hardware_unitree_mujoco.dir/build.make:104: CMakeFiles/hardware_unitree_mujoco.dir/src/imu.cpp.o] Error 1
+[0.930s] gmake[1]: *** [CMakeFiles/Makefile2:137: CMakeFiles/hardware_unitree_mujoco.dir/all] Error 2
+[0.931s] gmake: *** [Makefile:146: all] Error 2
+[0.937s] Invoked command in '/home/yzz/219_ws/build/hardware_unitree_mujoco' returned '2': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/yzz/219_ws/build/hardware_unitree_mujoco -- -j2 -l2

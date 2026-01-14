@@ -1,0 +1,22 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from control_input_msgs/msg/Inputs.msg
+// generated code does not contain a copyright notice
+
+
+module control_input_msgs {
+  module msg {
+    @verbatim (language="comment", text=
+      "control input message")
+    struct Inputs {
+      int32 command;
+
+      float lx;
+
+      float ly;
+
+      float rx;
+
+      float ry;
+    };
+  };
+};

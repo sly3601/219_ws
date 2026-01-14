@@ -1,0 +1,10 @@
+/home/yzz/219_ws/build/unitree_guide_controller/CMakeFiles/uninstall.dir
+/home/yzz/219_ws/build/unitree_guide_controller/CMakeFiles/unitree_guide_controller_uninstall.dir
+/home/yzz/219_ws/build/unitree_guide_controller/CMakeFiles/unitree_guide_controller.dir
+/home/yzz/219_ws/build/unitree_guide_controller/CMakeFiles/test.dir
+/home/yzz/219_ws/build/unitree_guide_controller/CMakeFiles/edit_cache.dir
+/home/yzz/219_ws/build/unitree_guide_controller/CMakeFiles/rebuild_cache.dir
+/home/yzz/219_ws/build/unitree_guide_controller/CMakeFiles/list_install_components.dir
+/home/yzz/219_ws/build/unitree_guide_controller/CMakeFiles/install.dir
+/home/yzz/219_ws/build/unitree_guide_controller/CMakeFiles/install/local.dir
+/home/yzz/219_ws/build/unitree_guide_controller/CMakeFiles/install/strip.dir

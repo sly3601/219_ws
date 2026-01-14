@@ -1,0 +1,8 @@
+source;share/keyboard_input/hook/cmake_prefix_path.ps1
+source;share/keyboard_input/hook/cmake_prefix_path.dsv
+source;share/keyboard_input/hook/cmake_prefix_path.sh
+source;share/keyboard_input/local_setup.bash
+source;share/keyboard_input/local_setup.dsv
+source;share/keyboard_input/local_setup.ps1
+source;share/keyboard_input/local_setup.sh
+source;share/keyboard_input/local_setup.zsh

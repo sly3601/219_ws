@@ -1,0 +1,4 @@
+source;share/hardware_unitree_mujoco/local_setup.bash
+source;share/hardware_unitree_mujoco/local_setup.dsv
+source;share/hardware_unitree_mujoco/local_setup.sh
+source;share/hardware_unitree_mujoco/local_setup.zsh

@@ -1,0 +1,1 @@
+/home/yzz/219_ws/build/control_input_msgs/rosidl_generator_c/control_input_msgs/msg/inputs.h

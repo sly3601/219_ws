@@ -1,0 +1,3 @@
+/home/yzz/219_ws/install/unitree_guide_controller/lib/unitree_guide_controller/libunitree_guide_controller.so
+/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/cmake/export_unitree_guide_controllerExport.cmake
+/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/cmake/export_unitree_guide_controllerExport-release.cmake

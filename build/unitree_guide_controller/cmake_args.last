@@ -1,0 +1,1 @@
+['-DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install', '-DAMENT_CMAKE_SYMLINK_INSTALL=1']

@@ -1,0 +1,6 @@
+{
+  "package_name": "control_input_msgs",
+  "non_idl_tuples": [
+    "/home/yzz/219_ws/src/quadruped_ros2_control-humble/commands/control_input_msgs:msg/Inputs.msg"
+  ]
+}

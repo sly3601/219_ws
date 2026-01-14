@@ -1,0 +1,1 @@
+/home/yzz/219_ws/build/control_input_msgs/rosidl_generator_py/control_input_msgs/msg/_inputs.py

@@ -1,0 +1,62 @@
+[0.014s] Invoking command in '/home/yzz/219_ws/build/keyboard_input': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/go1_description:/home/yzz/219_ws/install/controller_common:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/controller_common/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake /home/yzz/219_ws/src/quadruped_ros2_control-humble/commands/keyboard_input -DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install/keyboard_input
+[0.143s] -- The C compiler identification is GNU 11.4.0
+[0.273s] -- The CXX compiler identification is GNU 11.4.0
+[0.291s] -- Detecting C compiler ABI info
+[0.513s] -- Detecting C compiler ABI info - done
+[0.527s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.528s] -- Detecting C compile features
+[0.529s] -- Detecting C compile features - done
+[0.534s] -- Detecting CXX compiler ABI info
+[0.793s] -- Detecting CXX compiler ABI info - done
+[0.807s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.808s] -- Detecting CXX compile features
+[0.808s] -- Detecting CXX compile features - done
+[0.814s] -- Found ament_cmake: 1.3.12 (/opt/ros/humble/share/ament_cmake/cmake)
+[1.160s] -- Found Python3: /usr/bin/python3 (found version "3.10.12") found components: Interpreter 
+[1.290s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[1.357s] -- Found rclcpp: 16.0.16 (/opt/ros/humble/share/rclcpp/cmake)
+[1.424s] -- Found rosidl_generator_c: 3.1.7 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+[1.427s] -- Found rosidl_adapter: 3.1.7 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[1.442s] -- Found rosidl_generator_cpp: 3.1.7 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+[1.461s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[1.481s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[1.555s] -- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+[1.563s] -- Found rmw_fastrtps_cpp: 6.2.9 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)
+[1.736s] -- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.0.2")  
+[1.790s] -- Found FastRTPS: /opt/ros/humble/include  
+[1.853s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[1.860s] -- Looking for pthread.h
+[1.995s] -- Looking for pthread.h - found
+[1.996s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+[2.132s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+[2.132s] -- Found Threads: TRUE  
+[2.200s] -- Found control_input_msgs: 0.0.0 (/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/cmake)
+[2.322s] -- Configuring done
+[2.331s] -- Generating done
+[2.337s] -- Build files have been written to: /home/yzz/219_ws/build/keyboard_input
+[2.356s] Invoked command in '/home/yzz/219_ws/build/keyboard_input' returned '0': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/go1_description:/home/yzz/219_ws/install/controller_common:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/controller_common/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake /home/yzz/219_ws/src/quadruped_ros2_control-humble/commands/keyboard_input -DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install/keyboard_input
+[2.357s] Invoking command in '/home/yzz/219_ws/build/keyboard_input': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/go1_description:/home/yzz/219_ws/install/controller_common:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/controller_common/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --build /home/yzz/219_ws/build/keyboard_input -- -j2 -l2
+[2.499s] [ 50%] [32mBuilding CXX object CMakeFiles/keyboard_input.dir/src/KeyboardInput.cpp.o[0m
+[7.335s] [100%] [32m[1mLinking CXX executable keyboard_input[0m
+[7.512s] [100%] Built target keyboard_input
+[7.539s] Invoked command in '/home/yzz/219_ws/build/keyboard_input' returned '0': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/go1_description:/home/yzz/219_ws/install/controller_common:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/controller_common/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --build /home/yzz/219_ws/build/keyboard_input -- -j2 -l2
+[7.543s] Invoking command in '/home/yzz/219_ws/build/keyboard_input': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/go1_description:/home/yzz/219_ws/install/controller_common:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/controller_common/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --install /home/yzz/219_ws/build/keyboard_input
+[7.554s] -- Install configuration: ""
+[7.554s] -- Execute custom install script
+[7.555s] -- Symlinking: /home/yzz/219_ws/install/keyboard_input/lib/keyboard_input/keyboard_input
+[7.589s] -- Symlinking: /home/yzz/219_ws/install/keyboard_input/share/ament_index/resource_index/package_run_dependencies/keyboard_input
+[7.606s] -- Symlinking: /home/yzz/219_ws/install/keyboard_input/share/ament_index/resource_index/parent_prefix_path/keyboard_input
+[7.622s] -- Symlinking: /home/yzz/219_ws/install/keyboard_input/share/keyboard_input/environment/ament_prefix_path.sh
+[7.636s] -- Symlinking: /home/yzz/219_ws/install/keyboard_input/share/keyboard_input/environment/ament_prefix_path.dsv
+[7.652s] -- Symlinking: /home/yzz/219_ws/install/keyboard_input/share/keyboard_input/environment/path.sh
+[7.666s] -- Symlinking: /home/yzz/219_ws/install/keyboard_input/share/keyboard_input/environment/path.dsv
+[7.683s] -- Symlinking: /home/yzz/219_ws/install/keyboard_input/share/keyboard_input/local_setup.bash
+[7.701s] -- Symlinking: /home/yzz/219_ws/install/keyboard_input/share/keyboard_input/local_setup.sh
+[7.714s] -- Symlinking: /home/yzz/219_ws/install/keyboard_input/share/keyboard_input/local_setup.zsh
+[7.729s] -- Symlinking: /home/yzz/219_ws/install/keyboard_input/share/keyboard_input/local_setup.dsv
+[7.745s] -- Symlinking: /home/yzz/219_ws/install/keyboard_input/share/keyboard_input/package.dsv
+[7.764s] -- Symlinking: /home/yzz/219_ws/install/keyboard_input/share/ament_index/resource_index/packages/keyboard_input
+[7.780s] -- Symlinking: /home/yzz/219_ws/install/keyboard_input/share/keyboard_input/cmake/keyboard_inputConfig.cmake
+[7.796s] -- Symlinking: /home/yzz/219_ws/install/keyboard_input/share/keyboard_input/cmake/keyboard_inputConfig-version.cmake
+[7.808s] -- Symlinking: /home/yzz/219_ws/install/keyboard_input/share/keyboard_input/package.xml
+[7.827s] Invoked command in '/home/yzz/219_ws/build/keyboard_input' returned '0': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/go1_description:/home/yzz/219_ws/install/controller_common:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/controller_common/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --install /home/yzz/219_ws/build/keyboard_input

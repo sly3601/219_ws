@@ -1,0 +1,16 @@
+/home/yzz/219_ws/install/keyboard_input/lib/keyboard_input/keyboard_input
+/home/yzz/219_ws/install/keyboard_input/share/ament_index/resource_index/package_run_dependencies/keyboard_input
+/home/yzz/219_ws/install/keyboard_input/share/ament_index/resource_index/parent_prefix_path/keyboard_input
+/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/environment/ament_prefix_path.sh
+/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/environment/ament_prefix_path.dsv
+/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/environment/path.sh
+/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/environment/path.dsv
+/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/local_setup.bash
+/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/local_setup.sh
+/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/local_setup.zsh
+/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/local_setup.dsv
+/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/package.dsv
+/home/yzz/219_ws/install/keyboard_input/share/ament_index/resource_index/packages/keyboard_input
+/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/cmake/keyboard_inputConfig.cmake
+/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/cmake/keyboard_inputConfig-version.cmake
+/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/package.xml

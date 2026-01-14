@@ -1,0 +1,19 @@
+[0.025s] Invoking command in '/home/yzz/219_ws/build/hardware_unitree_mujoco': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/yzz/219_ws/build/hardware_unitree_mujoco -- -j2 -l2
+[0.168s] [35m[1mConsolidate compiler generated dependencies of target hardware_unitree_mujoco[0m
+[0.234s] [ 20%] [32mBuilding CXX object CMakeFiles/hardware_unitree_mujoco.dir/src/imu.cpp.o[0m
+[0.248s] [ 40%] [32mBuilding CXX object CMakeFiles/hardware_unitree_mujoco.dir/src/motor_hw.cpp.o[0m
+[0.357s] [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/motor_hw.cpp:1:10:[m[K [01;31m[Kfatal error: [m[Krobot_hardware/motor_hw.hpp: No such file or directory
+[0.358s]     1 | #include [01;31m[K"robot_hardware/motor_hw.hpp"[m[K
+[0.358s]       |          [01;31m[K^~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+[0.358s] compilation terminated.
+[0.360s] gmake[2]: *** [CMakeFiles/hardware_unitree_mujoco.dir/build.make:118: CMakeFiles/hardware_unitree_mujoco.dir/src/motor_hw.cpp.o] Error 1
+[0.360s] gmake[2]: *** Waiting for unfinished jobs....
+[0.948s] In file included from [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/imu.cpp:1[m[K:
+[0.948s] [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/include/hardware_unitree_mujoco/imu.hpp:21:10:[m[K [01;31m[Kfatal error: [m[KEigen/Eigen: No such file or directory
+[0.949s]    21 | #include [01;31m[K<Eigen/Eigen>[m[K
+[0.949s]       |          [01;31m[K^~~~~~~~~~~~~[m[K
+[0.949s] compilation terminated.
+[0.953s] gmake[2]: *** [CMakeFiles/hardware_unitree_mujoco.dir/build.make:104: CMakeFiles/hardware_unitree_mujoco.dir/src/imu.cpp.o] Error 1
+[0.955s] gmake[1]: *** [CMakeFiles/Makefile2:137: CMakeFiles/hardware_unitree_mujoco.dir/all] Error 2
+[0.956s] gmake: *** [Makefile:146: all] Error 2
+[0.959s] Invoked command in '/home/yzz/219_ws/build/hardware_unitree_mujoco' returned '2': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/yzz/219_ws/build/hardware_unitree_mujoco -- -j2 -l2
