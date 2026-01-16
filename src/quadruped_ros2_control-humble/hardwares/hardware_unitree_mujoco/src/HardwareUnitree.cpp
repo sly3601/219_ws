@@ -44,8 +44,23 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Hardwa
         }
     }
 
-
-
+    // ========== imu改动 ==========
+    // 获取参数
+    imu_serial_port_ = info_.hardware_parameters.at("imu_serial_port");
+    imu_serial_baud_ = std::stoi(info_.hardware_parameters.at("imu_serial_baud"));
+    if_debug_ = info_.hardware_parameters.at("debug") == "true";
+    // ========== imu改动 ==========
+    try {
+        // 初始化 IMU 驱动
+        imu_driver_ = std::make_unique<FDILink::imu>(); // FDILink是自定义命名空间，imu是自定义类
+        
+        // 设置参数（可以通过参数服务器传递）
+        // 注意：您可能需要修改您的 imu 类以支持参数设置
+        
+    } catch (const std::exception & e) {
+        RCLCPP_ERROR(rclcpp::get_logger("imu_driver"), "Failed to configure IMU driver: %s", e.what());
+        return CallbackReturn::ERROR;
+    }
 
         // ========== 核心改动2：新增达妙电机串口初始化逻辑 ==========
     // 1. 从hardware_parameters中读取达妙电机YAML配置文件路径
@@ -125,6 +140,9 @@ std::vector<hardware_interface::StateInterface> HardwareUnitree::export_state_in
     return
         state_interfaces;
 }
+
+
+
 
 std::vector<hardware_interface::CommandInterface> HardwareUnitree::export_command_interfaces()
 {
@@ -260,9 +278,25 @@ return_type HardwareUnitree::read(const rclcpp::Time& /*time*/, const rclcpp::Du
         ind++;
     }
 
-    // ========== 可选：保留IMU/足端力逻辑（如果需要） ==========
-    // 如果你仍需要IMU/足端力数据，可保留原有逻辑，或对接达妙电机的IMU串口
-    imu_states_.assign(10, 0);  // 临时赋值0，可按需修改
+    // ========== imu改动 ==========
+    if (imu_driver_ && imu_driver_->check_newdata()) {
+    auto imu_data = imu_driver_->return_latest_imu_data();
+    
+    imu_states_[0] = imu_data.orientation.w;
+    imu_states_[1] = imu_data.orientation.x;
+    imu_states_[2] = imu_data.orientation.y;
+    imu_states_[3] = imu_data.orientation.z;
+
+    imu_states_[4] = imu_data.angular_velocity.x;
+    imu_states_[5] = imu_data.angular_velocity.y;
+    imu_states_[6] = imu_data.angular_velocity.z;
+    imu_states_[7] = imu_data.linear_acceleration.x;
+    imu_states_[8] = imu_data.linear_acceleration.y;
+    imu_states_[9] = imu_data.linear_acceleration.z;
+    
+  }
+    // ========== 可选：保留足端力逻辑（如果需要） ==========
+    // 如果你仍需要足端力数据，可保留原有逻辑
     foot_force_.assign(4, 0);   // 临时赋值0，可按需修改
     high_states_.assign(6, 0);  // 临时赋值0，可按需修改
 
@@ -344,6 +378,8 @@ return_type HardwareUnitree::write(const rclcpp::Time& /*time*/, const rclcpp::D
 
 
 // 新增：解析达妙电机YAML配置的函数
+// 函数作用：将12个电机的基础信息，ID等参数放在port_id2dm_data_里面
+// 函数作用：创建Motor_Control实例
 bool HardwareUnitree::parseDmActData(const std::string& yaml_file_path)
 {
     try {
@@ -357,7 +393,7 @@ bool HardwareUnitree::parseDmActData(const std::string& yaml_file_path)
 
         // 1. 解析motors配置（电机参数）
         const auto& motors = config["motors"];
-        if (motors.IsSequence()) {
+        if (motors.IsSequence()) { // 判断当前 YAML 节点是否是「序列类型」（对应 YAML 中的数组 / 列表，用短横线-定义的结构）。
             for (const auto& motor : motors) {
                 std::string port = motor["port"].as<std::string>();
                 int can_id = motor["can_id"].as<int>();

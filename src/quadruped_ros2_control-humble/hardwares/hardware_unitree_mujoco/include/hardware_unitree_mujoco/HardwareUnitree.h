@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <vector>
 #include <memory>
+#include "hardware_unitree_mujoco/imu.hpp" 
 
 // 新增：达妙电机数据映射类型定义（和cpp文件保持一致）
 using DmActDataMap = std::unordered_map<std::string, std::unordered_map<int, damiao::DmActData>>;
@@ -67,7 +68,16 @@ protected:
     // 新增：解析达妙电机YAML配置文件的函数声明
     bool parseDmActData(const std::string& yaml_file_path);
 
-
+private:
+    // IMU 实例
+    std::unique_ptr<FDILink::imu> imu_driver_;
+    
+    // IMU 数据存储
+    std::vector<double> imu_states_;
+    // 参数
+    std::string imu_serial_port_;
+    int imu_serial_baud_;
+    bool if_debug_;
 
     // useless possible
     int domain_ = 1;

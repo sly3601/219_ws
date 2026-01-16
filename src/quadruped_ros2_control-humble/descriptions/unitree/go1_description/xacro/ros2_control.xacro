@@ -6,6 +6,10 @@
 		<hardware>
 			<plugin>hardware_unitree_mujoco/HardwareUnitree</plugin>
 			<param name="yaml_file_path">$(find go1_description)/config/hardware_config.yaml</param>
+			<param name="imu_serial_port">/dev/ttyUSB0</param>
+			<param name="imu_serial_baud">921600</param>
+			<param name="debug">false</param>
+			<param name="imu_frame_id">imu_link</param>
 		</hardware>
 
 		<joint name="FR_hip_joint">
