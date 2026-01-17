@@ -168,6 +168,10 @@ namespace damiao
         double cmd_pos, cmd_vel, cmd_effort;
         double kp,kd;
 
+        // ========== 新增：转向+偏置参数 ==========
+        int direction = 1;      // 转向系数：1=正向，-1=反向（默认1）
+        float offset = 0.0f;    // 零点偏置（弧度，默认0）
+
     };
 
     class Motor

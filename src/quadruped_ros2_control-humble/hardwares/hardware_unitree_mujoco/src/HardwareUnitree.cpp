@@ -233,6 +233,13 @@ return_type HardwareUnitree::read(const rclcpp::Time& /*time*/, const rclcpp::Du
         motor_control->read();
     }
 
+    // ========== 新增：修正所有电机的原始状态 ==========
+    for (auto& port_entry : port_id2dm_data_) {
+        for (auto& can_entry : port_entry.second) {
+            correctMotorState(can_entry.second);
+        }
+    }
+
     // 2. 把达妙电机的状态赋值给ROS2的状态数组（joint_position_/joint_velocities_/joint_effort_）
     // 2.1 读取位置状态
     int ind = 0;
@@ -394,6 +401,13 @@ return_type HardwareUnitree::write(const rclcpp::Time& /*time*/, const rclcpp::D
         ind++;
     }
 
+    // ========== 新增：修正所有电机的下发指令 ==========
+    for (auto& port_entry : port_id2dm_data_) {
+        for (auto& can_entry : port_entry.second) {
+            correctMotorCommand(can_entry.second);
+        }
+    }
+
     // 2. 调用每个串口的Motor_Control::write()，下发指令到电机
     for (auto& motor_control : motor_ports_) {
         motor_control->write();
@@ -446,6 +460,10 @@ bool HardwareUnitree::parseDmActData(const std::string& yaml_file_path)
                 dm_data.motorType = motor_type;
                 dm_data.can_id = can_id;
                 dm_data.mst_id = master_id;
+                // ========== 新增：读取转向+偏置参数 ==========
+                dm_data.direction = motor["direction"].as<int>(1); // 默认正向
+                dm_data.offset = motor["offset"].as<float>(0.0f);  // 默认无偏置
+
                 port_id2dm_data_[port][can_id] = dm_data;
 
                 RCLCPP_INFO(rclcpp::get_logger("unitree_hardware"), 
@@ -483,6 +501,28 @@ bool HardwareUnitree::parseDmActData(const std::string& yaml_file_path)
         return false;
     }
 }
+
+// 修正电机原始状态（硬件→ROS2：匹配真实机器人）
+void HardwareUnitree::correctMotorState(damiao::DmActData& dm_data) {
+    // 1. 位置修正：原始位置 × 转向系数 + 零点偏置
+    dm_data.pos = dm_data.pos * dm_data.direction + dm_data.offset;
+    // 2. 速度修正：原始速度 × 转向系数（方向同步）
+    dm_data.vel = dm_data.vel * dm_data.direction;
+    // 3. 力矩修正：原始力矩 × 转向系数（方向同步）
+    dm_data.effort = dm_data.effort * dm_data.direction;
+}
+
+// 修正电机下发指令（ROS2→硬件：匹配硬件原始值）
+void HardwareUnitree::correctMotorCommand(damiao::DmActData& dm_data) {
+    // 1. 位置指令：(目标位置 - 零点偏置) ÷ 转向系数（反向计算）
+    dm_data.cmd_pos = (dm_data.cmd_pos - dm_data.offset) / dm_data.direction;
+    // 2. 速度指令：目标速度 ÷ 转向系数
+    dm_data.cmd_vel = dm_data.cmd_vel / dm_data.direction;
+    // 3. 力矩指令：目标力矩 ÷ 转向系数
+    dm_data.cmd_effort = dm_data.cmd_effort / dm_data.direction;
+    // KP/KD无需修正（比例参数，与方向无关）
+}
+
 
 
 // 新增析构函数：释放达妙电机串口和线程资源

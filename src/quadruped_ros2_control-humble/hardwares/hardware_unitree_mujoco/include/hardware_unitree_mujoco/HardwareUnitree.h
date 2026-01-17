@@ -77,6 +77,13 @@ protected:
     bool parseDmActData(const std::string& yaml_file_path);
 
 private:
+
+    // 修正电机读取的原始状态（位置+速度+力矩）
+    void correctMotorState(damiao::DmActData& dm_data);
+    // 修正下发给电机的指令（位置+速度+力矩）
+    void correctMotorCommand(damiao::DmActData& dm_data);
+
+    
     // IMU 实例
     std::unique_ptr<FDILink::imu> imu_driver_;
     // 参数
