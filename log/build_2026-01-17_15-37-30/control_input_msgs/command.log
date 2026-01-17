@@ -1,0 +1,4 @@
+Invoking command in '/home/yzz/219_ws/build/control_input_msgs': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/yzz/219_ws/build/control_input_msgs -- -j2 -l2
+Invoked command in '/home/yzz/219_ws/build/control_input_msgs' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/yzz/219_ws/build/control_input_msgs -- -j2 -l2
+Invoking command in '/home/yzz/219_ws/build/control_input_msgs': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/yzz/219_ws/build/control_input_msgs
+Invoked command in '/home/yzz/219_ws/build/control_input_msgs' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/yzz/219_ws/build/control_input_msgs

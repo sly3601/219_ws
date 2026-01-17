@@ -1,0 +1,79 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-35d3cd0d8e139e53e7bc.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.12"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"name" : "",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "hardware_unitree_mujoco",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "hardware_unitree_mujoco::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-hardware_unitree_mujoco-c822f5e264104144057f.json",
+					"name" : "hardware_unitree_mujoco",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "hardware_unitree_mujoco_uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-hardware_unitree_mujoco_uninstall-4ed981302dea5cdd00d3.json",
+					"name" : "hardware_unitree_mujoco_uninstall",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-uninstall-2babb3b3818018021d51.json",
+					"name" : "uninstall",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/yzz/219_ws/build/hardware_unitree_mujoco",
+		"source" : "/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}

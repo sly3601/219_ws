@@ -14,12 +14,15 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
     rclcpp
     rclcpp_lifecycle
     serial  # ========== 微改1：添加serial到依赖列表 ==========
+    tf2_ros
+    geometry_msgs
 )
 find_package(ament_cmake REQUIRED)
 find_package(backward_ros REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(serial REQUIRED)  # ========== 微改2：新增find_package serial ==========
+find_package(tf2_ros REQUIRED)
 foreach (Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${Dependency} REQUIRED)
 endforeach ()

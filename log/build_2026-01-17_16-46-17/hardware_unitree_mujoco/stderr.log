@@ -1,0 +1,39 @@
+In file included from [01m[K/usr/include/c++/11/memory:76[m[K,
+                 from [01m[K/opt/ros/humble/include/hardware_interface/hardware_interface/system_interface.hpp:18[m[K,
+                 from [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/include/hardware_unitree_mujoco/HardwareUnitree.h:9[m[K,
+                 from [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/HardwareUnitree.cpp:5[m[K:
+/usr/include/c++/11/bits/unique_ptr.h: In instantiation of ‘[01m[Ktypename std::_MakeUniq<_Tp>::__single_object std::make_unique(_Args&& ...) [with _Tp = tf2_ros::TransformBroadcaster; _Args = {}; typename std::_MakeUniq<_Tp>::__single_object = std::unique_ptr<tf2_ros::TransformBroadcaster>][m[K’:
+[01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/HardwareUnitree.cpp:70:70:[m[K   required from here
+[01m[K/usr/include/c++/11/bits/unique_ptr.h:962:30:[m[K [01;31m[Kerror: [m[Kno matching function for call to ‘[01m[Ktf2_ros::TransformBroadcaster::TransformBroadcaster()[m[K’
+  962 |     { return unique_ptr<_Tp>([01;31m[Knew _Tp(std::forward<_Args>(__args)...)[m[K); }
+      |                              [01;31m[K^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+In file included from [01m[K/opt/ros/humble/include/tf2_ros/tf2_ros/transform_broadcaster.h:36[m[K,
+                 from [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/include/hardware_unitree_mujoco/HardwareUnitree.h:23[m[K,
+                 from [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/HardwareUnitree.cpp:5[m[K:
+[01m[K/opt/ros/humble/include/tf2_ros/tf2_ros/transform_broadcaster.hpp:58:3:[m[K [01;36m[Knote: [m[Kcandidate: ‘[01m[Ktemplate<class NodeT, class AllocatorT> tf2_ros::TransformBroadcaster::TransformBroadcaster(NodeT&&, const rclcpp::QoS&, const rclcpp::PublisherOptionsWithAllocator<AllocatorT>&)[m[K’
+   58 |   [01;36m[KTransformBroadcaster[m[K(
+      |   [01;36m[K^~~~~~~~~~~~~~~~~~~~[m[K
+[01m[K/opt/ros/humble/include/tf2_ros/tf2_ros/transform_broadcaster.hpp:58:3:[m[K [01;36m[Knote: [m[K  template argument deduction/substitution failed:
+In file included from [01m[K/usr/include/c++/11/memory:76[m[K,
+                 from [01m[K/opt/ros/humble/include/hardware_interface/hardware_interface/system_interface.hpp:18[m[K,
+                 from [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/include/hardware_unitree_mujoco/HardwareUnitree.h:9[m[K,
+                 from [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/HardwareUnitree.cpp:5[m[K:
+[01m[K/usr/include/c++/11/bits/unique_ptr.h:962:30:[m[K [01;36m[Knote: [m[K  candidate expects 3 arguments, 0 provided
+  962 |     { return unique_ptr<_Tp>([01;36m[Knew _Tp(std::forward<_Args>(__args)...)[m[K); }
+      |                              [01;36m[K^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+In file included from [01m[K/opt/ros/humble/include/tf2_ros/tf2_ros/transform_broadcaster.h:36[m[K,
+                 from [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/include/hardware_unitree_mujoco/HardwareUnitree.h:23[m[K,
+                 from [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/HardwareUnitree.cpp:5[m[K:
+[01m[K/opt/ros/humble/include/tf2_ros/tf2_ros/transform_broadcaster.hpp:53:7:[m[K [01;36m[Knote: [m[Kcandidate: ‘[01m[Ktf2_ros::TransformBroadcaster::TransformBroadcaster(const tf2_ros::TransformBroadcaster&)[m[K’
+   53 | class [01;36m[KTransformBroadcaster[m[K
+      |       [01;36m[K^~~~~~~~~~~~~~~~~~~~[m[K
+[01m[K/opt/ros/humble/include/tf2_ros/tf2_ros/transform_broadcaster.hpp:53:7:[m[K [01;36m[Knote: [m[K  candidate expects 1 argument, 0 provided
+[01m[K/opt/ros/humble/include/tf2_ros/tf2_ros/transform_broadcaster.hpp:53:7:[m[K [01;36m[Knote: [m[Kcandidate: ‘[01m[Ktf2_ros::TransformBroadcaster::TransformBroadcaster(tf2_ros::TransformBroadcaster&&)[m[K’
+[01m[K/opt/ros/humble/include/tf2_ros/tf2_ros/transform_broadcaster.hpp:53:7:[m[K [01;36m[Knote: [m[K  candidate expects 1 argument, 0 provided
+In file included from [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/HardwareUnitree.cpp:10[m[K:
+[01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/crc32.h:9:17:[m[K [01;35m[Kwarning: [m[K‘[01m[Kuint32_t crc32_core(const uint32_t*, uint32_t)[m[K’ defined but not used [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-function-Wunused-function]8;;[m[K]
+    9 | static uint32_t [01;35m[Kcrc32_core[m[K(const uint32_t *ptr, uint32_t len) {
+      |                 [01;35m[K^~~~~~~~~~[m[K
+gmake[2]: *** [CMakeFiles/hardware_unitree_mujoco.dir/build.make:76: CMakeFiles/hardware_unitree_mujoco.dir/src/HardwareUnitree.cpp.o] Error 1
+gmake[1]: *** [CMakeFiles/Makefile2:137: CMakeFiles/hardware_unitree_mujoco.dir/all] Error 2
+gmake: *** [Makefile:146: all] Error 2

@@ -146,7 +146,7 @@ Motor_Control::Motor_Control(std::string serial_port, int seial_baud,std::unorde
     serial_.setTimeout(time_out);            // 应用超时配置
 
     serial_.open();  // 打开串口
-    usleep(1000000); // 延时1秒，等待串口驱动就绪
+    usleep(100000); // 延时1秒，等待串口驱动就绪
     // ROS2日志：确认串口打开成功
     RCLCPP_INFO(rclcpp::get_logger("motor_hw"), 
         "Serial port %s opened successfully with baudrate %d", serial_port.c_str(), seial_baud);
@@ -159,10 +159,10 @@ Motor_Control::Motor_Control(std::string serial_port, int seial_baud,std::unorde
         RCLCPP_INFO(rclcpp::get_logger("motor_hw"), 
             "Switch mode to MIT_MODE for motor: Type=%d, Slave_id=%d, Master_id=%d", it.second->GetMotorType(), it.second->GetSlaveId(), it.second->GetMasterId());
     }
-    set_zero_position();  // 执行电机归零操作（将当前位置设为零点）
+    // set_zero_position();  // 执行电机归零操作（将当前位置设为零点）
     enable();             // 使能该串口下的所有电机
     
-    usleep(500000); // 延时0.5秒，等待电机完成初始化
+    usleep(100000); // 延时0.5秒，等待电机完成初始化
     // 重要！ 创建并启动电机数据接收线程：绑定成员函数和this指针
     rec_thread = std::thread(std::bind(&Motor_Control::get_motor_data_thread, this));
     // 注释行：boost版本的线程创建方式（未启用）

@@ -1,0 +1,40 @@
+[0.020s] Invoking command in '/home/yzz/219_ws/build/hardware_unitree_mujoco': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/yzz/219_ws/build/hardware_unitree_mujoco -- -j2 -l2
+[0.223s] [35m[1mConsolidate compiler generated dependencies of target hardware_unitree_mujoco[0m
+[0.306s] [ 20%] [32mBuilding CXX object CMakeFiles/hardware_unitree_mujoco.dir/src/motor_hw.cpp.o[0m
+[3.356s] [ 40%] [32m[1mLinking CXX shared library libhardware_unitree_mujoco.so[0m
+[3.641s] [100%] Built target hardware_unitree_mujoco
+[3.653s] Invoked command in '/home/yzz/219_ws/build/hardware_unitree_mujoco' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/yzz/219_ws/build/hardware_unitree_mujoco -- -j2 -l2
+[3.656s] Invoking command in '/home/yzz/219_ws/build/hardware_unitree_mujoco': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/yzz/219_ws/build/hardware_unitree_mujoco
+[3.661s] -- Install configuration: ""
+[3.661s] -- Execute custom install script
+[3.662s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco//HardwareUnitree.xml
+[3.662s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/include/hardware_unitree_mujoco/hardware_unitree_mujoco/HardwareUnitree.h
+[3.662s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/include/hardware_unitree_mujoco/hardware_unitree_mujoco/crc_table.hpp
+[3.662s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/include/hardware_unitree_mujoco/hardware_unitree_mujoco/imu.hpp
+[3.662s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/include/hardware_unitree_mujoco/hardware_unitree_mujoco/motor_hw.hpp
+[3.663s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/HardwareUnitree.xml
+[3.663s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco//launch/visualize.launch.py
+[3.664s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/environment/library_path.sh
+[3.665s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/environment/library_path.dsv
+[3.665s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/ament_index/resource_index/package_run_dependencies/hardware_unitree_mujoco
+[3.665s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/ament_index/resource_index/parent_prefix_path/hardware_unitree_mujoco
+[3.665s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/environment/ament_prefix_path.sh
+[3.665s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/environment/ament_prefix_path.dsv
+[3.665s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/environment/path.sh
+[3.665s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/environment/path.dsv
+[3.665s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/local_setup.bash
+[3.665s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/local_setup.sh
+[3.665s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/local_setup.zsh
+[3.667s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/local_setup.dsv
+[3.667s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/package.dsv
+[3.677s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/ament_index/resource_index/packages/hardware_unitree_mujoco
+[3.679s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/ament_index/resource_index/hardware_interface__pluginlib__plugin/hardware_unitree_mujoco
+[3.679s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/cmake/ament_cmake_export_dependencies-extras.cmake
+[3.679s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/cmake/ament_cmake_export_targets-extras.cmake
+[3.679s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/cmake/hardware_unitree_mujocoConfig.cmake
+[3.679s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/cmake/hardware_unitree_mujocoConfig-version.cmake
+[3.679s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/package.xml
+[3.679s] -- Installing: /home/yzz/219_ws/install/hardware_unitree_mujoco/lib/libhardware_unitree_mujoco.so
+[3.680s] -- Up-to-date: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/cmake/export_hardware_unitree_mujocoExport.cmake
+[3.680s] -- Up-to-date: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/cmake/export_hardware_unitree_mujocoExport-noconfig.cmake
+[3.682s] Invoked command in '/home/yzz/219_ws/build/hardware_unitree_mujoco' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/yzz/219_ws/build/hardware_unitree_mujoco

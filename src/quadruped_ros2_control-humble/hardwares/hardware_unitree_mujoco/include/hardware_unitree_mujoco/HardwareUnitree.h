@@ -18,6 +18,14 @@
 #include <memory>
 #include "hardware_unitree_mujoco/imu.hpp" 
 
+
+// 1. 头文件新增（加在文件顶部）
+#include "tf2_ros/transform_broadcaster.h"
+#include "geometry_msgs/msg/transform_stamped.hpp"
+#include "rclcpp/time.hpp"
+#include "rclcpp/node.hpp"
+
+
 // 新增：达妙电机数据映射类型定义（和cpp文件保持一致）
 using DmActDataMap = std::unordered_map<std::string, std::unordered_map<int, damiao::DmActData>>;
 
@@ -49,9 +57,9 @@ protected:
     std::vector<double> joint_velocities_;
     std::vector<double> joint_effort_;
 
-    std::vector<double> imu_states_;
-    std::vector<double> foot_force_;
-    std::vector<double> high_states_;
+    std::vector<double> imu_states_;    // IMU 数据存储
+    std::vector<double> foot_force_;    // no used
+    std::vector<double> high_states_;   // no used
 
     std::unordered_map<std::string, std::vector<std::string> > joint_interfaces = {
         {"position", {}},
@@ -71,9 +79,6 @@ protected:
 private:
     // IMU 实例
     std::unique_ptr<FDILink::imu> imu_driver_;
-    
-    // IMU 数据存储
-    std::vector<double> imu_states_;
     // 参数
     std::string imu_serial_port_;
     int imu_serial_baud_;
@@ -82,6 +87,9 @@ private:
     // useless possible
     int domain_ = 1;
     bool show_foot_force_ = false;
+
+    std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_; // TF广播器
+    rclcpp::Node::SharedPtr node_ptr_; // 新增：关联ROS2节点
 
 };
 

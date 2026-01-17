@@ -1,0 +1,678 @@
+[0.065s] DEBUG:colcon:Command line arguments: ['/usr/bin/colcon', 'build', '--packages-up-to', 'unitree_guide_controller', 'go1_description', 'keyboard_input', 'hardware_unitree_mujoco', '--symlink-install', '--cmake-args', '-DCMAKE_BUILD_TYPE=Release', '--event-handlers', 'console_direct+', '--continue-on-error', '--cmake-args', '-DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install']
+[0.065s] DEBUG:colcon:Parsed command line arguments: Namespace(log_base=None, log_level=None, verb_name='build', build_base='build', install_base='install', merge_install=False, symlink_install=True, test_result_base=None, continue_on_error=True, executor='parallel', parallel_workers=2, event_handlers=['console_direct+'], ignore_user_meta=False, metas=['./colcon.meta'], base_paths=['.'], packages_ignore=None, packages_ignore_regex=None, paths=None, packages_up_to=['unitree_guide_controller', 'go1_description', 'keyboard_input', 'hardware_unitree_mujoco'], packages_up_to_regex=None, packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_select_by_dep=None, packages_skip_by_dep=None, packages_skip_up_to=None, packages_select_build_failed=False, packages_skip_build_finished=False, packages_select_test_failures=False, packages_skip_test_passed=False, packages_select=None, packages_skip=None, packages_select_regex=None, packages_skip_regex=None, packages_start=None, packages_end=None, allow_overriding=[], cmake_args=['-DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install'], cmake_target=None, cmake_target_skip_unavailable=False, cmake_clean_cache=False, cmake_clean_first=False, cmake_force_configure=False, ament_cmake_args=None, catkin_cmake_args=None, catkin_skip_building_tests=False, verb_parser=<colcon_defaults.argument_parser.defaults.DefaultArgumentsDecorator object at 0x7296dad37e50>, verb_extension=<colcon_core.verb.build.BuildVerb object at 0x7296dad37790>, main=<bound method BuildVerb.main of <colcon_core.verb.build.BuildVerb object at 0x7296dad37790>>)
+[0.153s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) check parameters
+[0.153s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) check parameters
+[0.153s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) check parameters
+[0.153s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) check parameters
+[0.153s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) discover
+[0.153s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) discover
+[0.153s] INFO:colcon.colcon_core.package_discovery:Crawling recursively for packages in '/home/yzz/219_ws'
+[0.153s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ignore', 'ignore_ament_install']
+[0.153s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore'
+[0.153s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore_ament_install'
+[0.153s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_pkg']
+[0.153s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_pkg'
+[0.153s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_meta']
+[0.153s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_meta'
+[0.153s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ros']
+[0.154s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ros'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['cmake', 'python']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'cmake'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['python_setup_py']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python_setup_py'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extensions ['ignore', 'ignore_ament_install']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extension 'ignore'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(build) ignored
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extensions ['ignore', 'ignore_ament_install']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extension 'ignore'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(install) ignored
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extensions ['ignore', 'ignore_ament_install']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extension 'ignore'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(log) ignored
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ignore', 'ignore_ament_install']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore_ament_install'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_pkg']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_pkg'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_meta']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_meta'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ros']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ros'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['cmake', 'python']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'cmake'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['python_setup_py']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python_setup_py'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble) by extensions ['ignore', 'ignore_ament_install']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble) by extension 'ignore'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble) by extension 'ignore_ament_install'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble) by extensions ['colcon_pkg']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble) by extension 'colcon_pkg'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble) by extensions ['colcon_meta']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble) by extension 'colcon_meta'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble) by extensions ['ros']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble) by extension 'ros'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble) by extensions ['cmake', 'python']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble) by extension 'cmake'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble) by extension 'python'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble) by extensions ['python_setup_py']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble) by extension 'python_setup_py'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES) by extensions ['ignore', 'ignore_ament_install']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES) by extension 'ignore'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES) by extension 'ignore_ament_install'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES) by extensions ['colcon_pkg']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES) by extension 'colcon_pkg'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES) by extensions ['colcon_meta']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES) by extension 'colcon_meta'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES) by extensions ['ros']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES) by extension 'ros'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES) by extensions ['cmake', 'python']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES) by extension 'cmake'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES) by extension 'python'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES) by extensions ['python_setup_py']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES) by extension 'python_setup_py'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/legged_control) by extensions ['ignore', 'ignore_ament_install']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/legged_control) by extension 'ignore'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/legged_control) by extension 'ignore_ament_install'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/legged_control) by extensions ['colcon_pkg']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/legged_control) by extension 'colcon_pkg'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/legged_control) by extensions ['colcon_meta']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/legged_control) by extension 'colcon_meta'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/legged_control) by extensions ['ros']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/legged_control) by extension 'ros'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/legged_control) by extensions ['cmake', 'python']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/legged_control) by extension 'cmake'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/legged_control) by extension 'python'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/legged_control) by extensions ['python_setup_py']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/legged_control) by extension 'python_setup_py'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/unitree_guide) by extensions ['ignore', 'ignore_ament_install']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/unitree_guide) by extension 'ignore'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/unitree_guide) by extension 'ignore_ament_install'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/unitree_guide) by extensions ['colcon_pkg']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/unitree_guide) by extension 'colcon_pkg'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/unitree_guide) by extensions ['colcon_meta']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/unitree_guide) by extension 'colcon_meta'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/unitree_guide) by extensions ['ros']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/unitree_guide) by extension 'ros'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/unitree_guide) by extensions ['cmake', 'python']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/unitree_guide) by extension 'cmake'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/unitree_guide) by extension 'python'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/unitree_guide) by extensions ['python_setup_py']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/LICENSES/unitree_guide) by extension 'python_setup_py'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands) by extensions ['ignore', 'ignore_ament_install']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands) by extension 'ignore'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands) by extension 'ignore_ament_install'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands) by extensions ['colcon_pkg']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands) by extension 'colcon_pkg'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands) by extensions ['colcon_meta']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands) by extension 'colcon_meta'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands) by extensions ['ros']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands) by extension 'ros'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands) by extensions ['cmake', 'python']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands) by extension 'cmake'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands) by extension 'python'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands) by extensions ['python_setup_py']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands) by extension 'python_setup_py'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/control_input_msgs) by extensions ['ignore', 'ignore_ament_install']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/control_input_msgs) by extension 'ignore'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/control_input_msgs) by extension 'ignore_ament_install'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/control_input_msgs) by extensions ['colcon_pkg']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/control_input_msgs) by extension 'colcon_pkg'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/control_input_msgs) by extensions ['colcon_meta']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/control_input_msgs) by extension 'colcon_meta'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/control_input_msgs) by extensions ['ros']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/control_input_msgs) by extension 'ros'
+[0.164s] DEBUG:colcon.colcon_core.package_identification:Package 'src/quadruped_ros2_control-humble/commands/control_input_msgs' with type 'ros.ament_cmake' and name 'control_input_msgs'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/joystick_input) by extensions ['ignore', 'ignore_ament_install']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/joystick_input) by extension 'ignore'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/joystick_input) by extension 'ignore_ament_install'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/joystick_input) by extensions ['colcon_pkg']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/joystick_input) by extension 'colcon_pkg'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/joystick_input) by extensions ['colcon_meta']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/joystick_input) by extension 'colcon_meta'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/joystick_input) by extensions ['ros']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/joystick_input) by extension 'ros'
+[0.165s] DEBUG:colcon.colcon_core.package_identification:Package 'src/quadruped_ros2_control-humble/commands/joystick_input' with type 'ros.ament_cmake' and name 'joystick_input'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/keyboard_input) by extensions ['ignore', 'ignore_ament_install']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/keyboard_input) by extension 'ignore'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/keyboard_input) by extension 'ignore_ament_install'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/keyboard_input) by extensions ['colcon_pkg']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/keyboard_input) by extension 'colcon_pkg'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/keyboard_input) by extensions ['colcon_meta']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/keyboard_input) by extension 'colcon_meta'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/keyboard_input) by extensions ['ros']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/keyboard_input) by extension 'ros'
+[0.165s] DEBUG:colcon.colcon_core.package_identification:Package 'src/quadruped_ros2_control-humble/commands/keyboard_input' with type 'ros.ament_cmake' and name 'keyboard_input'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/unitree_joystick_input) by extensions ['ignore', 'ignore_ament_install']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/unitree_joystick_input) by extension 'ignore'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/unitree_joystick_input) by extension 'ignore_ament_install'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/unitree_joystick_input) by extensions ['colcon_pkg']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/unitree_joystick_input) by extension 'colcon_pkg'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/unitree_joystick_input) by extensions ['colcon_meta']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/unitree_joystick_input) by extension 'colcon_meta'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/unitree_joystick_input) by extensions ['ros']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/commands/unitree_joystick_input) by extension 'ros'
+[0.166s] DEBUG:colcon.colcon_core.package_identification:Package 'src/quadruped_ros2_control-humble/commands/unitree_joystick_input' with type 'ros.ament_cmake' and name 'unitree_joystick_input'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers) by extensions ['ignore', 'ignore_ament_install']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers) by extension 'ignore'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers) by extension 'ignore_ament_install'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers) by extensions ['colcon_pkg']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers) by extension 'colcon_pkg'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers) by extensions ['colcon_meta']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers) by extension 'colcon_meta'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers) by extensions ['ros']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers) by extension 'ros'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers) by extensions ['cmake', 'python']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers) by extension 'cmake'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers) by extension 'python'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers) by extensions ['python_setup_py']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers) by extension 'python_setup_py'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers/unitree_guide_controller) by extensions ['ignore', 'ignore_ament_install']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers/unitree_guide_controller) by extension 'ignore'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers/unitree_guide_controller) by extension 'ignore_ament_install'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers/unitree_guide_controller) by extensions ['colcon_pkg']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers/unitree_guide_controller) by extension 'colcon_pkg'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers/unitree_guide_controller) by extensions ['colcon_meta']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers/unitree_guide_controller) by extension 'colcon_meta'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers/unitree_guide_controller) by extensions ['ros']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/controllers/unitree_guide_controller) by extension 'ros'
+[0.167s] DEBUG:colcon.colcon_core.package_identification:Package 'src/quadruped_ros2_control-humble/controllers/unitree_guide_controller' with type 'ros.ament_cmake' and name 'unitree_guide_controller'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions) by extensions ['ignore', 'ignore_ament_install']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions) by extension 'ignore'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions) by extension 'ignore_ament_install'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions) by extensions ['colcon_pkg']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions) by extension 'colcon_pkg'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions) by extensions ['colcon_meta']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions) by extension 'colcon_meta'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions) by extensions ['ros']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions) by extension 'ros'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions) by extensions ['cmake', 'python']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions) by extension 'cmake'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions) by extension 'python'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions) by extensions ['python_setup_py']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions) by extension 'python_setup_py'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree) by extensions ['ignore', 'ignore_ament_install']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree) by extension 'ignore'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree) by extension 'ignore_ament_install'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree) by extensions ['colcon_pkg']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree) by extension 'colcon_pkg'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree) by extensions ['colcon_meta']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree) by extension 'colcon_meta'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree) by extensions ['ros']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree) by extension 'ros'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree) by extensions ['cmake', 'python']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree) by extension 'cmake'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree) by extension 'python'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree) by extensions ['python_setup_py']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree) by extension 'python_setup_py'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree/go1_description) by extensions ['ignore', 'ignore_ament_install']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree/go1_description) by extension 'ignore'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree/go1_description) by extension 'ignore_ament_install'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree/go1_description) by extensions ['colcon_pkg']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree/go1_description) by extension 'colcon_pkg'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree/go1_description) by extensions ['colcon_meta']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree/go1_description) by extension 'colcon_meta'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree/go1_description) by extensions ['ros']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/descriptions/unitree/go1_description) by extension 'ros'
+[0.168s] DEBUG:colcon.colcon_core.package_identification:Package 'src/quadruped_ros2_control-humble/descriptions/unitree/go1_description' with type 'ros.ament_cmake' and name 'go1_description'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares) by extensions ['ignore', 'ignore_ament_install']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares) by extension 'ignore'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares) by extension 'ignore_ament_install'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares) by extensions ['colcon_pkg']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares) by extension 'colcon_pkg'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares) by extensions ['colcon_meta']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares) by extension 'colcon_meta'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares) by extensions ['ros']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares) by extension 'ros'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares) by extensions ['cmake', 'python']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares) by extension 'cmake'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares) by extension 'python'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares) by extensions ['python_setup_py']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares) by extension 'python_setup_py'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/gz_quadruped_hardware) by extensions ['ignore', 'ignore_ament_install']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/gz_quadruped_hardware) by extension 'ignore'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/gz_quadruped_hardware) by extension 'ignore_ament_install'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/gz_quadruped_hardware) by extensions ['colcon_pkg']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/gz_quadruped_hardware) by extension 'colcon_pkg'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/gz_quadruped_hardware) by extensions ['colcon_meta']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/gz_quadruped_hardware) by extension 'colcon_meta'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/gz_quadruped_hardware) by extensions ['ros']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/gz_quadruped_hardware) by extension 'ros'
+[0.170s] DEBUG:colcon.colcon_core.package_identification:Package 'src/quadruped_ros2_control-humble/hardwares/gz_quadruped_hardware' with type 'ros.ament_cmake' and name 'gz_quadruped_hardware'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco) by extensions ['ignore', 'ignore_ament_install']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco) by extension 'ignore'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco) by extension 'ignore_ament_install'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco) by extensions ['colcon_pkg']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco) by extension 'colcon_pkg'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco) by extensions ['colcon_meta']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco) by extension 'colcon_meta'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco) by extensions ['ros']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco) by extension 'ros'
+[0.170s] DEBUG:colcon.colcon_core.package_identification:Package 'src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco' with type 'ros.ament_cmake' and name 'hardware_unitree_mujoco'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries) by extensions ['ignore', 'ignore_ament_install']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries) by extension 'ignore'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries) by extension 'ignore_ament_install'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries) by extensions ['colcon_pkg']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries) by extension 'colcon_pkg'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries) by extensions ['colcon_meta']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries) by extension 'colcon_meta'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries) by extensions ['ros']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries) by extension 'ros'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries) by extensions ['cmake', 'python']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries) by extension 'cmake'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries) by extension 'python'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries) by extensions ['python_setup_py']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries) by extension 'python_setup_py'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/controller_common) by extensions ['ignore', 'ignore_ament_install']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/controller_common) by extension 'ignore'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/controller_common) by extension 'ignore_ament_install'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/controller_common) by extensions ['colcon_pkg']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/controller_common) by extension 'colcon_pkg'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/controller_common) by extensions ['colcon_meta']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/controller_common) by extension 'colcon_meta'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/controller_common) by extensions ['ros']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/controller_common) by extension 'ros'
+[0.171s] DEBUG:colcon.colcon_core.package_identification:Package 'src/quadruped_ros2_control-humble/libraries/controller_common' with type 'ros.ament_cmake' and name 'controller_common'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/gz_quadruped_playground) by extensions ['ignore', 'ignore_ament_install']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/gz_quadruped_playground) by extension 'ignore'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/gz_quadruped_playground) by extension 'ignore_ament_install'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/gz_quadruped_playground) by extensions ['colcon_pkg']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/gz_quadruped_playground) by extension 'colcon_pkg'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/gz_quadruped_playground) by extensions ['colcon_meta']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/gz_quadruped_playground) by extension 'colcon_meta'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/gz_quadruped_playground) by extensions ['ros']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/gz_quadruped_playground) by extension 'ros'
+[0.172s] DEBUG:colcon.colcon_core.package_identification:Package 'src/quadruped_ros2_control-humble/libraries/gz_quadruped_playground' with type 'ros.ament_cmake' and name 'gz_quadruped_playground'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/qpoases_colcon) by extensions ['ignore', 'ignore_ament_install']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/qpoases_colcon) by extension 'ignore'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/qpoases_colcon) by extension 'ignore_ament_install'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/qpoases_colcon) by extensions ['colcon_pkg']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/qpoases_colcon) by extension 'colcon_pkg'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/qpoases_colcon) by extensions ['colcon_meta']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/qpoases_colcon) by extension 'colcon_meta'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/qpoases_colcon) by extensions ['ros']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(src/quadruped_ros2_control-humble/libraries/qpoases_colcon) by extension 'ros'
+[0.172s] DEBUG:colcon.colcon_core.package_identification:Package 'src/quadruped_ros2_control-humble/libraries/qpoases_colcon' with type 'ros.ament_cmake' and name 'qpoases_colcon'
+[0.172s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) using defaults
+[0.172s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) discover
+[0.172s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) using defaults
+[0.172s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) discover
+[0.172s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) using defaults
+[0.195s] INFO:colcon.colcon_core.package_selection:Skipping package 'unitree_joystick_input' in 'src/quadruped_ros2_control-humble/commands/unitree_joystick_input'
+[0.195s] INFO:colcon.colcon_core.package_selection:Skipping package 'joystick_input' in 'src/quadruped_ros2_control-humble/commands/joystick_input'
+[0.195s] INFO:colcon.colcon_core.package_selection:Skipping package 'gz_quadruped_playground' in 'src/quadruped_ros2_control-humble/libraries/gz_quadruped_playground'
+[0.195s] INFO:colcon.colcon_core.package_selection:Skipping package 'qpoases_colcon' in 'src/quadruped_ros2_control-humble/libraries/qpoases_colcon'
+[0.195s] INFO:colcon.colcon_core.package_selection:Skipping package 'gz_quadruped_hardware' in 'src/quadruped_ros2_control-humble/hardwares/gz_quadruped_hardware'
+[0.195s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) check parameters
+[0.195s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) discover
+[0.197s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 6 installed packages in /home/yzz/219_ws/install
+[0.198s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 321 installed packages in /opt/ros/humble
+[0.199s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) using defaults
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'control_input_msgs' build argument 'cmake_args' from command line to '['-DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install']'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'control_input_msgs' build argument 'cmake_target' from command line to 'None'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'control_input_msgs' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'control_input_msgs' build argument 'cmake_clean_cache' from command line to 'False'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'control_input_msgs' build argument 'cmake_clean_first' from command line to 'False'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'control_input_msgs' build argument 'cmake_force_configure' from command line to 'False'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'control_input_msgs' build argument 'ament_cmake_args' from command line to 'None'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'control_input_msgs' build argument 'catkin_cmake_args' from command line to 'None'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'control_input_msgs' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.233s] DEBUG:colcon.colcon_core.verb:Building package 'control_input_msgs' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/yzz/219_ws/build/control_input_msgs', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': ['-DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install'], 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/yzz/219_ws/install/control_input_msgs', 'merge_install': False, 'path': '/home/yzz/219_ws/src/quadruped_ros2_control-humble/commands/control_input_msgs', 'symlink_install': True, 'test_result_base': None}
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'go1_description' build argument 'cmake_args' from command line to '['-DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install']'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'go1_description' build argument 'cmake_target' from command line to 'None'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'go1_description' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'go1_description' build argument 'cmake_clean_cache' from command line to 'False'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'go1_description' build argument 'cmake_clean_first' from command line to 'False'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'go1_description' build argument 'cmake_force_configure' from command line to 'False'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'go1_description' build argument 'ament_cmake_args' from command line to 'None'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'go1_description' build argument 'catkin_cmake_args' from command line to 'None'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'go1_description' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.233s] DEBUG:colcon.colcon_core.verb:Building package 'go1_description' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/yzz/219_ws/build/go1_description', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': ['-DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install'], 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/yzz/219_ws/install/go1_description', 'merge_install': False, 'path': '/home/yzz/219_ws/src/quadruped_ros2_control-humble/descriptions/unitree/go1_description', 'symlink_install': True, 'test_result_base': None}
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'hardware_unitree_mujoco' build argument 'cmake_args' from command line to '['-DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install']'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'hardware_unitree_mujoco' build argument 'cmake_target' from command line to 'None'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'hardware_unitree_mujoco' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'hardware_unitree_mujoco' build argument 'cmake_clean_cache' from command line to 'False'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'hardware_unitree_mujoco' build argument 'cmake_clean_first' from command line to 'False'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'hardware_unitree_mujoco' build argument 'cmake_force_configure' from command line to 'False'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'hardware_unitree_mujoco' build argument 'ament_cmake_args' from command line to 'None'
+[0.233s] Level 5:colcon.colcon_core.verb:set package 'hardware_unitree_mujoco' build argument 'catkin_cmake_args' from command line to 'None'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'hardware_unitree_mujoco' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.234s] DEBUG:colcon.colcon_core.verb:Building package 'hardware_unitree_mujoco' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/yzz/219_ws/build/hardware_unitree_mujoco', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': ['-DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install'], 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/yzz/219_ws/install/hardware_unitree_mujoco', 'merge_install': False, 'path': '/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco', 'symlink_install': True, 'test_result_base': None}
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'controller_common' build argument 'cmake_args' from command line to '['-DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install']'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'controller_common' build argument 'cmake_target' from command line to 'None'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'controller_common' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'controller_common' build argument 'cmake_clean_cache' from command line to 'False'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'controller_common' build argument 'cmake_clean_first' from command line to 'False'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'controller_common' build argument 'cmake_force_configure' from command line to 'False'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'controller_common' build argument 'ament_cmake_args' from command line to 'None'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'controller_common' build argument 'catkin_cmake_args' from command line to 'None'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'controller_common' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.234s] DEBUG:colcon.colcon_core.verb:Building package 'controller_common' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/yzz/219_ws/build/controller_common', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': ['-DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install'], 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/yzz/219_ws/install/controller_common', 'merge_install': False, 'path': '/home/yzz/219_ws/src/quadruped_ros2_control-humble/libraries/controller_common', 'symlink_install': True, 'test_result_base': None}
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'keyboard_input' build argument 'cmake_args' from command line to '['-DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install']'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'keyboard_input' build argument 'cmake_target' from command line to 'None'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'keyboard_input' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'keyboard_input' build argument 'cmake_clean_cache' from command line to 'False'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'keyboard_input' build argument 'cmake_clean_first' from command line to 'False'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'keyboard_input' build argument 'cmake_force_configure' from command line to 'False'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'keyboard_input' build argument 'ament_cmake_args' from command line to 'None'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'keyboard_input' build argument 'catkin_cmake_args' from command line to 'None'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'keyboard_input' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.234s] DEBUG:colcon.colcon_core.verb:Building package 'keyboard_input' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/yzz/219_ws/build/keyboard_input', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': ['-DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install'], 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/yzz/219_ws/install/keyboard_input', 'merge_install': False, 'path': '/home/yzz/219_ws/src/quadruped_ros2_control-humble/commands/keyboard_input', 'symlink_install': True, 'test_result_base': None}
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'unitree_guide_controller' build argument 'cmake_args' from command line to '['-DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install']'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'unitree_guide_controller' build argument 'cmake_target' from command line to 'None'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'unitree_guide_controller' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'unitree_guide_controller' build argument 'cmake_clean_cache' from command line to 'False'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'unitree_guide_controller' build argument 'cmake_clean_first' from command line to 'False'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'unitree_guide_controller' build argument 'cmake_force_configure' from command line to 'False'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'unitree_guide_controller' build argument 'ament_cmake_args' from command line to 'None'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'unitree_guide_controller' build argument 'catkin_cmake_args' from command line to 'None'
+[0.234s] Level 5:colcon.colcon_core.verb:set package 'unitree_guide_controller' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.234s] DEBUG:colcon.colcon_core.verb:Building package 'unitree_guide_controller' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/yzz/219_ws/build/unitree_guide_controller', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': ['-DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install'], 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/yzz/219_ws/install/unitree_guide_controller', 'merge_install': False, 'path': '/home/yzz/219_ws/src/quadruped_ros2_control-humble/controllers/unitree_guide_controller', 'symlink_install': True, 'test_result_base': None}
+[0.234s] INFO:colcon.colcon_core.executor:Executing jobs using 'parallel' executor
+[0.235s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete
+[0.235s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/yzz/219_ws/src/quadruped_ros2_control-humble/commands/control_input_msgs' with build type 'ament_cmake'
+[0.235s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/yzz/219_ws/src/quadruped_ros2_control-humble/commands/control_input_msgs'
+[0.238s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_core.shell.bat': Not used on non-Windows systems
+[0.238s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.238s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.244s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/yzz/219_ws/src/quadruped_ros2_control-humble/descriptions/unitree/go1_description' with build type 'ament_cmake'
+[0.244s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/yzz/219_ws/src/quadruped_ros2_control-humble/descriptions/unitree/go1_description'
+[0.245s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.245s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.264s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/yzz/219_ws/build/control_input_msgs': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/yzz/219_ws/build/control_input_msgs -- -j2 -l2
+[0.266s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/yzz/219_ws/build/go1_description': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/yzz/219_ws/build/go1_description -- -j2 -l2
+[0.340s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/yzz/219_ws/build/go1_description' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/yzz/219_ws/build/go1_description -- -j2 -l2
+[0.347s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/yzz/219_ws/build/go1_description': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/yzz/219_ws/build/go1_description
+[0.426s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(go1_description)
+[0.429s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/go1_description' for CMake module files
+[0.430s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/go1_description' for CMake config files
+[0.430s] Level 1:colcon.colcon_core.shell:create_environment_hook('go1_description', 'cmake_prefix_path')
+[0.430s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/go1_description/share/go1_description/hook/cmake_prefix_path.ps1'
+[0.432s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/go1_description/share/go1_description/hook/cmake_prefix_path.dsv'
+[0.432s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/go1_description/share/go1_description/hook/cmake_prefix_path.sh'
+[0.433s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/yzz/219_ws/build/go1_description' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/yzz/219_ws/build/go1_description
+[0.434s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/go1_description/bin'
+[0.434s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/go1_description/lib/pkgconfig/go1_description.pc'
+[0.434s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/go1_description/lib/python3.10/site-packages'
+[0.434s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/go1_description/bin'
+[0.434s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/go1_description/share/go1_description/package.ps1'
+[0.436s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/yzz/219_ws/install/go1_description/share/go1_description/package.dsv'
+[0.436s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/go1_description/share/go1_description/package.sh'
+[0.437s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/go1_description/share/go1_description/package.bash'
+[0.437s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/go1_description/share/go1_description/package.zsh'
+[0.439s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/yzz/219_ws/install/go1_description/share/colcon-core/packages/go1_description)
+[0.440s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(go1_description)
+[0.440s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/go1_description' for CMake module files
+[0.442s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/go1_description' for CMake config files
+[0.442s] Level 1:colcon.colcon_core.shell:create_environment_hook('go1_description', 'cmake_prefix_path')
+[0.442s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/go1_description/share/go1_description/hook/cmake_prefix_path.ps1'
+[0.442s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/go1_description/share/go1_description/hook/cmake_prefix_path.dsv'
+[0.445s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/go1_description/share/go1_description/hook/cmake_prefix_path.sh'
+[0.445s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/go1_description/bin'
+[0.446s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/go1_description/lib/pkgconfig/go1_description.pc'
+[0.446s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/go1_description/lib/python3.10/site-packages'
+[0.446s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/go1_description/bin'
+[0.446s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/go1_description/share/go1_description/package.ps1'
+[0.446s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/yzz/219_ws/install/go1_description/share/go1_description/package.dsv'
+[0.447s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/go1_description/share/go1_description/package.sh'
+[0.447s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/go1_description/share/go1_description/package.bash'
+[0.449s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/go1_description/share/go1_description/package.zsh'
+[0.450s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/yzz/219_ws/install/go1_description/share/colcon-core/packages/go1_description)
+[0.452s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco' with build type 'ament_cmake'
+[0.453s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco'
+[0.453s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.453s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.489s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/yzz/219_ws/build/hardware_unitree_mujoco': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/yzz/219_ws/build/hardware_unitree_mujoco -- -j2 -l2
+[1.725s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/yzz/219_ws/build/control_input_msgs' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/yzz/219_ws/build/control_input_msgs -- -j2 -l2
+[1.728s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/yzz/219_ws/build/control_input_msgs': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/yzz/219_ws/build/control_input_msgs
+[2.032s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(control_input_msgs)
+[2.033s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/control_input_msgs' for CMake module files
+[2.033s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/control_input_msgs' for CMake config files
+[2.034s] Level 1:colcon.colcon_core.shell:create_environment_hook('control_input_msgs', 'cmake_prefix_path')
+[2.034s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/hook/cmake_prefix_path.ps1'
+[2.037s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/yzz/219_ws/build/control_input_msgs' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/yzz/219_ws/build/control_input_msgs
+[2.166s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/hook/cmake_prefix_path.dsv'
+[2.302s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/hook/cmake_prefix_path.sh'
+[2.303s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/control_input_msgs/lib'
+[2.303s] Level 1:colcon.colcon_core.shell:create_environment_hook('control_input_msgs', 'ld_library_path_lib')
+[2.303s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/hook/ld_library_path_lib.ps1'
+[2.303s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/hook/ld_library_path_lib.dsv'
+[2.397s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/hook/ld_library_path_lib.sh'
+[2.398s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/control_input_msgs/bin'
+[2.398s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/control_input_msgs/lib/pkgconfig/control_input_msgs.pc'
+[2.398s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/control_input_msgs/lib/python3.10/site-packages'
+[2.404s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/control_input_msgs/bin'
+[2.404s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/package.ps1'
+[2.442s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/package.dsv'
+[2.446s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/package.sh'
+[2.487s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/package.bash'
+[2.587s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/package.zsh'
+[2.588s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/yzz/219_ws/install/control_input_msgs/share/colcon-core/packages/control_input_msgs)
+[2.589s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(control_input_msgs)
+[2.589s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/control_input_msgs' for CMake module files
+[2.589s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/control_input_msgs' for CMake config files
+[2.595s] Level 1:colcon.colcon_core.shell:create_environment_hook('control_input_msgs', 'cmake_prefix_path')
+[2.595s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/hook/cmake_prefix_path.ps1'
+[2.682s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/hook/cmake_prefix_path.dsv'
+[2.767s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/hook/cmake_prefix_path.sh'
+[2.768s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/control_input_msgs/lib'
+[2.772s] Level 1:colcon.colcon_core.shell:create_environment_hook('control_input_msgs', 'ld_library_path_lib')
+[2.774s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/hook/ld_library_path_lib.ps1'
+[2.865s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/hook/ld_library_path_lib.dsv'
+[2.865s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/hook/ld_library_path_lib.sh'
+[2.866s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/control_input_msgs/bin'
+[2.866s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/control_input_msgs/lib/pkgconfig/control_input_msgs.pc'
+[2.866s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/control_input_msgs/lib/python3.10/site-packages'
+[2.872s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/control_input_msgs/bin'
+[2.872s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/package.ps1'
+[3.103s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/package.dsv'
+[3.152s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/package.sh'
+[3.157s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/package.bash'
+[3.203s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/control_input_msgs/share/control_input_msgs/package.zsh'
+[3.203s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/yzz/219_ws/install/control_input_msgs/share/colcon-core/packages/control_input_msgs)
+[3.251s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/yzz/219_ws/src/quadruped_ros2_control-humble/libraries/controller_common' with build type 'ament_cmake'
+[3.254s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/yzz/219_ws/src/quadruped_ros2_control-humble/libraries/controller_common'
+[3.254s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[3.254s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[3.627s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/yzz/219_ws/build/controller_common': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/go1_description:/home/yzz/219_ws/install/controller_common:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/home/yzz/219_ws/install/controller_common/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --build /home/yzz/219_ws/build/controller_common -- -j2 -l2
+[3.917s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/yzz/219_ws/build/controller_common' returned '0': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/go1_description:/home/yzz/219_ws/install/controller_common:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/home/yzz/219_ws/install/controller_common/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --build /home/yzz/219_ws/build/controller_common -- -j2 -l2
+[3.922s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/yzz/219_ws/build/controller_common': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/go1_description:/home/yzz/219_ws/install/controller_common:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/home/yzz/219_ws/install/controller_common/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --install /home/yzz/219_ws/build/controller_common
+[4.072s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(controller_common)
+[4.072s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/controller_common' for CMake module files
+[4.072s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/yzz/219_ws/build/controller_common' returned '0': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/go1_description:/home/yzz/219_ws/install/controller_common:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/home/yzz/219_ws/install/controller_common/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --install /home/yzz/219_ws/build/controller_common
+[4.074s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/controller_common' for CMake config files
+[4.075s] Level 1:colcon.colcon_core.shell:create_environment_hook('controller_common', 'cmake_prefix_path')
+[4.075s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/controller_common/share/controller_common/hook/cmake_prefix_path.ps1'
+[4.076s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/controller_common/share/controller_common/hook/cmake_prefix_path.dsv'
+[4.081s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/controller_common/share/controller_common/hook/cmake_prefix_path.sh'
+[4.081s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/controller_common/lib'
+[4.081s] Level 1:colcon.colcon_core.shell:create_environment_hook('controller_common', 'ld_library_path_lib')
+[4.081s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/controller_common/share/controller_common/hook/ld_library_path_lib.ps1'
+[4.082s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/controller_common/share/controller_common/hook/ld_library_path_lib.dsv'
+[4.119s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/controller_common/share/controller_common/hook/ld_library_path_lib.sh'
+[4.120s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/controller_common/bin'
+[4.120s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/controller_common/lib/pkgconfig/controller_common.pc'
+[4.120s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/controller_common/lib/python3.10/site-packages'
+[4.121s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/controller_common/bin'
+[4.121s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/controller_common/share/controller_common/package.ps1'
+[4.121s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/yzz/219_ws/install/controller_common/share/controller_common/package.dsv'
+[4.122s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/controller_common/share/controller_common/package.sh'
+[4.122s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/controller_common/share/controller_common/package.bash'
+[4.122s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/controller_common/share/controller_common/package.zsh'
+[4.170s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/yzz/219_ws/install/controller_common/share/colcon-core/packages/controller_common)
+[4.173s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(controller_common)
+[4.173s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/controller_common' for CMake module files
+[4.174s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/controller_common' for CMake config files
+[4.174s] Level 1:colcon.colcon_core.shell:create_environment_hook('controller_common', 'cmake_prefix_path')
+[4.174s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/controller_common/share/controller_common/hook/cmake_prefix_path.ps1'
+[4.178s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/controller_common/share/controller_common/hook/cmake_prefix_path.dsv'
+[4.178s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/controller_common/share/controller_common/hook/cmake_prefix_path.sh'
+[4.182s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/controller_common/lib'
+[4.182s] Level 1:colcon.colcon_core.shell:create_environment_hook('controller_common', 'ld_library_path_lib')
+[4.182s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/controller_common/share/controller_common/hook/ld_library_path_lib.ps1'
+[4.182s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/controller_common/share/controller_common/hook/ld_library_path_lib.dsv'
+[4.183s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/controller_common/share/controller_common/hook/ld_library_path_lib.sh'
+[4.184s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/controller_common/bin'
+[4.184s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/controller_common/lib/pkgconfig/controller_common.pc'
+[4.184s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/controller_common/lib/python3.10/site-packages'
+[4.184s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/controller_common/bin'
+[4.184s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/controller_common/share/controller_common/package.ps1'
+[4.185s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/yzz/219_ws/install/controller_common/share/controller_common/package.dsv'
+[4.185s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/controller_common/share/controller_common/package.sh'
+[4.185s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/controller_common/share/controller_common/package.bash'
+[4.213s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/controller_common/share/controller_common/package.zsh'
+[4.214s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/yzz/219_ws/install/controller_common/share/colcon-core/packages/controller_common)
+[4.216s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/yzz/219_ws/src/quadruped_ros2_control-humble/commands/keyboard_input' with build type 'ament_cmake'
+[4.217s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/yzz/219_ws/src/quadruped_ros2_control-humble/commands/keyboard_input'
+[4.218s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[4.218s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[4.265s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/yzz/219_ws/build/keyboard_input': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/go1_description:/home/yzz/219_ws/install/controller_common:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/home/yzz/219_ws/install/controller_common/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --build /home/yzz/219_ws/build/keyboard_input -- -j2 -l2
+[4.514s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/yzz/219_ws/build/keyboard_input' returned '0': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/go1_description:/home/yzz/219_ws/install/controller_common:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/home/yzz/219_ws/install/controller_common/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --build /home/yzz/219_ws/build/keyboard_input -- -j2 -l2
+[4.515s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/yzz/219_ws/build/keyboard_input': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/go1_description:/home/yzz/219_ws/install/controller_common:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/home/yzz/219_ws/install/controller_common/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --install /home/yzz/219_ws/build/keyboard_input
+[4.581s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(keyboard_input)
+[4.582s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/keyboard_input' for CMake module files
+[4.582s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/yzz/219_ws/build/keyboard_input' returned '0': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/go1_description:/home/yzz/219_ws/install/controller_common:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/home/yzz/219_ws/install/controller_common/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --install /home/yzz/219_ws/build/keyboard_input
+[4.585s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/keyboard_input' for CMake config files
+[4.585s] Level 1:colcon.colcon_core.shell:create_environment_hook('keyboard_input', 'cmake_prefix_path')
+[4.585s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/hook/cmake_prefix_path.ps1'
+[4.586s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/hook/cmake_prefix_path.dsv'
+[4.589s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/hook/cmake_prefix_path.sh'
+[4.590s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/keyboard_input/lib'
+[4.594s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/keyboard_input/bin'
+[4.594s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/keyboard_input/lib/pkgconfig/keyboard_input.pc'
+[4.594s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/keyboard_input/lib/python3.10/site-packages'
+[4.595s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/keyboard_input/bin'
+[4.595s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/package.ps1'
+[4.595s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/package.dsv'
+[4.599s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/package.sh'
+[4.600s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/package.bash'
+[4.602s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/package.zsh'
+[4.604s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/yzz/219_ws/install/keyboard_input/share/colcon-core/packages/keyboard_input)
+[4.607s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(keyboard_input)
+[4.608s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/keyboard_input' for CMake module files
+[4.608s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/keyboard_input' for CMake config files
+[4.610s] Level 1:colcon.colcon_core.shell:create_environment_hook('keyboard_input', 'cmake_prefix_path')
+[4.610s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/hook/cmake_prefix_path.ps1'
+[4.611s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/hook/cmake_prefix_path.dsv'
+[4.613s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/hook/cmake_prefix_path.sh'
+[4.614s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/keyboard_input/lib'
+[4.616s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/keyboard_input/bin'
+[4.616s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/keyboard_input/lib/pkgconfig/keyboard_input.pc'
+[4.616s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/keyboard_input/lib/python3.10/site-packages'
+[4.616s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/keyboard_input/bin'
+[4.617s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/package.ps1'
+[4.617s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/package.dsv'
+[4.620s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/package.sh'
+[4.623s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/package.bash'
+[4.624s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/keyboard_input/share/keyboard_input/package.zsh'
+[4.625s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/yzz/219_ws/install/keyboard_input/share/colcon-core/packages/keyboard_input)
+[4.625s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/yzz/219_ws/src/quadruped_ros2_control-humble/controllers/unitree_guide_controller' with build type 'ament_cmake'
+[4.626s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/yzz/219_ws/src/quadruped_ros2_control-humble/controllers/unitree_guide_controller'
+[4.627s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[4.627s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[4.690s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/yzz/219_ws/build/unitree_guide_controller': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/controller_common:/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/go1_description:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/controller_common/lib:/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --build /home/yzz/219_ws/build/unitree_guide_controller -- -j2 -l2
+[4.998s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/yzz/219_ws/build/unitree_guide_controller' returned '0': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/controller_common:/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/go1_description:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/controller_common/lib:/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --build /home/yzz/219_ws/build/unitree_guide_controller -- -j2 -l2
+[5.003s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/yzz/219_ws/build/unitree_guide_controller': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/controller_common:/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/go1_description:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/controller_common/lib:/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --install /home/yzz/219_ws/build/unitree_guide_controller
+[5.079s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(unitree_guide_controller)
+[5.079s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/unitree_guide_controller' for CMake module files
+[5.081s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/yzz/219_ws/build/unitree_guide_controller' returned '0': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/controller_common:/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/go1_description:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/controller_common/lib:/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --install /home/yzz/219_ws/build/unitree_guide_controller
+[5.082s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/unitree_guide_controller' for CMake config files
+[5.082s] Level 1:colcon.colcon_core.shell:create_environment_hook('unitree_guide_controller', 'cmake_prefix_path')
+[5.082s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/hook/cmake_prefix_path.ps1'
+[5.083s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/hook/cmake_prefix_path.dsv'
+[5.086s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/hook/cmake_prefix_path.sh'
+[5.088s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/unitree_guide_controller/lib'
+[5.089s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/unitree_guide_controller/bin'
+[5.089s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/unitree_guide_controller/lib/pkgconfig/unitree_guide_controller.pc'
+[5.089s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/unitree_guide_controller/lib/python3.10/site-packages'
+[5.093s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/unitree_guide_controller/bin'
+[5.094s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/package.ps1'
+[5.094s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/package.dsv'
+[5.094s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/package.sh'
+[5.095s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/package.bash'
+[5.097s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/package.zsh'
+[5.100s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/yzz/219_ws/install/unitree_guide_controller/share/colcon-core/packages/unitree_guide_controller)
+[5.100s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(unitree_guide_controller)
+[5.100s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/unitree_guide_controller' for CMake module files
+[5.101s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/unitree_guide_controller' for CMake config files
+[5.101s] Level 1:colcon.colcon_core.shell:create_environment_hook('unitree_guide_controller', 'cmake_prefix_path')
+[5.101s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/hook/cmake_prefix_path.ps1'
+[5.104s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/hook/cmake_prefix_path.dsv'
+[5.105s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/hook/cmake_prefix_path.sh'
+[5.108s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/unitree_guide_controller/lib'
+[5.108s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/unitree_guide_controller/bin'
+[5.108s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/unitree_guide_controller/lib/pkgconfig/unitree_guide_controller.pc'
+[5.108s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/unitree_guide_controller/lib/python3.10/site-packages'
+[5.109s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/unitree_guide_controller/bin'
+[5.109s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/package.ps1'
+[5.110s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/package.dsv'
+[5.112s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/package.sh'
+[5.113s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/package.bash'
+[5.114s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/package.zsh'
+[5.117s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/yzz/219_ws/install/unitree_guide_controller/share/colcon-core/packages/unitree_guide_controller)
+[10.160s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/yzz/219_ws/build/hardware_unitree_mujoco' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/yzz/219_ws/build/hardware_unitree_mujoco -- -j2 -l2
+[10.161s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/yzz/219_ws/build/hardware_unitree_mujoco': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/yzz/219_ws/build/hardware_unitree_mujoco
+[10.196s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(hardware_unitree_mujoco)
+[10.196s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/hardware_unitree_mujoco' for CMake module files
+[10.197s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/hardware_unitree_mujoco' for CMake config files
+[10.197s] Level 1:colcon.colcon_core.shell:create_environment_hook('hardware_unitree_mujoco', 'cmake_prefix_path')
+[10.197s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/hook/cmake_prefix_path.ps1'
+[10.197s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/hook/cmake_prefix_path.dsv'
+[10.199s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/yzz/219_ws/build/hardware_unitree_mujoco' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/yzz/219_ws/build/hardware_unitree_mujoco
+[10.200s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/hook/cmake_prefix_path.sh'
+[10.201s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/hardware_unitree_mujoco/lib'
+[10.201s] Level 1:colcon.colcon_core.shell:create_environment_hook('hardware_unitree_mujoco', 'ld_library_path_lib')
+[10.201s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/hook/ld_library_path_lib.ps1'
+[10.202s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/hook/ld_library_path_lib.dsv'
+[10.203s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/hook/ld_library_path_lib.sh'
+[10.205s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/hardware_unitree_mujoco/bin'
+[10.205s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/hardware_unitree_mujoco/lib/pkgconfig/hardware_unitree_mujoco.pc'
+[10.205s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/hardware_unitree_mujoco/lib/python3.10/site-packages'
+[10.205s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/hardware_unitree_mujoco/bin'
+[10.205s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/package.ps1'
+[10.206s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/package.dsv'
+[10.207s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/package.sh'
+[10.208s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/package.bash'
+[10.209s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/package.zsh'
+[10.210s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/yzz/219_ws/install/hardware_unitree_mujoco/share/colcon-core/packages/hardware_unitree_mujoco)
+[10.211s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(hardware_unitree_mujoco)
+[10.211s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/hardware_unitree_mujoco' for CMake module files
+[10.212s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/hardware_unitree_mujoco' for CMake config files
+[10.213s] Level 1:colcon.colcon_core.shell:create_environment_hook('hardware_unitree_mujoco', 'cmake_prefix_path')
+[10.213s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/hook/cmake_prefix_path.ps1'
+[10.213s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/hook/cmake_prefix_path.dsv'
+[10.214s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/hook/cmake_prefix_path.sh'
+[10.217s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/hardware_unitree_mujoco/lib'
+[10.217s] Level 1:colcon.colcon_core.shell:create_environment_hook('hardware_unitree_mujoco', 'ld_library_path_lib')
+[10.217s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/hook/ld_library_path_lib.ps1'
+[10.217s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/hook/ld_library_path_lib.dsv'
+[10.219s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/hook/ld_library_path_lib.sh'
+[10.221s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/hardware_unitree_mujoco/bin'
+[10.221s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/hardware_unitree_mujoco/lib/pkgconfig/hardware_unitree_mujoco.pc'
+[10.221s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/hardware_unitree_mujoco/lib/python3.10/site-packages'
+[10.221s] Level 1:colcon.colcon_core.environment:checking '/home/yzz/219_ws/install/hardware_unitree_mujoco/bin'
+[10.222s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/package.ps1'
+[10.222s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/package.dsv'
+[10.225s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/package.sh'
+[10.227s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/package.bash'
+[10.228s] INFO:colcon.colcon_core.shell:Creating package script '/home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/package.zsh'
+[10.228s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/yzz/219_ws/install/hardware_unitree_mujoco/share/colcon-core/packages/hardware_unitree_mujoco)
+[10.229s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:closing loop
+[10.229s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:loop closed
+[10.229s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete finished with '0'
+[10.229s] DEBUG:colcon.colcon_core.event_reactor:joining thread
+[10.236s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.terminal_notifier': Not used on non-Darwin systems
+[10.236s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.win32': Not used on non-Windows systems
+[10.236s] INFO:colcon.colcon_notification.desktop_notification:Sending desktop notification using 'notify2'
+[10.246s] DEBUG:colcon.colcon_core.event_reactor:joined thread
+[10.246s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/yzz/219_ws/install/local_setup.ps1'
+[10.247s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/yzz/219_ws/install/_local_setup_util_ps1.py'
+[10.250s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/yzz/219_ws/install/setup.ps1'
+[10.252s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/yzz/219_ws/install/local_setup.sh'
+[10.253s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/yzz/219_ws/install/_local_setup_util_sh.py'
+[10.255s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/yzz/219_ws/install/setup.sh'
+[10.256s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/yzz/219_ws/install/local_setup.bash'
+[10.256s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/yzz/219_ws/install/setup.bash'
+[10.258s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/yzz/219_ws/install/local_setup.zsh'
+[10.259s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/yzz/219_ws/install/setup.zsh'

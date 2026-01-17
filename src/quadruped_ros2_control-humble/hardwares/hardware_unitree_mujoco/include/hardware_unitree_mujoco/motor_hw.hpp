@@ -15,7 +15,7 @@
 #define POS_MODE 0x100
 #define SPEED_MODE 0x200
 #define POSI_MODE 0x300
-#define max_retries 20
+#define max_retries 6
 #define retry_interval 50000
 namespace damiao
 {

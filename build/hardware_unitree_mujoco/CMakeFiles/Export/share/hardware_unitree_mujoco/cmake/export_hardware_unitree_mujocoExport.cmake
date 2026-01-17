@@ -55,7 +55,7 @@ add_library(hardware_unitree_mujoco::hardware_unitree_mujoco SHARED IMPORTED)
 
 set_target_properties(hardware_unitree_mujoco::hardware_unitree_mujoco PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include/hardware_unitree_mujoco;/usr/local/include"
-  INTERFACE_LINK_LIBRARIES "yaml-cpp;Eigen3::Eigen;/usr/local/lib/libserial.so;hardware_interface::fake_components;hardware_interface::mock_components;hardware_interface::hardware_interface;pluginlib::pluginlib;rclcpp::rclcpp;rclcpp_lifecycle::rclcpp_lifecycle;/usr/local/lib/libserial.so"
+  INTERFACE_LINK_LIBRARIES "yaml-cpp;Eigen3::Eigen;/usr/local/lib/libserial.so;hardware_interface::fake_components;hardware_interface::mock_components;hardware_interface::hardware_interface;pluginlib::pluginlib;rclcpp::rclcpp;rclcpp_lifecycle::rclcpp_lifecycle;tf2_ros::tf2_ros;tf2_ros::static_transform_broadcaster_node;geometry_msgs::geometry_msgs__rosidl_generator_c;geometry_msgs::geometry_msgs__rosidl_typesupport_fastrtps_c;geometry_msgs::geometry_msgs__rosidl_typesupport_introspection_c;geometry_msgs::geometry_msgs__rosidl_typesupport_c;geometry_msgs::geometry_msgs__rosidl_generator_cpp;geometry_msgs::geometry_msgs__rosidl_typesupport_fastrtps_cpp;geometry_msgs::geometry_msgs__rosidl_typesupport_introspection_cpp;geometry_msgs::geometry_msgs__rosidl_typesupport_cpp;geometry_msgs::geometry_msgs__rosidl_generator_py;/usr/local/lib/libserial.so"
 )
 
 if(CMAKE_VERSION VERSION_LESS 2.8.12)

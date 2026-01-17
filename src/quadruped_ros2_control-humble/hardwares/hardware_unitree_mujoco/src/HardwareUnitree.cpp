@@ -10,6 +10,9 @@
 #include "crc32.h"
 
 
+
+
+
 using hardware_interface::return_type;
 
 
@@ -61,6 +64,14 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Hardwa
         RCLCPP_ERROR(rclcpp::get_logger("imu_driver"), "Failed to configure IMU driver: %s", e.what());
         return CallbackReturn::ERROR;
     }
+
+
+    // ========== 新增：初始化TF广播器 ==========
+    node_ptr_ = rclcpp::Node::make_shared("hardware_unitree_tf_node");
+    tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(node_ptr_);
+
+
+
 
         // ========== 核心改动2：新增达妙电机串口初始化逻辑 ==========
     // 1. 从hardware_parameters中读取达妙电机YAML配置文件路径
@@ -293,6 +304,24 @@ return_type HardwareUnitree::read(const rclcpp::Time& /*time*/, const rclcpp::Du
     imu_states_[7] = imu_data.linear_acceleration.x;
     imu_states_[8] = imu_data.linear_acceleration.y;
     imu_states_[9] = imu_data.linear_acceleration.z;
+
+
+    // ========== 修正：发布base→trunk的TF（用Node的时钟） ==========
+    geometry_msgs::msg::TransformStamped tf_msg;
+    tf_msg.header.stamp = node_ptr_->get_clock()->now(); // 改用Node的时钟
+    tf_msg.header.frame_id = "base";       
+    tf_msg.child_frame_id = "trunk";      
+    // 平移永远为0（只转不移）
+    tf_msg.transform.translation.x = 0.0;
+    tf_msg.transform.translation.y = 0.0;
+    tf_msg.transform.translation.z = 0.0;
+    // 旋转用IMU的四元数（注意顺序匹配）
+    tf_msg.transform.rotation.w = imu_data.orientation.w;
+    tf_msg.transform.rotation.x = imu_data.orientation.x;
+    tf_msg.transform.rotation.y = imu_data.orientation.y;
+    tf_msg.transform.rotation.z = imu_data.orientation.z;
+    // 发布TF
+    tf_broadcaster_->sendTransform(tf_msg);
     
   }
     // ========== 可选：保留足端力逻辑（如果需要） ==========
