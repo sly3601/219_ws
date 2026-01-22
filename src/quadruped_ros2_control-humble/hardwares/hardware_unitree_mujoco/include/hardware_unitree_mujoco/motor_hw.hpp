@@ -259,7 +259,7 @@ namespace damiao
         /*
         * @brief 定义电机控制对象
         * @param serial 串口对象
-        * 默认串口为/dev/ttyACM0
+        * 默认串口为/dev/ttyCAN0
         */
        Motor_Control(std::string serial_port, 
                 int seial_baud,std::unordered_map<int, DmActData>* data_ptr);

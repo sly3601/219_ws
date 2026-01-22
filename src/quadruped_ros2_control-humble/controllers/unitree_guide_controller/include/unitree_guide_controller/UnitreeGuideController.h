@@ -92,7 +92,7 @@ namespace unitree_guide_controller {
             0.0, 1.3, -2.4
         };
 
-        double stand_kp_ = 80.0;
+        double stand_kp_ = 120.0;
         double stand_kd_ = 3.5;
 
         rclcpp::Subscription<control_input_msgs::msg::Inputs>::SharedPtr control_input_subscription_;

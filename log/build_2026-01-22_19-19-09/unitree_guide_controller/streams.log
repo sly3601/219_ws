@@ -1,0 +1,56 @@
+[0.037s] Invoking command in '/home/yzz/219_ws/build/unitree_guide_controller': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/controller_common:/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/go1_description:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/controller_common/lib:/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --build /home/yzz/219_ws/build/unitree_guide_controller -- -j2 -l2
+[0.159s] [  5%] [32mBuilding CXX object CMakeFiles/unitree_guide_controller.dir/src/UnitreeGuideController.cpp.o[0m
+[0.161s] [ 11%] [32mBuilding CXX object CMakeFiles/unitree_guide_controller.dir/src/FSM/StateFreeStand.cpp.o[0m
+[11.047s] [ 17%] [32mBuilding CXX object CMakeFiles/unitree_guide_controller.dir/src/FSM/StateBalanceTest.cpp.o[0m
+[14.288s] [ 23%] [32m[1mLinking CXX shared library libunitree_guide_controller.so[0m
+[14.514s] [100%] Built target unitree_guide_controller
+[14.528s] Invoked command in '/home/yzz/219_ws/build/unitree_guide_controller' returned '0': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/controller_common:/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/go1_description:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/controller_common/lib:/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --build /home/yzz/219_ws/build/unitree_guide_controller -- -j2 -l2
+[14.530s] Invoking command in '/home/yzz/219_ws/build/unitree_guide_controller': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/controller_common:/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/go1_description:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/controller_common/lib:/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --install /home/yzz/219_ws/build/unitree_guide_controller
+[14.539s] -- Install configuration: "Release"
+[14.539s] -- Execute custom install script
+[14.540s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller//unitree_guide_controller.xml
+[14.540s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/include/unitree_guide_controller/unitree_guide_controller/FSM/StateBalanceTest.h
+[14.540s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/include/unitree_guide_controller/unitree_guide_controller/FSM/StateFixedStand.h
+[14.541s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/include/unitree_guide_controller/unitree_guide_controller/FSM/StateFreeStand.h
+[14.541s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/include/unitree_guide_controller/unitree_guide_controller/FSM/StateSwingTest.h
+[14.542s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/include/unitree_guide_controller/unitree_guide_controller/FSM/StateTrotting.h
+[14.542s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/include/unitree_guide_controller/unitree_guide_controller/UnitreeGuideController.h
+[14.542s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/include/unitree_guide_controller/unitree_guide_controller/common/mathTools.h
+[14.542s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/include/unitree_guide_controller/unitree_guide_controller/common/mathTypes.h
+[14.543s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/include/unitree_guide_controller/unitree_guide_controller/control/BalanceCtrl.h
+[14.544s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/include/unitree_guide_controller/unitree_guide_controller/control/CtrlComponent.h
+[14.544s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/include/unitree_guide_controller/unitree_guide_controller/control/Estimator.h
+[14.544s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/include/unitree_guide_controller/unitree_guide_controller/control/LowPassFilter.h
+[14.544s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/include/unitree_guide_controller/unitree_guide_controller/gait/FeetEndCalc.h
+[14.545s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/include/unitree_guide_controller/unitree_guide_controller/gait/GaitGenerator.h
+[14.545s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/include/unitree_guide_controller/unitree_guide_controller/gait/WaveGenerator.h
+[14.545s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/include/unitree_guide_controller/unitree_guide_controller/robot/QuadrupedRobot.h
+[14.545s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/include/unitree_guide_controller/unitree_guide_controller/robot/RobotLeg.h
+[14.545s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller//launch/gazebo.launch.py
+[14.546s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller//launch/gazebo_classic.launch.py
+[14.547s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller//launch/mujoco.launch.py
+[14.547s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/environment/library_path.sh
+[14.547s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/environment/library_path.dsv
+[14.547s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/ament_index/resource_index/package_run_dependencies/unitree_guide_controller
+[14.547s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/ament_index/resource_index/parent_prefix_path/unitree_guide_controller
+[14.547s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/environment/ament_prefix_path.sh
+[14.547s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/environment/ament_prefix_path.dsv
+[14.547s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/environment/path.sh
+[14.547s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/environment/path.dsv
+[14.547s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/local_setup.bash
+[14.547s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/local_setup.sh
+[14.547s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/local_setup.zsh
+[14.548s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/local_setup.dsv
+[14.548s] -- Symlinking: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/package.dsv
+[14.561s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/ament_index/resource_index/packages/unitree_guide_controller
+[14.562s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/ament_index/resource_index/controller_interface__pluginlib__plugin/unitree_guide_controller
+[14.562s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/cmake/ament_cmake_export_dependencies-extras.cmake
+[14.562s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/cmake/ament_cmake_export_targets-extras.cmake
+[14.562s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/cmake/unitree_guide_controllerConfig.cmake
+[14.563s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/cmake/unitree_guide_controllerConfig-version.cmake
+[14.563s] -- Up-to-date symlink: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/package.xml
+[14.563s] -- Installing: /home/yzz/219_ws/install/unitree_guide_controller/lib/unitree_guide_controller/libunitree_guide_controller.so
+[14.565s] -- Set runtime path of "/home/yzz/219_ws/install/unitree_guide_controller/lib/unitree_guide_controller/libunitree_guide_controller.so" to ""
+[14.566s] -- Up-to-date: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/cmake/export_unitree_guide_controllerExport.cmake
+[14.567s] -- Up-to-date: /home/yzz/219_ws/install/unitree_guide_controller/share/unitree_guide_controller/cmake/export_unitree_guide_controllerExport-release.cmake
+[14.570s] Invoked command in '/home/yzz/219_ws/build/unitree_guide_controller' returned '0': CMAKE_PREFIX_PATH=/home/yzz/219_ws/install/controller_common:/home/yzz/219_ws/install/control_input_msgs:/home/yzz/219_ws/install/unitree_guide_controller:/home/yzz/219_ws/install/keyboard_input:/home/yzz/219_ws/install/hardware_unitree_mujoco:/home/yzz/219_ws/install/go1_description:/opt/ros/humble LD_LIBRARY_PATH=/home/yzz/219_ws/install/controller_common/lib:/home/yzz/219_ws/install/control_input_msgs/lib:/home/yzz/219_ws/install/unitree_guide_controller/lib:/home/yzz/219_ws/install/hardware_unitree_mujoco/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib:/home/yzz/.mujoco/mujoco237/bin:/home/yzz/.mujoco/mujoco237/bin /usr/bin/cmake --install /home/yzz/219_ws/build/unitree_guide_controller

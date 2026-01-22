@@ -1,0 +1,4 @@
+In file included from [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/HardwareUnitree.cpp:10[m[K:
+[01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/crc32.h:9:17:[m[K [01;35m[Kwarning: [m[K‘[01m[Kuint32_t crc32_core(const uint32_t*, uint32_t)[m[K’ defined but not used [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-function-Wunused-function]8;;[m[K]
+    9 | static uint32_t [01;35m[Kcrc32_core[m[K(const uint32_t *ptr, uint32_t len) {
+      |                 [01;35m[K^~~~~~~~~~[m[K
