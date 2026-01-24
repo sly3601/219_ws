@@ -14,3 +14,4 @@
 * 2026.01.24 v1.51 尝试了freestand状态，基本成功但是电流不足 机器人立不住。另外串口底层的库总是缺失导致串口初始化无法完成，最终解决方法都是与下方内容有关，具体也没多研究：
   * 强制将/usr/local/lib加到LD_LIBRARY_PATH最前面（覆盖ROS2的默认配置）
   * export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+* 2026.01.24 v1.53 发现了足底打滑的问题导致运动学解算出了问题，调大了2和3状态的kp值到160
