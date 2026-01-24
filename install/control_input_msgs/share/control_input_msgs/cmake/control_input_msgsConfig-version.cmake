@@ -1,1 +1,0 @@
-/home/yzz/219_ws/build/control_input_msgs/ament_cmake_core/control_input_msgsConfig-version.cmake

@@ -1,1 +1,0 @@
-/home/yzz/219_ws/build/control_input_msgs/rosidl_typesupport_introspection_cpp/control_input_msgs/msg/detail/inputs__rosidl_typesupport_introspection_cpp.hpp

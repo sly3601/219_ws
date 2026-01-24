@@ -1,1 +1,0 @@
-/home/yzz/219_ws/src/quadruped_ros2_control-humble/libraries/controller_common/include/controller_common/CtrlInterfaces.h

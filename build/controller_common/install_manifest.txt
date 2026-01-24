@@ -1,3 +1,0 @@
-/home/yzz/219_ws/install/controller_common/lib/libcontroller_common.so
-/home/yzz/219_ws/install/controller_common/share/controller_common/cmake/export_controller_commonExport.cmake
-/home/yzz/219_ws/install/controller_common/share/controller_common/cmake/export_controller_commonExport-release.cmake

@@ -1,1 +1,0 @@
-/home/yzz/219_ws/build/unitree_guide_controller/ament_cmake_environment_hooks/local_setup.sh

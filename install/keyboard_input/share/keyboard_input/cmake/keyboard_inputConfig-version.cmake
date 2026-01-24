@@ -1,1 +1,0 @@
-/home/yzz/219_ws/build/keyboard_input/ament_cmake_core/keyboard_inputConfig-version.cmake
