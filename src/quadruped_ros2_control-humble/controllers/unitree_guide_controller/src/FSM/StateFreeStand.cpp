@@ -26,8 +26,8 @@ StateFreeStand::StateFreeStand(CtrlInterfaces &ctrl_interfaces,
 
 void StateFreeStand::enter() {
     for (int i = 0; i < 12; i++) {
-        ctrl_interfaces_.joint_kp_command_interface_[i].get().set_value(140); // big
-        ctrl_interfaces_.joint_kd_command_interface_[i].get().set_value(5);
+        ctrl_interfaces_.joint_kp_command_interface_[i].get().set_value(160); // big
+        ctrl_interfaces_.joint_kd_command_interface_[i].get().set_value(3.5);
     }
 
     init_joint_pos_ = robot_model_->current_joint_pos_;
