@@ -26,7 +26,7 @@ StateFreeStand::StateFreeStand(CtrlInterfaces &ctrl_interfaces,
 
 void StateFreeStand::enter() {
     for (int i = 0; i < 12; i++) {
-        ctrl_interfaces_.joint_kp_command_interface_[i].get().set_value(100);
+        ctrl_interfaces_.joint_kp_command_interface_[i].get().set_value(140); // big
         ctrl_interfaces_.joint_kd_command_interface_[i].get().set_value(5);
     }
 

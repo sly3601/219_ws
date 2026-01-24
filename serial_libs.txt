@@ -1,0 +1,2 @@
+/usr/local/lib/libserial.so
+/usr/lib/x86_64-linux-gnu/libserial.so

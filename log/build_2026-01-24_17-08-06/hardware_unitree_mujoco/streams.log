@@ -1,0 +1,128 @@
+[0.017s] Invoking command in '/home/yzz/219_ws/build/hardware_unitree_mujoco': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake /home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco -DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install/hardware_unitree_mujoco
+[0.121s] -- The C compiler identification is GNU 11.4.0
+[0.203s] -- The CXX compiler identification is GNU 11.4.0
+[0.214s] -- Detecting C compiler ABI info
+[0.332s] -- Detecting C compiler ABI info - done
+[0.339s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.341s] -- Detecting C compile features
+[0.341s] -- Detecting C compile features - done
+[0.344s] -- Detecting CXX compiler ABI info
+[0.491s] -- Detecting CXX compiler ABI info - done
+[0.502s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.503s] -- Detecting CXX compile features
+[0.503s] -- Detecting CXX compile features - done
+[0.509s] -- Found ament_cmake: 1.3.12 (/opt/ros/humble/share/ament_cmake/cmake)
+[0.644s] -- Found Python3: /usr/bin/python3 (found version "3.10.12") found components: Interpreter 
+[0.718s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[0.766s] -- Found serial: 1.2.1 (/usr/local/share/serial/cmake)
+[0.786s] -- Found tf2_ros: 0.25.17 (/opt/ros/humble/share/tf2_ros/cmake)
+[0.868s] -- Found rosidl_generator_c: 3.1.7 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+[0.881s] -- Found rosidl_adapter: 3.1.7 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[0.895s] -- Found rosidl_generator_cpp: 3.1.7 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+[0.915s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[0.946s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[1.133s] -- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+[1.144s] -- Found rmw_fastrtps_cpp: 6.2.9 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)
+[1.383s] -- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.0.2")  
+[1.426s] -- Found FastRTPS: /opt/ros/humble/include  
+[1.520s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[1.546s] -- Looking for pthread.h
+[1.758s] -- Looking for pthread.h - found
+[1.758s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+[2.003s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+[2.003s] -- Found Threads: TRUE  
+[2.370s] -- Found hardware_interface: 2.52.2 (/opt/ros/humble/share/hardware_interface/cmake)
+[2.704s] -- Found ament_lint_auto: 0.12.14 (/opt/ros/humble/share/ament_lint_auto/cmake)
+[2.859s] -- Added test 'cppcheck' to perform static code analysis on C / C++ code
+[2.859s] -- Configured cppcheck include dirs: $<BUILD_INTERFACE:/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/include>;/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src
+[2.859s] -- Configured cppcheck exclude dirs and/or files: 
+[2.861s] -- Added test 'flake8' to check Python code syntax and style conventions
+[2.866s] -- Added test 'lint_cmake' to check CMake code style
+[2.867s] -- Added test 'pep257' to check Python code against some of the docstring style conventions in PEP 257
+[2.873s] -- Added test 'uncrustify' to check C / C++ code style
+[2.875s] -- Configured uncrustify additional arguments: 
+[2.876s] -- Added test 'xmllint' to check XML markup files
+[2.878s] -- Configuring done
+[2.915s] -- Generating done
+[2.928s] -- Build files have been written to: /home/yzz/219_ws/build/hardware_unitree_mujoco
+[2.955s] Invoked command in '/home/yzz/219_ws/build/hardware_unitree_mujoco' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake /home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco -DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/yzz/219_ws/install/hardware_unitree_mujoco
+[2.955s] Invoking command in '/home/yzz/219_ws/build/hardware_unitree_mujoco': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/yzz/219_ws/build/hardware_unitree_mujoco -- -j2 -l2
+[3.166s] [ 20%] [32mBuilding CXX object CMakeFiles/hardware_unitree_mujoco.dir/src/HardwareUnitree.cpp.o[0m
+[3.168s] [ 40%] [32mBuilding CXX object CMakeFiles/hardware_unitree_mujoco.dir/src/crc_table.cpp.o[0m
+[3.299s] [ 60%] [32mBuilding CXX object CMakeFiles/hardware_unitree_mujoco.dir/src/imu.cpp.o[0m
+[9.427s] [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/imu.cpp:[m[K In member function ‘[01m[Kvoid FDILink::imu::read_imu_loop()[m[K’:
+[9.427s] [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/imu.cpp:121:18:[m[K [01;35m[Kwarning: [m[Kunused variable ‘[01m[Kground_sn_s[m[K’ [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-variable-Wunused-variable]8;;[m[K]
+[9.427s]   121 |           size_t [01;35m[Kground_sn_s[m[K = serial_.read(ground_sn, 1);
+[9.427s]       |                  [01;35m[K^~~~~~~~~~~[m[K
+[9.427s] [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/imu.cpp:144:18:[m[K [01;35m[Kwarning: [m[Kunused variable ‘[01m[Kground_ignore_s[m[K’ [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-variable-Wunused-variable]8;;[m[K]
+[9.427s]   144 |           size_t [01;35m[Kground_ignore_s[m[K = serial_.read(ground_ignore, (check_len[0]+4));
+[9.427s]       |                  [01;35m[K^~~~~~~~~~~~~~~[m[K
+[9.431s] [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/imu.cpp:217:18:[m[K [01;35m[Kwarning: [m[Kunused variable ‘[01m[Kdata_s[m[K’ [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-variable-Wunused-variable]8;;[m[K]
+[9.431s]   217 |           size_t [01;35m[Kdata_s[m[K = serial_.read(imu_frame_.read_buf.read_msg, (IMU_LEN + 1)); //48+1
+[9.431s]       |                  [01;35m[K^~~~~~[m[K
+[9.434s] [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/imu.cpp:252:18:[m[K [01;35m[Kwarning: [m[Kunused variable ‘[01m[Kdata_s[m[K’ [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-variable-Wunused-variable]8;;[m[K]
+[9.434s]   252 |           size_t [01;35m[Kdata_s[m[K = serial_.read(ahrs_frame_.read_buf.read_msg, (AHRS_LEN + 1)); //48+1
+[9.435s]       |                  [01;35m[K^~~~~~[m[K
+[9.516s] [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/imu.cpp:303:30:[m[K [01;35m[Kwarning: [m[Kvariable ‘[01m[Kq_xiao_rr[m[K’ set but not used [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-but-set-variable-Wunused-but-set-variable]8;;[m[K]
+[9.516s]   303 |           Eigen::Quaterniond [01;35m[Kq_xiao_rr[m[K =
+[9.516s]       |                              [01;35m[K^~~~~~~~~[m[K
+[9.517s] [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/imu.cpp:80:14:[m[K [01;35m[Kwarning: [m[Kunused variable ‘[01m[Ktype_s[m[K’ [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-variable-Wunused-variable]8;;[m[K]
+[9.517s]    80 |       size_t [01;35m[Ktype_s[m[K = serial_.read(head_type, 1);
+[9.518s]       |              [01;35m[K^~~~~~[m[K
+[9.518s] [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/imu.cpp:94:14:[m[K [01;35m[Kwarning: [m[Kunused variable ‘[01m[Klen_s[m[K’ [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-variable-Wunused-variable]8;;[m[K]
+[9.518s]    94 |       size_t [01;35m[Klen_s[m[K = serial_.read(check_len, 1);
+[9.518s]       |              [01;35m[K^~~~~[m[K
+[9.518s] [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/imu.cpp:150:14:[m[K [01;35m[Kwarning: [m[Kunused variable ‘[01m[Ksn_s[m[K’ [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-variable-Wunused-variable]8;;[m[K]
+[9.518s]   150 |       size_t [01;35m[Ksn_s[m[K = serial_.read(check_sn, 1);
+[9.519s]       |              [01;35m[K^~~~[m[K
+[9.519s] [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/imu.cpp:152:14:[m[K [01;35m[Kwarning: [m[Kunused variable ‘[01m[Kcrc8_s[m[K’ [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-variable-Wunused-variable]8;;[m[K]
+[9.519s]   152 |       size_t [01;35m[Kcrc8_s[m[K = serial_.read(head_crc8, 1);
+[9.519s]       |              [01;35m[K^~~~~~[m[K
+[9.519s] [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/imu.cpp:155:14:[m[K [01;35m[Kwarning: [m[Kunused variable ‘[01m[Kcrc16_H_s[m[K’ [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-variable-Wunused-variable]8;;[m[K]
+[9.519s]   155 |       size_t [01;35m[Kcrc16_H_s[m[K = serial_.read(head_crc16_H, 1);
+[9.521s]       |              [01;35m[K^~~~~~~~~[m[K
+[9.521s] [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/imu.cpp:156:14:[m[K [01;35m[Kwarning: [m[Kunused variable ‘[01m[Kcrc16_L_s[m[K’ [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-variable-Wunused-variable]8;;[m[K]
+[9.521s]   156 |       size_t [01;35m[Kcrc16_L_s[m[K = serial_.read(head_crc16_L, 1);
+[9.521s]       |              [01;35m[K^~~~~~~~~[m[K
+[12.538s] In file included from [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/HardwareUnitree.cpp:10[m[K:
+[12.539s] [01m[K/home/yzz/219_ws/src/quadruped_ros2_control-humble/hardwares/hardware_unitree_mujoco/src/crc32.h:9:17:[m[K [01;35m[Kwarning: [m[K‘[01m[Kuint32_t crc32_core(const uint32_t*, uint32_t)[m[K’ defined but not used [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-function-Wunused-function]8;;[m[K]
+[12.539s]     9 | static uint32_t [01;35m[Kcrc32_core[m[K(const uint32_t *ptr, uint32_t len) {
+[12.539s]       |                 [01;35m[K^~~~~~~~~~[m[K
+[14.843s] [ 80%] [32mBuilding CXX object CMakeFiles/hardware_unitree_mujoco.dir/src/motor_hw.cpp.o[0m
+[18.434s] [100%] [32m[1mLinking CXX shared library libhardware_unitree_mujoco.so[0m
+[18.895s] [100%] Built target hardware_unitree_mujoco
+[18.926s] Invoked command in '/home/yzz/219_ws/build/hardware_unitree_mujoco' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/yzz/219_ws/build/hardware_unitree_mujoco -- -j2 -l2
+[18.926s] Invoking command in '/home/yzz/219_ws/build/hardware_unitree_mujoco': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/yzz/219_ws/build/hardware_unitree_mujoco
+[18.943s] -- Install configuration: ""
+[18.944s] -- Execute custom install script
+[18.944s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco//HardwareUnitree.xml
+[18.962s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/include/hardware_unitree_mujoco/hardware_unitree_mujoco/HardwareUnitree.h
+[18.984s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/include/hardware_unitree_mujoco/hardware_unitree_mujoco/crc_table.hpp
+[19.000s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/include/hardware_unitree_mujoco/hardware_unitree_mujoco/imu.hpp
+[19.020s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/include/hardware_unitree_mujoco/hardware_unitree_mujoco/motor_hw.hpp
+[19.034s] -- Up-to-date symlink: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/HardwareUnitree.xml
+[19.035s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco//launch/visualize.launch.py
+[19.049s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/environment/library_path.sh
+[19.062s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/environment/library_path.dsv
+[19.075s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/ament_index/resource_index/package_run_dependencies/hardware_unitree_mujoco
+[19.090s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/ament_index/resource_index/parent_prefix_path/hardware_unitree_mujoco
+[19.109s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/environment/ament_prefix_path.sh
+[19.122s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/environment/ament_prefix_path.dsv
+[19.132s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/environment/path.sh
+[19.142s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/environment/path.dsv
+[19.151s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/local_setup.bash
+[19.161s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/local_setup.sh
+[19.170s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/local_setup.zsh
+[19.182s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/local_setup.dsv
+[19.199s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/package.dsv
+[19.208s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/ament_index/resource_index/packages/hardware_unitree_mujoco
+[19.218s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/ament_index/resource_index/hardware_interface__pluginlib__plugin/hardware_unitree_mujoco
+[19.228s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/cmake/ament_cmake_export_dependencies-extras.cmake
+[19.237s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/cmake/ament_cmake_export_targets-extras.cmake
+[19.245s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/cmake/hardware_unitree_mujocoConfig.cmake
+[19.253s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/cmake/hardware_unitree_mujocoConfig-version.cmake
+[19.261s] -- Symlinking: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/package.xml
+[19.272s] -- Installing: /home/yzz/219_ws/install/hardware_unitree_mujoco/lib/libhardware_unitree_mujoco.so
+[19.278s] -- Installing: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/cmake/export_hardware_unitree_mujocoExport.cmake
+[19.278s] -- Installing: /home/yzz/219_ws/install/hardware_unitree_mujoco/share/hardware_unitree_mujoco/cmake/export_hardware_unitree_mujocoExport-noconfig.cmake
+[19.283s] Invoked command in '/home/yzz/219_ws/build/hardware_unitree_mujoco' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/yzz/219_ws/build/hardware_unitree_mujoco

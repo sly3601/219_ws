@@ -109,7 +109,7 @@ bool Motor::is_have_param(int key) const
 /****** 一个串口（port-ACM）对应一个Motor_Control实例，管理该串口下的所有电机 ******/
 // Motor_Control构造函数：初始化串口、创建电机实例、配置电机模式、启动数据接收线程
 // 参数说明：
-// - serial_port：串口名（如/dev/ttyCAN0）
+// - serial_port：串口名（如/dev/ttyACM0）
 // - seial_baud：串口波特率
 // - data_ptr：电机控制数据指针（存储各电机的指令/状态数据）
 Motor_Control::Motor_Control(std::string serial_port, int seial_baud,std::unordered_map<int, DmActData>* data_ptr)

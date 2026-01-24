@@ -1,31 +1,31 @@
 # 电机串口配置（每条腿对应一个独立串口）
 motor_ports:
-  - port: "/dev/ttyCAN0"    # 前右腿（FR）关节串口
+  - port: "/dev/ttyACM0"    # 前右腿（FR）关节串口
     baudrate: 921600
-  - port: "/dev/ttyCAN1"    # 前左腿（FL）关节串口
+  - port: "/dev/ttyACM1"    # 前左腿（FL）关节串口
     baudrate: 921600
-  - port: "/dev/ttyCAN2"    # 后右腿（RR）关节串口
+  - port: "/dev/ttyACM2"    # 后右腿（RR）关节串口
     baudrate: 921600
-  - port: "/dev/ttyCAN3"    # 后左腿（RL）关节串口
+  - port: "/dev/ttyACM3"    # 后左腿（RL）关节串口
     baudrate: 921600
 
 motors:
   # 后左腿（RL）关节
-  - port: "/dev/ttyCAN0"
+  - port: "/dev/ttyACM2"
     can_id: 0x01
     master_id: 0x11          
     name: "RL_hip_joint"   
     type: "DM10010"
     direction: -1          # 正向（反转-1）
     offset: -0.50336         # 零点偏置/rad
-  - port: "/dev/ttyCAN0"
+  - port: "/dev/ttyACM2"
     can_id: 0x02
     master_id: 0x12
     name: "RL_thigh_joint"
     type: "DM10010"
     direction: 1      
     offset: 0.44         
-  - port: "/dev/ttyCAN0"
+  - port: "/dev/ttyACM2"
     can_id: 0x03
     master_id: 0x13
     name: "RL_calf_joint"
@@ -34,21 +34,21 @@ motors:
     offset: -1.3961  # -0.740
 
   # 前右腿（FR）关节
-  - port: "/dev/ttyCAN1"
+  - port: "/dev/ttyACM0"
     can_id: 0x01
     master_id: 0x11          
     name: "FR_hip_joint"
     type: "DM10010"
     direction: 1
     offset: 0.97219
-  - port: "/dev/ttyCAN1"
+  - port: "/dev/ttyACM0"
     can_id: 0x02
     master_id: 0x12
     name: "FR_thigh_joint"
     type: "DM10010"
     direction: -1
     offset: 0.30155
-  - port: "/dev/ttyCAN1"
+  - port: "/dev/ttyACM0"
     can_id: 0x03
     master_id: 0x13
     name: "FR_calf_joint"
@@ -57,21 +57,21 @@ motors:
     offset: -1.9796
 
   # 前左腿（FL）关节 
-  - port: "/dev/ttyCAN2"
+  - port: "/dev/ttyACM3"
     can_id: 0x01
     master_id: 0x11          
     name: "FL_hip_joint"
     type: "DM10010"
     direction: 1
     offset: -0.57545
-  - port: "/dev/ttyCAN2"
+  - port: "/dev/ttyACM3"
     can_id: 0x02
     master_id: 0x12
     name: "FL_thigh_joint"
     type: "DM10010"
     direction: 1
     offset: -0.0746
-  - port: "/dev/ttyCAN2"
+  - port: "/dev/ttyACM3"
     can_id: 0x03
     master_id: 0x13
     name: "FL_calf_joint"
@@ -80,21 +80,21 @@ motors:
     offset: -2.1366
 
   # 后右腿（RR）关节 
-  - port: "/dev/ttyCAN3"
+  - port: "/dev/ttyACM1"
     can_id: 0x01
     master_id: 0x11          
     name: "RR_hip_joint"
     type: "DM10010"
     direction: -1
     offset: 0.9222
-  - port: "/dev/ttyCAN3"
+  - port: "/dev/ttyACM1"
     can_id: 0x02
     master_id: 0x12
     name: "RR_thigh_joint"
     type: "DM10010"
     direction: -1
     offset: 0.7658
-  - port: "/dev/ttyCAN3"
+  - port: "/dev/ttyACM1"
     can_id: 0x03
     master_id: 0x13
     name: "RR_calf_joint"

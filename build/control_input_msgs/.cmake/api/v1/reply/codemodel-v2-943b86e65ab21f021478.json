@@ -1,0 +1,233 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-dcc2625f72adc5a0d0a0.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.12"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12,
+						13,
+						14,
+						15,
+						16,
+						17
+					]
+				},
+				{
+					"build" : "control_input_msgs__py",
+					"jsonFile" : "directory-control_input_msgs__py-67041524c3c7696185f0.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.12"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "/home/yzz/219_ws/build/control_input_msgs/control_input_msgs__py",
+					"targetIndexes" : 
+					[
+						4
+					]
+				}
+			],
+			"name" : "",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0,
+						1
+					],
+					"name" : "control_input_msgs",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12,
+						13,
+						14,
+						15,
+						16,
+						17
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "ament_cmake_python_build_control_input_msgs_egg::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ament_cmake_python_build_control_input_msgs_egg-cc6d45a2544489de817c.json",
+					"name" : "ament_cmake_python_build_control_input_msgs_egg",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "ament_cmake_python_symlink_control_input_msgs::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ament_cmake_python_symlink_control_input_msgs-8a01894b769b293c072e.json",
+					"name" : "ament_cmake_python_symlink_control_input_msgs",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "control_input_msgs::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-control_input_msgs-c90f14d8f601c929adda.json",
+					"name" : "control_input_msgs",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "control_input_msgs__cpp::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-control_input_msgs__cpp-6104f5c4abf176c96914.json",
+					"name" : "control_input_msgs__cpp",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "control_input_msgs__py::@28de07f1eaebc5782280",
+					"jsonFile" : "target-control_input_msgs__py-7b505948ad8c00f97c16.json",
+					"name" : "control_input_msgs__py",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "control_input_msgs__rosidl_generator_c::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-control_input_msgs__rosidl_generator_c-05d59064fcab3877f24f.json",
+					"name" : "control_input_msgs__rosidl_generator_c",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "control_input_msgs__rosidl_generator_py::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-control_input_msgs__rosidl_generator_py-0465e9e6ecce07d3d062.json",
+					"name" : "control_input_msgs__rosidl_generator_py",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "control_input_msgs__rosidl_typesupport_c::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-control_input_msgs__rosidl_typesupport_c-44b2bf6d3cfacab7dd01.json",
+					"name" : "control_input_msgs__rosidl_typesupport_c",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "control_input_msgs__rosidl_typesupport_c__pyext::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-control_input_msgs__rosidl_typesupport_c__pyext-68810f2b0b8d8f4424bc.json",
+					"name" : "control_input_msgs__rosidl_typesupport_c__pyext",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "control_input_msgs__rosidl_typesupport_cpp::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-control_input_msgs__rosidl_typesupport_cpp-552a99990a0728af08a7.json",
+					"name" : "control_input_msgs__rosidl_typesupport_cpp",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "control_input_msgs__rosidl_typesupport_fastrtps_c::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-control_input_msgs__rosidl_typesupport_fastrtps_c-ce4e26539d4f65aafa35.json",
+					"name" : "control_input_msgs__rosidl_typesupport_fastrtps_c",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "control_input_msgs__rosidl_typesupport_fastrtps_c__pyext::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-control_input_msgs__rosidl_typesupport_fastrtps_c__pyext-37f9e4d793e574461c90.json",
+					"name" : "control_input_msgs__rosidl_typesupport_fastrtps_c__pyext",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "control_input_msgs__rosidl_typesupport_fastrtps_cpp::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-control_input_msgs__rosidl_typesupport_fastrtps_cpp-1a49639a77e9802b9f9d.json",
+					"name" : "control_input_msgs__rosidl_typesupport_fastrtps_cpp",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "control_input_msgs__rosidl_typesupport_introspection_c::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-control_input_msgs__rosidl_typesupport_introspection_c-a8e29cef7c7a3b319712.json",
+					"name" : "control_input_msgs__rosidl_typesupport_introspection_c",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "control_input_msgs__rosidl_typesupport_introspection_c__pyext::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-control_input_msgs__rosidl_typesupport_introspection_c__pyext-51721e0acfcd790f23cf.json",
+					"name" : "control_input_msgs__rosidl_typesupport_introspection_c__pyext",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "control_input_msgs__rosidl_typesupport_introspection_cpp::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-control_input_msgs__rosidl_typesupport_introspection_cpp-69bbed658bccadd83738.json",
+					"name" : "control_input_msgs__rosidl_typesupport_introspection_cpp",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "control_input_msgs_uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-control_input_msgs_uninstall-71ad250a15fe6872f177.json",
+					"name" : "control_input_msgs_uninstall",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-uninstall-06e272399f61a6d1488b.json",
+					"name" : "uninstall",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/yzz/219_ws/build/control_input_msgs",
+		"source" : "/home/yzz/219_ws/src/quadruped_ros2_control-humble/commands/control_input_msgs"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}

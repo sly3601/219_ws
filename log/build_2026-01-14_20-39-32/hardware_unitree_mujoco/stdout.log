@@ -1,4 +1,0 @@
-[35m[1mConsolidate compiler generated dependencies of target hardware_unitree_mujoco[0m
-[ 20%] [32mBuilding CXX object CMakeFiles/hardware_unitree_mujoco.dir/src/crc_table.cpp.o[0m
-[ 40%] [32mBuilding CXX object CMakeFiles/hardware_unitree_mujoco.dir/src/imu.cpp.o[0m
-[ 60%] [32mBuilding CXX object CMakeFiles/hardware_unitree_mujoco.dir/src/motor_hw.cpp.o[0m
