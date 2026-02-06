@@ -96,7 +96,21 @@ private:
     bool show_foot_force_ = false;
 
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_; // TF广播器
-    rclcpp::Node::SharedPtr node_ptr_; // 新增：关联ROS2节点
+    rclcpp::Node::SharedPtr node_ptr_; // 新增：关联ROS2节点zz
+
+
+    // 修改限幅2026.02.06：按电机类型定义限位结构体（新增速度/扭矩最小值）
+    struct JointLimit {
+        double pos_min;  // 位置最小值
+        double pos_max;  // 位置最大值
+        double vel_min;  // 速度最小值（负值）
+        double vel_max;  // 速度最大值
+        double torque_min;  // 扭矩最小值（负值）
+        double torque_max;  // 扭矩最大值
+    };
+
+    // 修改限幅2026.02.06：按电机类型存储限位（hip/thigh/calf三类）
+    std::unordered_map<std::string, JointLimit> joint_type_limits_;
 
 };
 

@@ -46,6 +46,19 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Hardwa
             joint_interfaces[interface.name].push_back(joint.name);
         }
     }
+    /*
+        double pos_min;  // 位置最小值
+        double pos_max;  // 位置最大值
+        double vel_min;  // 速度最小值（负值）
+        double vel_max;  // 速度最大值
+        double torque_min;  // 扭矩最小值（负值）
+        double torque_max;  // 扭矩最大值
+    */
+     // 修改限幅2026.02.06
+        // 按类型定义限位（匹配xacro的const.xacro值，同一类共用）
+        joint_type_limits_["hip"] = {-0.638, 0.748, -30.1, 30.1, -1.0, 1.0};
+        joint_type_limits_["thigh"] = {-0.623, 1.65, -30.1, 30.1, -1.0, 1.0};
+        joint_type_limits_["calf"] = {-2.322, -0.672, -20.06, 20.06, -1.0, 1.0};
 
     // ========== imu改动 ==========
     // 获取参数
@@ -347,6 +360,20 @@ return_type HardwareUnitree::write(const rclcpp::Time& /*time*/, const rclcpp::D
     int ind = 0;
     for (const auto& joint_name : joint_interfaces["position"]) {
         bool found = false;
+
+        // 修改限幅2026.02.06：按关节名判断类型，应用对应限位
+        if (joint_name.find("hip") != std::string::npos) {
+            auto& limit = joint_type_limits_["hip"];
+            joint_position_command_[ind] = std::clamp(joint_position_command_[ind], limit.pos_min, limit.pos_max);
+        } else if (joint_name.find("thigh") != std::string::npos) {
+            auto& limit = joint_type_limits_["thigh"];
+            joint_position_command_[ind] = std::clamp(joint_position_command_[ind], limit.pos_min, limit.pos_max);
+        } else if (joint_name.find("calf") != std::string::npos) {
+            auto& limit = joint_type_limits_["calf"];
+            joint_position_command_[ind] = std::clamp(joint_position_command_[ind], limit.pos_min, limit.pos_max);
+        }
+
+
         // 遍历所有串口→所有电机，匹配关节名
         for (auto& port_entry : port_id2dm_data_) {
             for (auto& can_entry : port_entry.second) {
@@ -369,6 +396,20 @@ return_type HardwareUnitree::write(const rclcpp::Time& /*time*/, const rclcpp::D
     ind = 0;
     for (const auto& joint_name : joint_interfaces["velocity"]) {
         bool found = false;
+
+        // 修改限幅2026.02.06：按关节名判断类型，应用对应速度限位
+        if (joint_name.find("hip") != std::string::npos) {
+            auto& limit = joint_type_limits_["hip"];
+            joint_velocities_command_[ind] = std::clamp(joint_velocities_command_[ind], limit.vel_min, limit.vel_max);
+        } else if (joint_name.find("thigh") != std::string::npos) {
+            auto& limit = joint_type_limits_["thigh"];
+            joint_velocities_command_[ind] = std::clamp(joint_velocities_command_[ind], limit.vel_min, limit.vel_max);
+        } else if (joint_name.find("calf") != std::string::npos) {
+            auto& limit = joint_type_limits_["calf"];
+            joint_velocities_command_[ind] = std::clamp(joint_velocities_command_[ind], limit.vel_min, limit.vel_max);
+        }
+
+
         for (auto& port_entry : port_id2dm_data_) {
             for (auto& can_entry : port_entry.second) {
                 if (can_entry.second.name == joint_name) {
@@ -386,6 +427,20 @@ return_type HardwareUnitree::write(const rclcpp::Time& /*time*/, const rclcpp::D
     ind = 0;
     for (const auto& joint_name : joint_interfaces["effort"]) {
         bool found = false;
+        // 修改限幅2026.02.06：按关节名判断类型，应用对应扭矩限位
+        if (joint_name.find("hip") != std::string::npos) {
+            // RCLCPP_INFO(rclcpp::get_logger("unitree_hardware1111"),"");
+            auto& limit = joint_type_limits_["hip"];
+            joint_torque_command_[ind] = std::clamp(joint_torque_command_[ind], limit.torque_min, limit.torque_max);
+        } else if (joint_name.find("thigh") != std::string::npos) {
+            auto& limit = joint_type_limits_["thigh"];
+            joint_torque_command_[ind] = std::clamp(joint_torque_command_[ind], limit.torque_min, limit.torque_max);
+        } else if (joint_name.find("calf") != std::string::npos) {
+            auto& limit = joint_type_limits_["calf"];
+            joint_torque_command_[ind] = std::clamp(joint_torque_command_[ind], limit.torque_min, limit.torque_max);
+        }
+
+
         for (auto& port_entry : port_id2dm_data_) {
             for (auto& can_entry : port_entry.second) {
                 if (can_entry.second.name == joint_name) {

@@ -48,7 +48,7 @@ motors:
     name: "FR_thigh_joint"
     type: "DM10010"
     direction: -1
-    offset: -2.825
+    offset: 3.458
   - port: "/dev/ttyACM1"
     can_id: 0x03
     master_id: 0x13

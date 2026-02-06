@@ -36,17 +36,17 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 提高摆动高度：避免足端落地过浅，增强整体支撑余量（适配1.5倍腿长）
     gait_height_ = 0.08;
     // 身体位置比例增益：大幅提高z轴抑制下沉，x/y提高增强平动控制（全局优化，无后腿单独补偿）
-    Kpp = Vec3(130, 130, 180).asDiagonal();
+    Kpp = Vec3(0.1, 0.1, 0.1).asDiagonal();
     // 身体速度阻尼增益：增强z轴阻尼抗抖动，x/y提高抑制大惯性超调
-    Kdp = Vec3(22, 22, 30).asDiagonal();
+    Kdp = Vec3(0.1, 0.1, 0.1).asDiagonal();
     // 姿态比例增益：大幅提高（作用于roll/pitch/yaw），增强整体姿态稳定性，防止侧倒/前后趴
-    kp_w_ = 1900;
-    // 姿态角速度阻尼增益：重点提高roll/pitch对应轴（x/y），加快姿态收敛，避免倾斜加剧
-    Kd_w_ = Vec3(180, 180, 150).asDiagonal();
+    kp_w_ = 0.1;    // 1900
+        // 姿态角速度阻尼增益：重点提高roll/pitch对应轴（x/y），加快姿态收敛，避免倾斜加剧
+    Kd_w_ = Vec3(0.1, 0.1, 0.1).asDiagonal();
     // 摆动相位置增益：提高跟踪精度，确保足端精准落地，提供有效支撑
-    Kp_swing_ = Vec3(650, 650, 650).asDiagonal();
+    Kp_swing_ = Vec3(0.1, 0.1, 0.1).asDiagonal();
     // 摆动相速度阻尼：提高避免摆动过快，减少落地冲击导致的支撑失效
-    Kd_swing_ = Vec3(30, 30, 30).asDiagonal();
+    Kd_swing_ = Vec3(0.1, 0.1, 0.1).asDiagonal();
 
     // 降低速度限制：减少大重量机器人的运动惯性，降低失衡风险
     v_x_limit_ << -0.2, 0.2;    // 进一步降低前后速度
@@ -299,14 +299,14 @@ void StateTrotting::calcGain() const {
         // 第i个足端处于摆动相（contact_==0）：提高全局摆动增益，确保落地精准
         if (wave_generator_->contact_(i) == 0) {
             for (int j = 0; j < 3; j++) {
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(5.5);
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(4.5);
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(0.1);
+                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(0.1);
             }
         } else {
             // 第i个足端处于支撑相（contact_==1）：大幅提高全局支撑增益，增强所有腿的支撑刚度
             for (int j = 0; j < 3; j++) {
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(2.0);
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(2.0);
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(0.1);
+                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(0.1);
             }
         }
     }
