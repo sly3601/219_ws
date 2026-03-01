@@ -36,15 +36,15 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 提高摆动高度：避免足端落地过浅，增强整体支撑余量（适配1.5倍腿长）
     gait_height_ = 0.08;
     // 身体位置比例增益：大幅提高z轴抑制下沉，x/y提高增强平动控制（全局优化，无后腿单独补偿）
-    Kpp = Vec3(0.1, 0.1, 0.1).asDiagonal();
+    Kpp = Vec3(3, 3, 3).asDiagonal();
     // 身体速度阻尼增益：增强z轴阻尼抗抖动，x/y提高抑制大惯性超调
     Kdp = Vec3(0.1, 0.1, 0.1).asDiagonal();
     // 姿态比例增益：大幅提高（作用于roll/pitch/yaw），增强整体姿态稳定性，防止侧倒/前后趴
-    kp_w_ = 0.1;    // 1900
+    kp_w_ = 3;    // 1900
         // 姿态角速度阻尼增益：重点提高roll/pitch对应轴（x/y），加快姿态收敛，避免倾斜加剧
     Kd_w_ = Vec3(0.1, 0.1, 0.1).asDiagonal();
     // 摆动相位置增益：提高跟踪精度，确保足端精准落地，提供有效支撑
-    Kp_swing_ = Vec3(0.1, 0.1, 0.1).asDiagonal();
+    Kp_swing_ = Vec3(3, 3, 3).asDiagonal();
     // 摆动相速度阻尼：提高避免摆动过快，减少落地冲击导致的支撑失效
     Kd_swing_ = Vec3(0.1, 0.1, 0.1).asDiagonal();
 
@@ -55,6 +55,8 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 计算控制周期dt（1/控制频率，由控制接口传入）
     dt_ = 1.0 / ctrl_interfaces_.frequency_;
 }
+
+
 
 /**
  * @brief 进入Trotting状态时的初始化操作
@@ -121,6 +123,27 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
 
     // 计算并设置关节PID增益（支撑相/摆动相使用不同增益）
     calcGain();
+
+
+    // ========== 新增：发布数据 ==========
+    if (ctrl_interfaces_.debug_pub) { // 检查指针是否存在
+        std_msgs::msg::Float64MultiArray msg;
+        
+        msg.data.push_back(pcd_(0));
+        msg.data.push_back(pcd_(1));
+        msg.data.push_back(pcd_(2));           // 0-2: pcd
+        
+        msg.data.push_back(pos_body_(0));
+        msg.data.push_back(pos_body_(1));
+        msg.data.push_back(pos_body_(2));      // 3-5: pos_body
+
+        msg.data.push_back(wave_generator_->contact_(0));
+        msg.data.push_back(wave_generator_->contact_(1));
+        msg.data.push_back(wave_generator_->contact_(2));
+        msg.data.push_back(wave_generator_->contact_(3)); // 6-9: contact
+
+        ctrl_interfaces_.debug_pub->publish(msg);
+    }
 }
 
 /**
@@ -154,6 +177,22 @@ FSMStateName StateTrotting::checkChange() {
  * @brief 解析用户输入指令（将遥控器摇杆值转换为机器人速度指令）
  */
 void StateTrotting::getUserCmd() {
+
+    // ========== 新增 ==========
+    // 读取原始值
+    double ly_raw = ctrl_interfaces_.control_inputs_.ly;
+    double lx_raw = ctrl_interfaces_.control_inputs_.lx;
+    double rx_raw = ctrl_interfaces_.control_inputs_.rx;
+
+    // ========== 新增：死区处理 (Deadzone) ==========
+    const double deadzone = 0.05; // 阈值，小于这个值认为是0
+    if (fabs(ly_raw) < deadzone) ly_raw = 0.0;
+    if (fabs(lx_raw) < deadzone) lx_raw = 0.0;
+    if (fabs(rx_raw) < deadzone) rx_raw = 0.0;
+    // ===============================================
+
+
+
     /* 平移速度指令解析 */
     // 将遥控器左摇杆y轴（ly）值反归一化，转换为身体坐标系x方向速度指令
     v_cmd_body_(0) = invNormalize(ctrl_interfaces_.control_inputs_.ly, v_x_limit_(0), v_x_limit_(1));
@@ -179,18 +218,25 @@ void StateTrotting::calcCmd() {
     // 将身体坐标系下的速度指令v_cmd_body_通过旋转矩阵转换为全局坐标系下的目标速度vel_target_
     vel_target_ = B2G_RotMat * v_cmd_body_;
 
-    // 进一步缩小速度饱和范围，减少大惯性下的姿态突变
-    vel_target_(0) = saturation(vel_target_(0), Vec2(vel_body_(0) - 0.08, vel_body_(0) + 0.08));
-    vel_target_(1) = saturation(vel_target_(1), Vec2(vel_body_(1) - 0.08, vel_body_(1) + 0.08));
+    // 如果你想加限制，限制速度本身就好，不要限制位置跟随实际值
+    vel_target_(0) = saturation(vel_target_(0), Vec2(-0.2, 0.2));
+    vel_target_(1) = saturation(vel_target_(1), Vec2(-0.1, 0.1));
+    vel_target_(2) = 0; // Z轴速度始终为0// 全局坐标系z方向目标速度设为0（Trotting步态保持身体高度稳定）
 
-    // 更新期望身体x/y位置：缩小调节范围，增强稳定性
-    pcd_(0) = saturation(pcd_(0) + vel_target_(0) * dt_, Vec2(pos_body_(0) - 0.05, pos_body_(0) + 0.05));
-    pcd_(1) = saturation(pcd_(1) + vel_target_(1) * dt_, Vec2(pos_body_(1) - 0.05, pos_body_(1) + 0.05));
-    // 显式更新z轴期望位置：适配Kpp(z)的高增益，有效抑制身体下沉
-    pcd_(2) = saturation(pcd_(2) + vel_target_(2) * dt_, Vec2(pos_body_(2) - 0.1, pos_body_(2) + 0.1));
+    // 直接更新期望位置，不要用 pos_body_ 来做饱和边界！
+    pcd_(0) += vel_target_(0) * dt_;
+    pcd_(1) += vel_target_(1) * dt_;
 
-    // 全局坐标系z方向目标速度设为0（Trotting步态保持身体高度稳定）
-    vel_target_(2) = 0;
+    // // 进一步缩小速度饱和范围，减少大惯性下的姿态突变
+    // vel_target_(0) = saturation(vel_target_(0), Vec2(vel_body_(0) - 0.08, vel_body_(0) + 0.08));
+    // vel_target_(1) = saturation(vel_target_(1), Vec2(vel_body_(1) - 0.08, vel_body_(1) + 0.08));
+
+    // // 更新期望身体x/y位置：缩小调节范围，增强稳定性
+    // pcd_(0) = saturation(pcd_(0) + vel_target_(0) * dt_, Vec2(pos_body_(0) - 0.05, pos_body_(0) + 0.05));
+    // pcd_(1) = saturation(pcd_(1) + vel_target_(1) * dt_, Vec2(pos_body_(1) - 0.05, pos_body_(1) + 0.05));
+    // // 显式更新z轴期望位置：适配Kpp(z)的高增益，有效抑制身体下沉
+    // pcd_(2) = saturation(pcd_(2) + vel_target_(2) * dt_, Vec2(pos_body_(2) - 0.1, pos_body_(2) + 0.1));
+
 
     /* 旋转指令：更新期望偏航角和角速度 */
     // 积分yaw轴角速度指令，得到期望偏航角（当前期望角+角速度×控制周期）
@@ -283,6 +329,31 @@ void StateTrotting::calcQQd() {
     Vec12 q_goal = robot_model_->getQ(pos_feet_target);
     // 通过机器人模型逆运动学，根据当前足端位置和目标速度求解关节目标速度qd_goal（12个关节）
     Vec12 qd_goal = robot_model_->getQd(pos_feet_body, vel_feet_target);
+
+
+    // ========== 核心修改：限制髋关节在小区间内 ==========
+    // 1. 定义小区间 (单位: 弧度)
+    //    建议先从 ±0.15 开始 (约 ±8.6度)，觉得不够再慢慢加到 ±0.2 或 ±0.25
+    const double hip_center = 0.0; // 区间中心，通常是0，或者你正常站立时的角度
+    const double hip_range = 0.15;  // 区间半长
+    
+    const double hip_max = hip_center + hip_range;
+    const double hip_min = hip_center - hip_range;
+
+    // 2. 对四条腿的髋关节进行位置限幅
+    for (int leg_idx = 0; leg_idx < 4; leg_idx++) {
+        int hip_joint_idx = leg_idx * 3;
+        
+        // 位置限幅
+        q_goal(hip_joint_idx) = saturation(q_goal(hip_joint_idx), Vec2(hip_min, hip_max));
+        
+        // (可选) 速度也适当限制一下，防止抽风
+        qd_goal(hip_joint_idx) = saturation(qd_goal(hip_joint_idx), Vec2(-2.0, 2.0)); 
+    }
+    // =================================================
+
+
+
     // 将关节目标位置和速度赋值给控制接口
     for (int i = 0; i < 12; i++) {
         ctrl_interfaces_.joint_position_command_interface_[i].get().set_value(q_goal(i));
@@ -299,13 +370,13 @@ void StateTrotting::calcGain() const {
         // 第i个足端处于摆动相（contact_==0）：提高全局摆动增益，确保落地精准
         if (wave_generator_->contact_(i) == 0) {
             for (int j = 0; j < 3; j++) {
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(0.1);
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(10);
                 ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(0.1);
             }
         } else {
             // 第i个足端处于支撑相（contact_==1）：大幅提高全局支撑增益，增强所有腿的支撑刚度
             for (int j = 0; j < 3; j++) {
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(0.1);
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(10);
                 ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(0.1);
             }
         }

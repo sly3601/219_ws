@@ -12,21 +12,21 @@ motor_ports:
 
 motors:
   # 后左腿（RL）关节
-  - port: "/dev/ttyACM0"
+  - port: "/dev/ttyACM1"
     can_id: 0x01
     master_id: 0x11          
     name: "RL_hip_joint"   
     type: "DM10010"
     direction: -1          # 正向（反转-1）
     offset: -0.50336         # 零点偏置/rad
-  - port: "/dev/ttyACM0"
+  - port: "/dev/ttyACM1"
     can_id: 0x02
     master_id: 0x12
     name: "RL_thigh_joint"
     type: "DM10010"
     direction: 1      
     offset: 0.44         
-  - port: "/dev/ttyACM0"
+  - port: "/dev/ttyACM1"
     can_id: 0x03
     master_id: 0x13
     name: "RL_calf_joint"
@@ -35,21 +35,21 @@ motors:
     offset: -4.6657
 
   # 前右腿（FR）关节
-  - port: "/dev/ttyACM1"
+  - port: "/dev/ttyACM0"
     can_id: 0x01
     master_id: 0x11          
     name: "FR_hip_joint"
     type: "DM10010"
     direction: 1
     offset: 0.97219
-  - port: "/dev/ttyACM1"
+  - port: "/dev/ttyACM0"
     can_id: 0x02
     master_id: 0x12
     name: "FR_thigh_joint"
     type: "DM10010"
     direction: -1
     offset: 3.458
-  - port: "/dev/ttyACM1"
+  - port: "/dev/ttyACM0"
     can_id: 0x03
     master_id: 0x13
     name: "FR_calf_joint"

@@ -214,6 +214,11 @@ namespace unitree_guide_controller
         next_state_name_ = current_state_->state_name;
         mode_ = FSMMode::NORMAL;
 
+
+        // ========== 新增：初始化调试发布器 ==========
+        // get_node() 是 Controller 基类提供的方法
+        ctrl_interfaces_.debug_pub = get_node()->create_publisher<std_msgs::msg::Float64MultiArray>("/trotting_debug", 10);
+
         return CallbackReturn::SUCCESS;
     }
 

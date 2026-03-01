@@ -10,6 +10,10 @@
 #include <hardware_interface/loaned_state_interface.hpp>
 #include <control_input_msgs/msg/inputs.hpp>
 
+// ========== 新增：必须加的 ROS2 头文件 ==========
+#include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/float64_multi_array.hpp"
+
 struct CtrlInterfaces
 {
     std::vector<std::reference_wrapper<hardware_interface::LoanedCommandInterface>>
@@ -43,6 +47,9 @@ struct CtrlInterfaces
 
     control_input_msgs::msg::Inputs control_inputs_;
     int frequency_{};
+
+    // ========== 新增：添加发布器指针 ==========
+    std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64MultiArray>> debug_pub;
 
     CtrlInterfaces() = default;
 
