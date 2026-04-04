@@ -14,10 +14,13 @@
 class Estimator;
 class WaveGenerator;
 struct CtrlComponent;
+class StateTrotting; // 【新增】前向声明
 
 class GaitGenerator {
 public:
-    explicit GaitGenerator(CtrlComponent &ctrl_component);
+// 【修改】构造函数新增参数
+    explicit GaitGenerator(CtrlComponent &ctrl_component, StateTrotting* trotting_ptr = nullptr);
+    // explicit GaitGenerator(CtrlComponent &ctrl_component);
 
     ~GaitGenerator() = default;
 
@@ -76,6 +79,9 @@ private:
     double d_yaw_goal_{};
     Vec34 start_p_, end_p_, ideal_p_, past_p_;
     bool first_run_;
+
+    StateTrotting* trotting_ptr_; // 【新增】保存 StateTrotting 的指针
+    CtrlComponent& ctrl_component_; // 新增：引用控制组件，获取robot_model_
 };
 
 

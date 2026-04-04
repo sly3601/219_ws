@@ -135,7 +135,7 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
             wave_generator_->status_ = WaveStatus::STANCE_ALL;
         }
     }
-    else if(troting_kalman = 0)
+    else if(troting_kalman == 0)
     {
         /* kalman滤波异常的调试期间 */
         // ========== 调试期间强制迈步 ==========
@@ -278,6 +278,7 @@ void StateTrotting::calcCmd() {
         /* 平移指令：完全开环，不做位置积分，也不看实际位置 */
         // 直接把目标速度设为0（先试原地踏步），或者用很小的开环速度
         vel_target_.setZero(); // 强制目标速度为0，原地开环踏步
+        vel_target_(0) = 0.05; // 加一个极小的X方向虚拟速度，强制步态生成器迈步
         vel_target_(2) = 0;
 
         // 期望位置也直接设为固定值，不用积分
@@ -358,7 +359,7 @@ void StateTrotting::calcTau() {
     {
         /* 开环troting不计算力矩，直接位置控制 */
         for (int i = 0; i < 12; i++) {
-            ctrl_interfaces_.joint_torque_command_interface_[i].get().set_value(1.0);
+            ctrl_interfaces_.joint_torque_command_interface_[i].get().set_value(0.0);
         }
     }
 }

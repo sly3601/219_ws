@@ -31,6 +31,9 @@ private:
     rclcpp::Time start_time_;
 
     double kp_, kd_;
+        // 加在现有成员后面
+    double kp_start_; // 初始kp（设为0）
+    double kd_start_; // 初始kd（设为0）
 
     double duration_ = 600; // steps
     double percent_ = 0; //%
