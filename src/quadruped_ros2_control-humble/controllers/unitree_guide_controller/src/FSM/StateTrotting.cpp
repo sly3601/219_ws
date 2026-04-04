@@ -91,13 +91,23 @@ void StateTrotting::enter() {
  * @param period 时间间隔（未使用）
  */
 void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*period*/) {
-    // 获取当前估计的身体位置（全局坐标系）
-    pos_body_ = estimator_->getPosition();
-    // 获取当前估计的身体速度（全局坐标系）
-    vel_body_ = estimator_->getVelocity();
+    if(troting_kalman == 1)
+    {
+        // 获取当前估计的身体位置（全局坐标系）
+        pos_body_ = estimator_->getPosition();
+        // 获取当前估计的身体速度（全局坐标系）
+        vel_body_ = estimator_->getVelocity();
 
-    // 获取当前身体坐标系到全局坐标系的旋转矩阵B2G_RotMat
-    B2G_RotMat = estimator_->getRotation();
+        // 获取当前身体坐标系到全局坐标系的旋转矩阵B2G_RotMat
+        B2G_RotMat = estimator_->getRotation();
+    }
+    else if(troting_kalman == 0)
+    {
+        // 开环模式：位置、速度全设为0，旋转矩阵固定为单位矩阵（完全不用IMU）
+        pos_body_.setZero();
+        vel_body_.setZero();
+        B2G_RotMat.setIdentity(); // 固定身体坐标系和全局坐标系一致，不受实际姿态影响
+    }
     // 计算全局坐标系到身体坐标系的旋转矩阵G2B_RotMat（为B2G_RotMat的转置，正交矩阵性质）
     G2B_RotMat = B2G_RotMat.transpose();
 
@@ -276,9 +286,9 @@ void StateTrotting::calcCmd() {
         // pcd_(2) 保持原来的高度就行，不用改
 
         /* 旋转指令：依然用IMU的直接姿态，不用改 */
-        yaw_cmd_ = yaw_cmd_ + d_yaw_cmd_ * dt_;
-        Rd = rotz(yaw_cmd_);
-        w_cmd_global_(2) = d_yaw_cmd_;
+        yaw_cmd_ = 0;
+        Rd.setIdentity(); // 期望旋转矩阵固定为单位矩阵（完全水平）
+        w_cmd_global_.setZero(); // 角速度固定为0
     }
 }
 
@@ -293,64 +303,62 @@ void StateTrotting::calcTau() {
         pos_error_ = pcd_ - pos_body_;
         // 计算身体速度误差：目标速度vel_target_ - 实际速度vel_body_
         vel_error_ = vel_target_ - vel_body_;
+        // 计算期望身体加速度dd_pcd：位置误差×比例增益 + 速度误差×阻尼增益
+        Vec3 dd_pcd = Kpp * pos_error_ + Kdp * vel_error_;
+        // 计算期望身体角速度增量d_wbd：姿态误差×比例增益 + 角速度误差×阻尼增益
+        // rotMatToExp(Rd * G2B_RotMat)：将期望姿态与实际姿态的偏差转换为欧拉角误差
+        Vec3 d_wbd = kp_w_ * rotMatToExp(Rd * G2B_RotMat) + Kd_w_ * (w_cmd_global_ - estimator_->getGyroGlobal());
+
+        // 调整加速度限制：缩小x/y范围减少前后左右失衡，放宽z轴增强垂直支撑力
+        dd_pcd(0) = saturation(dd_pcd(0), Vec2(-1.5, 1.5));
+        dd_pcd(1) = saturation(dd_pcd(1), Vec2(-1.5, 1.5));
+        dd_pcd(2) = saturation(dd_pcd(2), Vec2(-10, 10));
+
+        // 调整角速度增量限制：缩小roll/pitch对应轴（x/y）范围，防止侧倒/前后趴
+        d_wbd(0) = saturation(d_wbd(0), Vec2(-20, 20));
+        d_wbd(1) = saturation(d_wbd(1), Vec2(-20, 20));
+        d_wbd(2) = saturation(d_wbd(2), Vec2(-8, 8));
+
+        // 获取当前足端相对于身体的位置（全局坐标系，4个足端，3维坐标）
+        const Vec34 pos_feet_body_global = estimator_->getFeetPos2Body();
+        // 通过平衡控制器计算足端支撑力（全局坐标系）：依赖高增益参数实现均匀支撑，无后腿单独补偿
+        Vec34 force_feet_global = -balance_ctrl_->calF(dd_pcd, d_wbd, B2G_RotMat, pos_feet_body_global, wave_generator_->contact_);
+
+        // 获取当前足端实际位置（全局坐标系）
+        Vec34 pos_feet_global = estimator_->getFeetPos();
+        // 获取当前足端实际速度（全局坐标系）
+        Vec34 vel_feet_global = estimator_->getFeetVel();
+
+        // 遍历4个足端，修正摆动相足端力（支撑相使用平衡控制的力，摆动相使用轨迹跟踪的力）
+        for (int i(0); i < 4; ++i) {
+            // wave_generator_->contact_(i)==0 表示第i个足端处于摆动相
+            if (wave_generator_->contact_(i) == 0) {
+                // 摆动相足端力：位置跟踪误差×比例增益 + 速度跟踪误差×阻尼增益
+                force_feet_global.col(i) = Kp_swing_ * (pos_feet_global_goal_.col(i) - pos_feet_global.col(i)) +
+                                        Kd_swing_ * (vel_feet_global_goal_.col(i) - vel_feet_global.col(i));
+            }
+        }
+
+        // 将足端力从全局坐标系转换为身体坐标系
+        Vec34 force_feet_body_ = G2B_RotMat * force_feet_global;
+
+        // 获取当前机器人关节位置（4条腿，每条腿3个关节）
+        std::vector<KDL::JntArray> current_joints = robot_model_->current_joint_pos_;
+        // 遍历4条腿，计算每条腿的关节力矩并赋值给控制接口
+        for (int i = 0; i < 4; i++) {
+            // 通过机器人模型的逆动力学计算第i条腿的关节力矩（输入足端力、腿索引）
+            KDL::JntArray torque = robot_model_->getTorque(force_feet_body_.col(i), i);
+            // 将力矩值赋值给关节力矩控制接口（每条腿3个关节，索引为i*3+j）
+            for (int j = 0; j < 3; j++) {
+                ctrl_interfaces_.joint_torque_command_interface_[i * 3 + j].get().set_value(torque(j));
+            }
+        }
     }
     else if(troting_kalman == 0)
     {
-        // 身体位置误差=0
-        pos_error_.setZero();
-        // 身体速度误差=0
-        vel_error_.setZero();
-
-    }
-
-    // 计算期望身体加速度dd_pcd：位置误差×比例增益 + 速度误差×阻尼增益
-    Vec3 dd_pcd = Kpp * pos_error_ + Kdp * vel_error_;
-    // 计算期望身体角速度增量d_wbd：姿态误差×比例增益 + 角速度误差×阻尼增益
-    // rotMatToExp(Rd * G2B_RotMat)：将期望姿态与实际姿态的偏差转换为欧拉角误差
-    Vec3 d_wbd = kp_w_ * rotMatToExp(Rd * G2B_RotMat) + Kd_w_ * (w_cmd_global_ - estimator_->getGyroGlobal());
-
-    // 调整加速度限制：缩小x/y范围减少前后左右失衡，放宽z轴增强垂直支撑力
-    dd_pcd(0) = saturation(dd_pcd(0), Vec2(-1.5, 1.5));
-    dd_pcd(1) = saturation(dd_pcd(1), Vec2(-1.5, 1.5));
-    dd_pcd(2) = saturation(dd_pcd(2), Vec2(-10, 10));
-
-    // 调整角速度增量限制：缩小roll/pitch对应轴（x/y）范围，防止侧倒/前后趴
-    d_wbd(0) = saturation(d_wbd(0), Vec2(-20, 20));
-    d_wbd(1) = saturation(d_wbd(1), Vec2(-20, 20));
-    d_wbd(2) = saturation(d_wbd(2), Vec2(-8, 8));
-
-    // 获取当前足端相对于身体的位置（全局坐标系，4个足端，3维坐标）
-    const Vec34 pos_feet_body_global = estimator_->getFeetPos2Body();
-    // 通过平衡控制器计算足端支撑力（全局坐标系）：依赖高增益参数实现均匀支撑，无后腿单独补偿
-    Vec34 force_feet_global = -balance_ctrl_->calF(dd_pcd, d_wbd, B2G_RotMat, pos_feet_body_global, wave_generator_->contact_);
-
-    // 获取当前足端实际位置（全局坐标系）
-    Vec34 pos_feet_global = estimator_->getFeetPos();
-    // 获取当前足端实际速度（全局坐标系）
-    Vec34 vel_feet_global = estimator_->getFeetVel();
-
-    // 遍历4个足端，修正摆动相足端力（支撑相使用平衡控制的力，摆动相使用轨迹跟踪的力）
-    for (int i(0); i < 4; ++i) {
-        // wave_generator_->contact_(i)==0 表示第i个足端处于摆动相
-        if (wave_generator_->contact_(i) == 0) {
-            // 摆动相足端力：位置跟踪误差×比例增益 + 速度跟踪误差×阻尼增益
-            force_feet_global.col(i) = Kp_swing_ * (pos_feet_global_goal_.col(i) - pos_feet_global.col(i)) +
-                                       Kd_swing_ * (vel_feet_global_goal_.col(i) - vel_feet_global.col(i));
-        }
-    }
-
-    // 将足端力从全局坐标系转换为身体坐标系
-    Vec34 force_feet_body_ = G2B_RotMat * force_feet_global;
-
-    // 获取当前机器人关节位置（4条腿，每条腿3个关节）
-    std::vector<KDL::JntArray> current_joints = robot_model_->current_joint_pos_;
-    // 遍历4条腿，计算每条腿的关节力矩并赋值给控制接口
-    for (int i = 0; i < 4; i++) {
-        // 通过机器人模型的逆动力学计算第i条腿的关节力矩（输入足端力、腿索引）
-        KDL::JntArray torque = robot_model_->getTorque(force_feet_body_.col(i), i);
-        // 将力矩值赋值给关节力矩控制接口（每条腿3个关节，索引为i*3+j）
-        for (int j = 0; j < 3; j++) {
-            ctrl_interfaces_.joint_torque_command_interface_[i * 3 + j].get().set_value(torque(j));
+        /* 开环troting不计算力矩，直接位置控制 */
+        for (int i = 0; i < 12; i++) {
+            ctrl_interfaces_.joint_torque_command_interface_[i].get().set_value(1.0);
         }
     }
 }
