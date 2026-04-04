@@ -284,7 +284,8 @@ void StateTrotting::calcCmd() {
 
 /**
  * @brief 计算关节力矩指令（通过平衡控制和足端轨迹跟踪实现）
- */calcQQd
+ */
+
 void StateTrotting::calcTau() {
     if(troting_kalman == 1)
     {
