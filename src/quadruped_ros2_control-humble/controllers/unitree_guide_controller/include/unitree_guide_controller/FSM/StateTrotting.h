@@ -75,6 +75,10 @@ private:
     double kp_w_;
     Mat3 Kp_swing_, Kd_swing_;
     Vec2 v_x_limit_, v_y_limit_, w_yaw_limit_;
+
+
+    // 调试参数
+    int troting_kalman; // 使用卡尔曼滤波位姿闭环（1），不使用（0）
 };
 
 

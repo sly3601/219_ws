@@ -54,6 +54,8 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     w_yaw_limit_ << -0.2, 0.2;  // 降低转向速度，减少姿态扰动
     // 计算控制周期dt（1/控制频率，由控制接口传入）
     dt_ = 1.0 / ctrl_interfaces_.frequency_;
+    //是否使用卡尔曼滤波位姿闭环
+    troting_kalman = 0; //0 代表不使用
 }
 
 
@@ -114,11 +116,20 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     // 计算关节位置和速度指令
     calcQQd();
 
-    // 判断是否需要迈步：满足条件则切换为全步态波模式，否则切换为全支撑模式
-    if (checkStepOrNot()) {
-        wave_generator_->status_ = WaveStatus::WAVE_ALL;
-    } else {
-        wave_generator_->status_ = WaveStatus::STANCE_ALL;
+    if(troting_kalman == 1)
+    {
+        // 判断是否需要迈步：满足条件则切换为全步态波模式，否则切换为全支撑模式
+        if (checkStepOrNot()) {
+            wave_generator_->status_ = WaveStatus::WAVE_ALL;
+        } else {
+            wave_generator_->status_ = WaveStatus::STANCE_ALL;
+        }
+    }
+    else if(troting_kalman = 0)
+    {
+        /* kalman滤波异常的调试期间 */
+        // ========== 调试期间强制迈步 ==========
+        wave_generator_->status_ = WaveStatus::WAVE_ALL; // 开环调试时强制迈步，方便看步态
     }
 
     // 计算并设置关节PID增益（支撑相/摆动相使用不同增益）
@@ -214,47 +225,82 @@ void StateTrotting::getUserCmd() {
  * @brief 计算全局坐标系下的期望控制指令（位置、速度、姿态）
  */
 void StateTrotting::calcCmd() {
-    /* 平移指令：身体坐标系转全局坐标系 */
-    // 将身体坐标系下的速度指令v_cmd_body_通过旋转矩阵转换为全局坐标系下的目标速度vel_target_
-    vel_target_ = B2G_RotMat * v_cmd_body_;
+    // troting_kalman =1代表有卡尔曼滤波闭环
+    if(troting_kalman == 1)
+    {
+        /* 平移指令：身体坐标系转全局坐标系 */
+        // 将身体坐标系下的速度指令v_cmd_body_通过旋转矩阵转换为全局坐标系下的目标速度vel_target_
+        vel_target_ = B2G_RotMat * v_cmd_body_;
 
-    // 如果你想加限制，限制速度本身就好，不要限制位置跟随实际值
-    vel_target_(0) = saturation(vel_target_(0), Vec2(-0.2, 0.2));
-    vel_target_(1) = saturation(vel_target_(1), Vec2(-0.1, 0.1));
-    vel_target_(2) = 0; // Z轴速度始终为0// 全局坐标系z方向目标速度设为0（Trotting步态保持身体高度稳定）
+        // 如果你想加限制，限制速度本身就好，不要限制位置跟随实际值
+        vel_target_(0) = saturation(vel_target_(0), Vec2(-0.2, 0.2));
+        vel_target_(1) = saturation(vel_target_(1), Vec2(-0.1, 0.1));
+        vel_target_(2) = 0; // Z轴速度始终为0// 全局坐标系z方向目标速度设为0（Trotting步态保持身体高度稳定）
 
-    // 直接更新期望位置，不要用 pos_body_ 来做饱和边界！
-    pcd_(0) += vel_target_(0) * dt_;
-    pcd_(1) += vel_target_(1) * dt_;
+        // 直接更新期望位置，不要用 pos_body_ 来做饱和边界！
+        pcd_(0) += vel_target_(0) * dt_;
+        pcd_(1) += vel_target_(1) * dt_;
 
-    // // 进一步缩小速度饱和范围，减少大惯性下的姿态突变
-    // vel_target_(0) = saturation(vel_target_(0), Vec2(vel_body_(0) - 0.08, vel_body_(0) + 0.08));
-    // vel_target_(1) = saturation(vel_target_(1), Vec2(vel_body_(1) - 0.08, vel_body_(1) + 0.08));
+        // // 限幅，默认注释掉，要用的时候再加
+        // // 进一步缩小速度饱和范围，减少大惯性下的姿态突变
+        // vel_target_(0) = saturation(vel_target_(0), Vec2(vel_body_(0) - 0.08, vel_body_(0) + 0.08));
+        // vel_target_(1) = saturation(vel_target_(1), Vec2(vel_body_(1) - 0.08, vel_body_(1) + 0.08));
 
-    // // 更新期望身体x/y位置：缩小调节范围，增强稳定性
-    // pcd_(0) = saturation(pcd_(0) + vel_target_(0) * dt_, Vec2(pos_body_(0) - 0.05, pos_body_(0) + 0.05));
-    // pcd_(1) = saturation(pcd_(1) + vel_target_(1) * dt_, Vec2(pos_body_(1) - 0.05, pos_body_(1) + 0.05));
-    // // 显式更新z轴期望位置：适配Kpp(z)的高增益，有效抑制身体下沉
-    // pcd_(2) = saturation(pcd_(2) + vel_target_(2) * dt_, Vec2(pos_body_(2) - 0.1, pos_body_(2) + 0.1));
+        // // 更新期望身体x/y位置：缩小调节范围，增强稳定性
+        // pcd_(0) = saturation(pcd_(0) + vel_target_(0) * dt_, Vec2(pos_body_(0) - 0.05, pos_body_(0) + 0.05));
+        // pcd_(1) = saturation(pcd_(1) + vel_target_(1) * dt_, Vec2(pos_body_(1) - 0.05, pos_body_(1) + 0.05));
+        // // 显式更新z轴期望位置：适配Kpp(z)的高增益，有效抑制身体下沉
+        // pcd_(2) = saturation(pcd_(2) + vel_target_(2) * dt_, Vec2(pos_body_(2) - 0.1, pos_body_(2) + 0.1));
 
 
-    /* 旋转指令：更新期望偏航角和角速度 */
-    // 积分yaw轴角速度指令，得到期望偏航角（当前期望角+角速度×控制周期）
-    yaw_cmd_ = yaw_cmd_ + d_yaw_cmd_ * dt_;
-    // 更新期望旋转矩阵Rd为绕z轴旋转当前期望偏航角的矩阵
-    Rd = rotz(yaw_cmd_);
-    // 全局坐标系下的yaw轴角速度指令设为滤波后的d_yaw_cmd_
-    w_cmd_global_(2) = d_yaw_cmd_;
+        /* 旋转指令：更新期望偏航角和角速度 */
+        // 积分yaw轴角速度指令，得到期望偏航角（当前期望角+角速度×控制周期）
+        yaw_cmd_ = yaw_cmd_ + d_yaw_cmd_ * dt_;
+        // 更新期望旋转矩阵Rd为绕z轴旋转当前期望偏航角的矩阵
+        Rd = rotz(yaw_cmd_);
+        // 全局坐标系下的yaw轴角速度指令设为滤波后的d_yaw_cmd_
+        w_cmd_global_(2) = d_yaw_cmd_;
+    }
+    else if(troting_kalman == 0)
+    {
+        /* 2026.04.04 无卡尔曼的开环步态*/
+        // 无卡尔曼滤波的开环troting
+        /* 平移指令：完全开环，不做位置积分，也不看实际位置 */
+        // 直接把目标速度设为0（先试原地踏步），或者用很小的开环速度
+        vel_target_.setZero(); // 强制目标速度为0，原地开环踏步
+        vel_target_(2) = 0;
+
+        // 期望位置也直接设为固定值，不用积分
+        pcd_(0) = 0.0; // 固定期望X位置
+        pcd_(1) = 0.0; // 固定期望Y位置
+        // pcd_(2) 保持原来的高度就行，不用改
+
+        /* 旋转指令：依然用IMU的直接姿态，不用改 */
+        yaw_cmd_ = yaw_cmd_ + d_yaw_cmd_ * dt_;
+        Rd = rotz(yaw_cmd_);
+        w_cmd_global_(2) = d_yaw_cmd_;
+    }
 }
 
 /**
  * @brief 计算关节力矩指令（通过平衡控制和足端轨迹跟踪实现）
- */
+ */calcQQd
 void StateTrotting::calcTau() {
-    // 计算身体位置误差：期望位置pcd_ - 实际位置pos_body_
-    pos_error_ = pcd_ - pos_body_;
-    // 计算身体速度误差：目标速度vel_target_ - 实际速度vel_body_
-    vel_error_ = vel_target_ - vel_body_;
+    if(troting_kalman == 1)
+    {
+        // 计算身体位置误差：期望位置pcd_ - 实际位置pos_body_
+        pos_error_ = pcd_ - pos_body_;
+        // 计算身体速度误差：目标速度vel_target_ - 实际速度vel_body_
+        vel_error_ = vel_target_ - vel_body_;
+    }
+    else if(troting_kalman == 0)
+    {
+        // 身体位置误差=0
+        pos_error_.setZero();
+        // 身体速度误差=0
+        vel_error_.setZero();
+
+    }
 
     // 计算期望身体加速度dd_pcd：位置误差×比例增益 + 速度误差×阻尼增益
     Vec3 dd_pcd = Kpp * pos_error_ + Kdp * vel_error_;
@@ -312,6 +358,18 @@ void StateTrotting::calcTau() {
  * @brief 计算关节位置和速度指令（通过足端目标轨迹逆运动学求解）
  */
 void StateTrotting::calcQQd() {
+    Vec3 pos_body_to_use;
+    Vec3 vel_body_to_use;
+    if(troting_kalman == 1)
+    {
+        pos_body_to_use = pos_body_;
+        vel_body_to_use = vel_body_;
+    }
+    else
+    {
+        pos_body_to_use = pcd_; // 开环时用固定的期望位置
+        vel_body_to_use = vel_target_; // 开环时用固定的期望速度
+    }
     // 获取当前足端相对于身体的位置（KDL Frame格式，4条腿）
     const std::vector<KDL::Frame> pos_feet_body = robot_model_->getFeet2BPositions();
 
@@ -320,9 +378,9 @@ void StateTrotting::calcQQd() {
     // 遍历4个足端，转换足端目标轨迹到身体坐标系
     for (int i(0); i < 4; ++i) {
         // 足端目标位置（身体坐标系）：全局目标位置 - 身体实际位置，再转换到身体坐标系
-        pos_feet_target.col(i) = G2B_RotMat * (pos_feet_global_goal_.col(i) - pos_body_);
+        pos_feet_target.col(i) = G2B_RotMat * (pos_feet_global_goal_.col(i) - pos_body_to_use);
         // 足端目标速度（身体坐标系）：全局目标速度 - 身体实际速度，再转换到身体坐标系
-        vel_feet_target.col(i) = G2B_RotMat * (vel_feet_global_goal_.col(i) - vel_body_);
+        vel_feet_target.col(i) = G2B_RotMat * (vel_feet_global_goal_.col(i) - vel_body_to_use);
     }
 
     // 通过机器人模型逆运动学，根据足端目标位置求解关节目标位置q_goal（12个关节，4条腿×3个）
