@@ -46,18 +46,28 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
         }
         else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0) 
         {
-            // 开环：用正运动学，完全不用 estimator
-            auto feet_2b = ctrl_component_.robot_model_->getFeet2BPositions();
-            for(int i=0; i<4; i++)
+            // ==============================================
+            // 【正确终极版】
+            // 1. 用你固定的 关节角度(髋/大腿/小腿)
+            // 2. 计算出 固定足端坐标 (给start_p_使用)
+            // 3. 髋关节永久锁死，不读真实电机
+            // ==============================================
+            for (int i = 0; i < 4; i++)
             {
-                // 【修复】KDL::Vector → Eigen::Vector3d
-                current_feet_pos.col(i) = Eigen::Vector3d(
-                    feet_2b[i].p.x(),
-                    feet_2b[i].p.y(),
-                    feet_2b[i].p.z()
-                );
+                // 你的固定关节角：髋=0.0  大腿=0.67  小腿=-1.3
+                KDL::JntArray fixed_q(3);
+                fixed_q(0) = 0.0;    // 髋关节（锁死！）
+                fixed_q(1) = 0.67;   // 大腿
+                fixed_q(2) = -1.3;   // 小腿
+                
+                // 用【固定关节角】计算【固定足端坐标】（不依赖实时数据）
+                KDL::Frame foot_frame = ctrl_component_.robot->robot_legs_[i]->calcPEe2B(fixed_q);
+                
+                // 赋值给足端坐标矩阵（这才是start_p_要的东西！）
+                current_feet_pos.col(i) << foot_frame.p.x(), foot_frame.p.y(), foot_frame.p.z();
             }
-            // 【关键】开环时把正确的足端位置给 start_p_
+            
+            // 固定足端坐标 → 给start_p_，终身不变！
             start_p_ = current_feet_pos;
         }
         first_run_ = false;
@@ -105,7 +115,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 // 绝不基于上一次的end_p累加，彻底杜绝发散！
                 // ==============================================
                 end_p_.col(i) = start_p_.col(i);
-                end_p_(0, i) = start_p_.col(i)[0] + dir * step_length;
+                // end_p_(0, i) = start_p_.col(i)[0] + dir * step_length;
             }
             // 【闭环模式】：完全保留你原来的代码，用官方轨迹规划器
             else
