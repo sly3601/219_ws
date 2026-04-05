@@ -63,9 +63,12 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
         first_run_ = false;
     }
 
+    // 遍历机器人的4条腿（0:右前 1:左前 2:右后 3:左后）
     for (int i = 0; i < 4; i++) {
+        // 条件1：当前腿处于支撑相（踩地）
         if (wave_generator_->contact_(i) == 1) 
         {
+            // 支撑相位小于0.5：刷新支撑点（脚刚落地，锁定当前位置）
             if (wave_generator_->phase_(i) < 0.5) 
             {
                 // foot contact the ground
@@ -82,10 +85,33 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             feet_pos.col(i) = start_p_.col(i);
             feet_vel.col(i).setZero();
         } 
+        // 条件2：当前腿处于摆动相（抬脚迈步）
         else 
         {
             // foot not contact, swing
-            end_p_.col(i) = feet_end_calc_.calcFootPos(i, vxy_goal_, d_yaw_goal_, wave_generator_->phase_(i)); // 足端终点位置规划器,计算摆动末端位置
+            // ==============================================
+            // 核心修复：开环/闭环 分两套逻辑计算「迈步终点」
+            // ==============================================
+            // 【开环模式】：纯身体坐标系，不用估计器，不用calcFootPos
+            if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0)
+            {
+                // 步长：每次迈步向前移动5厘米（可调节）
+                double step_length = 0.005;
+                // 方向规则：前腿(i<2)=向前(+1)，后腿(i>=2)=向后(-1) → 符合你的URDF坐标系
+                double dir = (i < 2) ? 1.0 : -1.0;
+
+                // 迈步终点 = 支撑点初始位置 + 方向×步长
+                end_p_.col(i) = start_p_.col(i);
+                end_p_(0,i) += dir * step_length; // 仅X轴（前后）移动，Y/Z不动
+            }
+            // 【闭环模式】：完全保留你原来的代码，用官方轨迹规划器
+            else
+            {
+                // 闭环：保持原来的逻辑不变
+                end_p_.col(i) = feet_end_calc_.calcFootPos(i, vxy_goal_, d_yaw_goal_, wave_generator_->phase_(i));
+            }
+
+            // 调用你原有的摆线函数：计算平滑的足端轨迹/速度
             feet_pos.col(i) = getFootPos(i);
             feet_vel.col(i) = getFootVel(i);
         }

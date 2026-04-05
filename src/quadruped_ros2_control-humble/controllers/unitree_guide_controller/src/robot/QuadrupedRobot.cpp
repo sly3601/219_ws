@@ -34,8 +34,8 @@ QuadrupedRobot::QuadrupedRobot(CtrlInterfaces &ctrl_interfaces, const std::strin
     for (const auto &[fst, snd]: robot_tree.getSegments()) {
         mass_ += snd.segment.getInertia().getMass();
     }
-    feet_pos_normal_stand_ << 0.1881, 0.1881, -0.1881, -0.1881, -0.1300, 0.1300,
-            -0.1300, 0.1300, -0.3200, -0.3200, -0.3200, -0.3200;
+    feet_pos_normal_stand_ << 0.1881, 0.1881, -0.1881, -0.1881, -0.1300, 0.1300, 
+            -0.1300, 0.1300, -0.3200, -0.3200, -0.3200, -0.3200;  // 此处证明X 轴正方向：向前。
 }
 
 std::vector<KDL::JntArray> QuadrupedRobot::getQ(const std::vector<KDL::Frame> &pEe_list) const {

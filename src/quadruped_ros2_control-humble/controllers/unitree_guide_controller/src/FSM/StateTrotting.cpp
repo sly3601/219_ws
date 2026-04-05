@@ -473,14 +473,14 @@ void StateTrotting::calcGain() const {
         // 第i个足端处于摆动相（contact_==0）：提高全局摆动增益，确保落地精准
         if (wave_generator_->contact_(i) == 0) {
             for (int j = 0; j < 3; j++) {
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(10);
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(0.1);
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(3);// 从10降到3 对于 5.65 秒的超慢周期，原来的增益太大了
+                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(0.5);// 从0.1升到0.5，增加阻尼
             }
         } else {
             // 第i个足端处于支撑相（contact_==1）：大幅提高全局支撑增益，增强所有腿的支撑刚度
             for (int j = 0; j < 3; j++) {
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(10);
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(0.1);
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(3);// 从10降到3 对于 5.65 秒的超慢周期，原来的增益太大了
+                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(0.5);// 从0.1升到0.5，增加阻尼
             }
         }
     }
