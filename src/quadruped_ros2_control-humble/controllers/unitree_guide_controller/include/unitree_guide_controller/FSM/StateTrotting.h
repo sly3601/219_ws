@@ -80,6 +80,9 @@ private:
     double kp_w_;
     Mat3 Kp_swing_, Kd_swing_;
     Vec2 v_x_limit_, v_y_limit_, w_yaw_limit_;
+
+    // debug 参数
+    Vec12 q_goal_debug;
 };
 
 

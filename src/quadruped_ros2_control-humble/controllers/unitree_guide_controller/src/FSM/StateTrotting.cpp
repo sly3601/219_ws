@@ -177,9 +177,9 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     if (ctrl_interfaces_.debug_pub) { // 检查指针是否存在
         std_msgs::msg::Float64MultiArray msg;
         
-        msg.data.push_back(pcd_(0));
-        msg.data.push_back(pcd_(1));
-        msg.data.push_back(pcd_(2));           // 0-2: pcd
+        msg.data.push_back(q_goal_debug(0));
+        msg.data.push_back(q_goal_debug(1));
+        msg.data.push_back(q_goal_debug(2));           // 0-2: q_goal_debug
         
         msg.data.push_back(pos_body_(0));
         msg.data.push_back(pos_body_(1));
@@ -460,6 +460,7 @@ void StateTrotting::calcQQd() {
 
     // 将关节目标位置和速度赋值给控制接口
     for (int i = 0; i < 12; i++) {
+        q_goal_debug = q_goal; // 用于调试，发布到ROS2话题
         ctrl_interfaces_.joint_position_command_interface_[i].get().set_value(q_goal(i));
         ctrl_interfaces_.joint_velocity_command_interface_[i].get().set_value(qd_goal(i));
     }
@@ -474,14 +475,14 @@ void StateTrotting::calcGain() const {
         // 第i个足端处于摆动相（contact_==0）：提高全局摆动增益，确保落地精准
         if (wave_generator_->contact_(i) == 0) {
             for (int j = 0; j < 3; j++) {
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(10);// 从10降到3 对于 5.65 秒的超慢周期，原来的增益太大了
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(0.5);// 从0.1升到0.5，增加阻尼
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(4);// 从10降到3 对于 5.65 秒的超慢周期，原来的增益太大了
+                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(0.1);// 从0.1升到0.5，增加阻尼
             }
         } else {
             // 第i个足端处于支撑相（contact_==1）：大幅提高全局支撑增益，增强所有腿的支撑刚度
             for (int j = 0; j < 3; j++) {
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(10);// 从10降到3 对于 5.65 秒的超慢周期，原来的增益太大了
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(0.5);// 从0.1升到0.5，增加阻尼
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(4);// 从10降到3 对于 5.65 秒的超慢周期，原来的增益太大了
+                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(0.1);// 从0.1升到0.5，增加阻尼
             }
         }
     }
