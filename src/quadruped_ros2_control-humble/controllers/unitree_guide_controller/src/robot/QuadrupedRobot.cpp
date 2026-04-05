@@ -34,6 +34,7 @@ QuadrupedRobot::QuadrupedRobot(CtrlInterfaces &ctrl_interfaces, const std::strin
     for (const auto &[fst, snd]: robot_tree.getSegments()) {
         mass_ += snd.segment.getInertia().getMass();
     }
+    // 下面数据不可用！下面是宇树go2的参数！因为是足底位置！
     feet_pos_normal_stand_ << 0.1881, 0.1881, -0.1881, -0.1881, -0.1300, 0.1300, 
             -0.1300, 0.1300, -0.3200, -0.3200, -0.3200, -0.3200;  // 此处证明X 轴正方向：向前。
 }

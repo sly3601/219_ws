@@ -97,8 +97,8 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             {
                 // 步长：每次迈步向前移动5厘米（可调节）
                 double step_length = 0.005;
-                // 方向规则：前腿(i<2)=向前(+1)，后腿(i>=2)=向后(-1) → 符合你的URDF坐标系
-                double dir = (i < 2) ? 1.0 : -1.0;
+                // 方向规则：对角腿(0+3)向前，(1+2)向后 → 标准Trot步态
+                double dir = (i == 0 || i == 3) ? 1.0 : -1.0;
 
                 // 迈步终点 = 支撑点初始位置 + 方向×步长
                 end_p_.col(i) = start_p_.col(i);
