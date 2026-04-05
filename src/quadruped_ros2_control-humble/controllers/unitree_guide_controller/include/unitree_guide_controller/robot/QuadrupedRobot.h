@@ -90,6 +90,13 @@ public:
     std::vector<KDL::JntArray> current_joint_vel_;
 
     void update();
+    // 【新增 1/2：声明】锁死髋关节的逆解
+    [[nodiscard]] Vec12 getQLockedHip(const Vec34 &vecP, double locked_hip_pos = 0.0) const;
+
+    // 【新增 2/2：声明】给定关节角算足端位置
+    [[nodiscard]] KDL::Frame calcFootPosFromJoints(const int index, const KDL::JntArray& q) const;
+
+
 
 private:
     CtrlInterfaces &ctrl_interfaces_;

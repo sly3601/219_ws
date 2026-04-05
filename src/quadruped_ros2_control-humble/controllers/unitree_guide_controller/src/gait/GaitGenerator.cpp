@@ -46,30 +46,21 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
         }
         else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0) 
         {
-            // ==============================================
-            // 【正确终极版】
-            // 1. 用你固定的 关节角度(髋/大腿/小腿)
-            // 2. 计算出 固定足端坐标 (给start_p_使用)
-            // 3. 髋关节永久锁死，不读真实电机
-            // ==============================================
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < 4; i++) 
             {
-                // 你的固定关节角：髋=0.0  大腿=0.67  小腿=-1.3
                 KDL::JntArray fixed_q(3);
-                fixed_q(0) = 0.0;    // 髋关节（锁死！）
-                fixed_q(1) = 0.67;   // 大腿
-                fixed_q(2) = -1.3;   // 小腿
+                fixed_q(0) = 0.0;
+                fixed_q(1) = 0.67;
+                fixed_q(2) = -1.3;
                 
-                // 用【固定关节角】计算【固定足端坐标】（不依赖实时数据）
-                KDL::Frame foot_frame = ctrl_component_.robot->robot_legs_[i]->calcPEe2B(fixed_q);
+                // 【修复】调用新增的 public 函数
+                KDL::Frame foot_frame = ctrl_component_.robot_model_->calcFootPosFromJoints(i, fixed_q);
                 
-                // 赋值给足端坐标矩阵（这才是start_p_要的东西！）
-                current_feet_pos.col(i) << foot_frame.p.x(), foot_frame.p.y(), foot_frame.p.z();
+                start_p_.col(i) << foot_frame.p.x(), foot_frame.p.y(), foot_frame.p.z();
+                // 【新增】记录初始站立位的Y坐标，全程固定不变
+                fixed_foot_y_(i) = foot_frame.p.y();
             }
-            
-            // 固定足端坐标 → 给start_p_，终身不变！
-            start_p_ = current_feet_pos;
-        }
+}
         first_run_ = false;
     }
 
@@ -88,6 +79,8 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 }
                 else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0) 
                 {
+                    // 【新增】开环模式下，支撑相也强制固定Y坐标
+                    start_p_(1, i) = fixed_foot_y_(i);
                     // 开环：只在first_run_初始化一次 start_p_，之后就完全不更新了（不依赖 estimator）
                 }
                 
@@ -115,6 +108,8 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 // 绝不基于上一次的end_p累加，彻底杜绝发散！
                 // ==============================================
                 end_p_.col(i) = start_p_.col(i);
+                // 【新增】强制终点Y坐标=固定值，绝对不动
+                end_p_(1, i) = fixed_foot_y_(i);
                 // end_p_(0, i) = start_p_.col(i)[0] + dir * step_length;
             }
             // 【闭环模式】：完全保留你原来的代码，用官方轨迹规划器
@@ -127,6 +122,12 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             // 调用你原有的摆线函数：计算平滑的足端轨迹/速度
             feet_pos.col(i) = getFootPos(i);
             feet_vel.col(i) = getFootVel(i);
+            // 【新增】最终输出前，强制锁死Y坐标，彻底杜绝摆线函数动Y轴
+            if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0)
+            {
+                feet_pos(1, i) = fixed_foot_y_(i);
+                feet_vel(1, i) = 0.0;
+            }
         }
     }
 }
@@ -143,8 +144,10 @@ Vec3 GaitGenerator::getFootPos(const int i) {
 
     foot_pos(0) =
             cycloidXYPosition(start_p_.col(i)(0), end_p_.col(i)(0), wave_generator_->phase_(i));
-    foot_pos(1) =
-            cycloidXYPosition(start_p_.col(i)(1), end_p_.col(i)(1), wave_generator_->phase_(i));
+    // foot_pos(1) =
+    //         cycloidXYPosition(start_p_.col(i)(1), end_p_.col(i)(1), wave_generator_->phase_(i));
+    // 【修改】Y坐标直接用固定值，不参与摆线计算
+    foot_pos(1) = fixed_foot_y_(i);
     foot_pos(2) = cycloidZPosition(start_p_.col(i)(2), gait_height_, wave_generator_->phase_(i));
 
     return foot_pos;
@@ -155,8 +158,10 @@ Vec3 GaitGenerator::getFootVel(const int i) {
 
     foot_vel(0) =
             cycloidXYVelocity(start_p_.col(i)(0), end_p_.col(i)(0), wave_generator_->phase_(i));
-    foot_vel(1) =
-            cycloidXYVelocity(start_p_.col(i)(1), end_p_.col(i)(1), wave_generator_->phase_(i));
+    // foot_vel(1) =
+    //         cycloidXYVelocity(start_p_.col(i)(1), end_p_.col(i)(1), wave_generator_->phase_(i));
+    // 【修改】Y轴速度永远为0
+    foot_vel(1) = 0.0;
     foot_vel(2) = cycloidZVelocity(gait_height_, wave_generator_->phase_(i));
 
     return foot_vel;

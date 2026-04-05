@@ -32,9 +32,9 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 初始化成员变量：步态波发生器（从控制组件中获取，管理四足支撑/摆动状态）
     wave_generator_(ctrl_component.wave_generator_),
     // 初始化成员变量：步态生成器（从控制组件中初始化，用于生成足端目标轨迹）
-    gait_generator_(ctrl_component) {
+    gait_generator_(ctrl_component, this){
     // 提高摆动高度：避免足端落地过浅，增强整体支撑余量（适配1.5倍腿长）
-    gait_height_ = 0.03;
+    gait_height_ = 0.10;
     // 身体位置比例增益：大幅提高z轴抑制下沉，x/y提高增强平动控制（全局优化，无后腿单独补偿）
     Kpp = Vec3(3, 3, 3).asDiagonal();
     // 身体速度阻尼增益：增强z轴阻尼抗抖动，x/y提高抑制大惯性超调
@@ -88,6 +88,7 @@ void StateTrotting::enter() {
         pcd_ << 0.0, 0.0, -foot_z_avg;
         yaw_cmd_ = 0;
         Rd.setIdentity();
+        wave_generator_->status_ = WaveStatus::STANCE_ALL;   // 先明确给全支撑
     }
     // 初始化全局坐标系下的角速度指令w_cmd_global_为零向量
     w_cmd_global_.setZero();
@@ -176,19 +177,28 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     // ========== 新增：发布数据 ==========
     if (ctrl_interfaces_.debug_pub) { // 检查指针是否存在
         std_msgs::msg::Float64MultiArray msg;
-        
+        // 0-11: q_goal_debug
         msg.data.push_back(q_goal_debug(0));
         msg.data.push_back(q_goal_debug(1));
-        msg.data.push_back(q_goal_debug(2));           // 0-2: q_goal_debug
+        msg.data.push_back(q_goal_debug(2));           
+        msg.data.push_back(q_goal_debug(3));
+        msg.data.push_back(q_goal_debug(4));
+        msg.data.push_back(q_goal_debug(5)); 
+        msg.data.push_back(q_goal_debug(6));
+        msg.data.push_back(q_goal_debug(7));
+        msg.data.push_back(q_goal_debug(8));           
+        msg.data.push_back(q_goal_debug(9));
+        msg.data.push_back(q_goal_debug(10));
+        msg.data.push_back(q_goal_debug(11)); 
         
-        msg.data.push_back(pos_body_(0));
-        msg.data.push_back(pos_body_(1));
-        msg.data.push_back(pos_body_(2));      // 3-5: pos_body
+        // msg.data.push_back(pos_body_(0));
+        // msg.data.push_back(pos_body_(1));
+        // msg.data.push_back(pos_body_(2));      // 3-5: pos_body
 
-        msg.data.push_back(wave_generator_->contact_(0));
-        msg.data.push_back(wave_generator_->contact_(1));
-        msg.data.push_back(wave_generator_->contact_(2));
-        msg.data.push_back(wave_generator_->contact_(3)); // 6-9: contact
+        // msg.data.push_back(wave_generator_->contact_(0));
+        // msg.data.push_back(wave_generator_->contact_(1));
+        // msg.data.push_back(wave_generator_->contact_(2));
+        // msg.data.push_back(wave_generator_->contact_(3)); // 6-9: contact
 
         ctrl_interfaces_.debug_pub->publish(msg);
     }
@@ -430,9 +440,106 @@ void StateTrotting::calcQQd() {
     }
 
     // 通过机器人模型逆运动学，根据足端目标位置求解关节目标位置q_goal（12个关节，4条腿×3个）
-    Vec12 q_goal = robot_model_->getQ(pos_feet_target);
-    // 通过机器人模型逆运动学，根据当前足端位置和目标速度求解关节目标速度qd_goal（12个关节）
-    Vec12 qd_goal = robot_model_->getQd(pos_feet_body, vel_feet_target);
+    Vec12 q_goal;
+    Vec12 qd_goal;
+    qd_goal.setZero(); // 开环模式速度全设为0
+
+    if(troting_kalman == 1) {
+        // 闭环：完全保留你原来的逻辑
+        q_goal = robot_model_->getQ(pos_feet_target);
+        qd_goal = robot_model_->getQd(pos_feet_body, vel_feet_target);
+    } else {
+    // ==============================================
+    // 【开环模式最小修复】
+    // 目标：
+    // 1) 保留 step_length = 0 的原地摆动
+    // 2) 保留 fixed_q = [0, 0.67, -1.3]
+    // 3) 保留你自己的二维平面二连杆逆解
+    //
+    // 核心思想：
+    // 不再直接把 body 坐标下的绝对 x/z 喂给二维逆解；
+    // 而是让二维逆解围绕 fixedstand 的局部平面参考点工作。
+    // 对于原地摆动，X 保持 fixedstand 的局部参考值，
+    // Z 只跟随 gait 带来的竖直位移增量。
+    // ==============================================
+
+    const double L_THIGH = 0.2835; // 大腿长度
+    const double L_CALF  = 0.2835; // 小腿长度
+
+    // 你认可的 fixedstand 关节角
+    KDL::JntArray fixed_q(3);
+    fixed_q(0) = 0.0;
+    fixed_q(1) = 0.67;
+    fixed_q(2) = -1.3;
+
+    // --------------------------------------------------
+    // 1) 先用“当前这套二维逆解的几何定义”反推：
+    //    fixed_q 对应的局部平面参考点 (x_local_ref, z_local_ref)
+    // --------------------------------------------------
+    const double q1_ref = fixed_q(1);
+    const double q2_ref = fixed_q(2);
+
+    double L_ref = sqrt(L_THIGH * L_THIGH +
+                        L_CALF  * L_CALF -
+                        2.0 * L_THIGH * L_CALF * cos(fabs(q2_ref)));
+
+    double cos_alpha_ref =
+        (L_THIGH * L_THIGH + L_ref * L_ref - L_CALF * L_CALF) /
+        (2.0 * L_THIGH * L_ref);
+    cos_alpha_ref = std::max(-1.0, std::min(1.0, cos_alpha_ref));
+
+    double alpha_ref = acos(cos_alpha_ref);
+    double theta_ref = q1_ref + alpha_ref;
+
+    // 这是“局部二维平面”里，与 fixed_q 完全一致的参考脚点
+    const double x_local_ref = L_ref * sin(theta_ref);
+    const double z_local_ref = L_ref * cos(theta_ref);
+
+    // --------------------------------------------------
+    // 2) 对四条腿分别求解：
+    //    只读取 gait 带来的“竖直位移增量 dz”
+    //    X 一律固定在局部参考值 x_local_ref
+    // --------------------------------------------------
+    for (int i = 0; i < 4; ++i) {
+        // 髋关节依然固定为 0
+        q_goal(i * 3 + 0) = 0.0;
+
+        // 用 fixed_q 的正运动学，算出该腿在 body 坐标下的“基准脚高”
+        KDL::Frame foot_fixed = robot_model_->calcFootPosFromJoints(i, fixed_q);
+        double z_body_ref = foot_fixed.p.z();
+
+        // 只取 gait 相对 fixedstand 的竖直变化量
+        double dz = pos_feet_target(2, i) - z_body_ref;
+
+        // 局部二维逆解输入：
+        // X 固定为 fixedstand 的局部参考值
+        // Z = 局部参考值 + gait 竖直增量
+        double x = x_local_ref;
+        double z = z_local_ref + dz;
+
+        // 3) 你的二维平面二连杆逆解 —— 原样保留
+        double L = sqrt(x * x + z * z);
+        L = std::max(L, 1e-6);
+        L = std::min(L, L_THIGH + L_CALF - 1e-6);
+
+        double cos_q2 =
+            (L_THIGH * L_THIGH + L_CALF * L_CALF - L * L) /
+            (2.0 * L_THIGH * L_CALF);
+        cos_q2 = std::max(-1.0, std::min(1.0, cos_q2));
+        double q2 = -acos(cos_q2);
+
+        double theta = atan2(x, z);
+        double cos_q1 =
+            (L_THIGH * L_THIGH + L * L - L_CALF * L_CALF) /
+            (2.0 * L_THIGH * L);
+        cos_q1 = std::max(-1.0, std::min(1.0, cos_q1));
+        double alpha = acos(cos_q1);
+        double q1 = theta - alpha;
+
+        q_goal(i * 3 + 1) = q1; // 大腿关节
+        q_goal(i * 3 + 2) = q2; // 小腿关节
+    }
+}
 
 
     // ========== 核心修改：限制髋关节在小区间内 ==========
@@ -456,8 +563,6 @@ void StateTrotting::calcQQd() {
     }
     // =================================================
 
-
-
     // 将关节目标位置和速度赋值给控制接口
     for (int i = 0; i < 12; i++) {
         q_goal_debug = q_goal; // 用于调试，发布到ROS2话题
@@ -470,21 +575,26 @@ void StateTrotting::calcQQd() {
  * @brief 计算并设置关节PID增益（全局提高支撑刚度，无后腿单独补偿）
  */
 void StateTrotting::calcGain() const {
-    // 遍历4个足端，根据支撑/摆动状态设置对应关节增益
     for (int i(0); i < 4; ++i) {
-        // 第i个足端处于摆动相（contact_==0）：提高全局摆动增益，确保落地精准
-        if (wave_generator_->contact_(i) == 0) {
-            for (int j = 0; j < 3; j++) {
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(3);// 从10降到3 对于 5.65 秒的超慢周期，原来的增益太大了
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(0.1);// 从0.1升到0.5，增加阻尼
-            }
-        } else {
-            // 第i个足端处于支撑相（contact_==1）：大幅提高全局支撑增益，增强所有腿的支撑刚度
-            for (int j = 0; j < 3; j++) {
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(3);// 从10降到3 对于 5.65 秒的超慢周期，原来的增益太大了
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(0.1);// 从0.1升到0.5，增加阻尼
+        // 先设置大腿和小腿 (j=1, 2)
+        for (int j = 1; j < 3; j++) {
+            if (wave_generator_->contact_(i) == 0) {
+                // ================= 摆动相（脚在空中） =================
+                // 增益中等，跟轨迹但不僵硬
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(65.0); // 从3改到12
+                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(6.3);  // 从0.1改到0.5
+            } else {
+                // ================= 支撑相（脚踩地） =================
+                // 增益拉高，抗干扰、站稳
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(68.0); // 从3改到45
+                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(6.8);  // 从0.1改到1.5
             }
         }
+
+        // 【单独设置髋关节】不管什么状态，都用超大增益锁死（你现在的是对的，保持）
+        int hip_idx = i * 3 + 0;
+        ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(70.0); 
+        ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(7.0);
     }
 }
 
