@@ -95,18 +95,17 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             // 【开环模式】：纯身体坐标系，不用估计器，不用calcFootPos
             if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0)
             {
-                // // 步长：每次迈步向前移动5厘米（可调节）
-                // double step_length = 0.000005;
-                // // 方向规则：对角腿(0+3)向前，(1+2)向后 → 标准Trot步态
-                // double dir = (i == 0 || i == 3) ? 1.0 : -1.0;
+                // 步长：每次迈步向前移动5厘米（可调节）
+                double step_length = 0.000005;
+                // 方向规则：对角腿(0+3)向前，(1+2)向后 → 标准Trot步态
+                double dir = (i == 0 || i == 3) ? 1.0 : -1.0;
 
-                // // ==============================================
-                // // 核心修复：永远基于【固定的start_p】计算终点
-                // // 绝不基于上一次的end_p累加，彻底杜绝发散！
-                // // ==============================================
-                // end_p_.col(i) = start_p_.col(i);
-                // end_p_(0, i) = start_p_.col(i)[0] + dir * step_length;
-                end_p_.col(i) = start_p_.col(i); // XY永久固定，无任何位移
+                // ==============================================
+                // 核心修复：永远基于【固定的start_p】计算终点
+                // 绝不基于上一次的end_p累加，彻底杜绝发散！
+                // ==============================================
+                end_p_.col(i) = start_p_.col(i);
+                end_p_(0, i) = start_p_.col(i)[0] + dir * step_length;
             }
             // 【闭环模式】：完全保留你原来的代码，用官方轨迹规划器
             else
@@ -136,13 +135,7 @@ Vec3 GaitGenerator::getFootPos(const int i) {
             cycloidXYPosition(start_p_.col(i)(0), end_p_.col(i)(0), wave_generator_->phase_(i));
     foot_pos(1) =
             cycloidXYPosition(start_p_.col(i)(1), end_p_.col(i)(1), wave_generator_->phase_(i));
-    // ============== 开环Z轴高度=0，彻底根治踝关节(2)暴涨 ==============
-    double fixed_height = gait_height_;
-    if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0)
-    {
-        fixed_height = 0.0; // 开环不抬腿，Z轴完全不动
-    }
-    foot_pos(2) = cycloidZPosition(start_p_.col(i)(2), fixed_height, wave_generator_->phase_(i));
+    foot_pos(2) = cycloidZPosition(start_p_.col(i)(2), gait_height_, wave_generator_->phase_(i));
 
     return foot_pos;
 }
@@ -155,6 +148,15 @@ Vec3 GaitGenerator::getFootVel(const int i) {
     foot_vel(1) =
             cycloidXYVelocity(start_p_.col(i)(1), end_p_.col(i)(1), wave_generator_->phase_(i));
     foot_vel(2) = cycloidZVelocity(gait_height_, wave_generator_->phase_(i));
+
+    // ==============================================
+    // 【开环唯一修复】强制速度=0，位置保持Trot不变
+    // 保留所有步态逻辑，仅锁死速度，根治发散！
+    // ==============================================
+    if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0)
+    {
+        foot_vel.setZero();
+    }
 
     return foot_vel;
 }
