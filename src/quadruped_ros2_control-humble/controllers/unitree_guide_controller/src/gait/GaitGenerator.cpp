@@ -96,7 +96,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0)
             {
                 // 步长：每次迈步向前移动5厘米（可调节）
-                double step_length = 0.000005;
+                double step_length = 0;
                 // 方向规则：对角腿(0+3)向前，(1+2)向后 → 标准Trot步态
                 double dir = (i == 0 || i == 3) ? 1.0 : -1.0;
 
@@ -148,15 +148,6 @@ Vec3 GaitGenerator::getFootVel(const int i) {
     foot_vel(1) =
             cycloidXYVelocity(start_p_.col(i)(1), end_p_.col(i)(1), wave_generator_->phase_(i));
     foot_vel(2) = cycloidZVelocity(gait_height_, wave_generator_->phase_(i));
-
-    // ==============================================
-    // 【开环唯一修复】强制速度=0，位置保持Trot不变
-    // 保留所有步态逻辑，仅锁死速度，根治发散！
-    // ==============================================
-    if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0)
-    {
-        foot_vel.setZero();
-    }
 
     return foot_vel;
 }
