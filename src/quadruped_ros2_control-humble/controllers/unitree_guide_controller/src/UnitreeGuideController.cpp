@@ -160,7 +160,7 @@ namespace unitree_guide_controller
                 ctrl_component_.balance_ctrl_ = std::make_shared<BalanceCtrl>(ctrl_component_.robot_model_);
             });
 
-        ctrl_component_.wave_generator_ = std::make_shared<WaveGenerator>(5.65, 0.5, Vec4(0, 0.5, 0.5, 0));
+        ctrl_component_.wave_generator_ = std::make_shared<WaveGenerator>(1.25, 0.5, Vec4(0, 0.5, 0.5, 0));
 
         return CallbackReturn::SUCCESS;
     }
