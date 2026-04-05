@@ -64,18 +64,30 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
  * @brief 进入Trotting状态时的初始化操作
  */
 void StateTrotting::enter() {
-    // 初始化期望身体位置pcd_为当前估计的身体位置
-    pcd_ = estimator_->getPosition();
-    // 修正期望身体z坐标：取所有足端z值的平均值，保证初始身体高度均衡（无后腿单独补偿）
-    Eigen::Vector3d foot_z_avg = (estimator_->getFeetPos2Body().col(0) + estimator_->getFeetPos2Body().col(1) +
-                                  estimator_->getFeetPos2Body().col(2) + estimator_->getFeetPos2Body().col(3)) / 4;
-    pcd_(2) = -foot_z_avg(2) + 0.03;  // 整体抬高3cm，预留支撑余量
-    // 初始化身体坐标系下的速度指令v_cmd_body_为零向量
-    v_cmd_body_.setZero();
-    // 初始化期望偏航角yaw_cmd_为当前估计的机器人偏航角
-    yaw_cmd_ = estimator_->getYaw();
-    // 初始化期望旋转矩阵Rd为绕z轴（yaw轴）旋转yaw_cmd_的矩阵
-    Rd = rotz(yaw_cmd_);
+    if(troting_kalman == 1)
+    {
+        // 初始化期望身体位置pcd_为当前估计的身体位置
+        pcd_ = estimator_->getPosition();
+        // 修正期望身体z坐标：取所有足端z值的平均值，保证初始身体高度均衡（无后腿单独补偿）
+        Eigen::Vector3d foot_z_avg = (estimator_->getFeetPos2Body().col(0) + estimator_->getFeetPos2Body().col(1) +
+                                    estimator_->getFeetPos2Body().col(2) + estimator_->getFeetPos2Body().col(3)) / 4;
+        pcd_(2) = -foot_z_avg(2) + 0.03;  // 整体抬高3cm，预留支撑余量
+        // 初始化身体坐标系下的速度指令v_cmd_body_为零向量
+        v_cmd_body_.setZero();
+        // 初始化期望偏航角yaw_cmd_为当前估计的机器人偏航角
+        yaw_cmd_ = estimator_->getYaw();
+        // 初始化期望旋转矩阵Rd为绕z轴（yaw轴）旋转yaw_cmd_的矩阵
+        Rd = rotz(yaw_cmd_);
+    }
+    else if(troting_kalman == 0)
+    {
+        // 开环：不用 estimator，用正运动学算足端高度
+        auto feet_2b = robot_model_->getFeet2BPositions();
+        double foot_z_avg = (feet_2b[0].p.z() + feet_2b[1].p.z() + feet_2b[2].p.z() + feet_2b[3].p.z()) / 4.0;
+        pcd_ << 0.0, 0.0, -foot_z_avg + 0.03; // 直接设XY为0，Z用正运动学算
+        yaw_cmd_ = 0;
+        Rd.setIdentity();
+    }
     // 初始化全局坐标系下的角速度指令w_cmd_global_为零向量
     w_cmd_global_.setZero();
 
@@ -375,7 +387,7 @@ void StateTrotting::calcQQd() {
         pos_body_to_use = pos_body_;
         vel_body_to_use = vel_body_;
     }
-    else
+    else if(troting_kalman == 0)
     {
         pos_body_to_use = pcd_; // 开环时用固定的期望位置
         vel_body_to_use = vel_target_; // 开环时用固定的期望速度
@@ -385,12 +397,21 @@ void StateTrotting::calcQQd() {
 
     // 定义足端目标位置和速度（身体坐标系，4个足端，3维坐标）
     Vec34 pos_feet_target, vel_feet_target;
-    // 遍历4个足端，转换足端目标轨迹到身体坐标系
-    for (int i(0); i < 4; ++i) {
-        // 足端目标位置（身体坐标系）：全局目标位置 - 身体实际位置，再转换到身体坐标系
-        pos_feet_target.col(i) = G2B_RotMat * (pos_feet_global_goal_.col(i) - pos_body_to_use);
-        // 足端目标速度（身体坐标系）：全局目标速度 - 身体实际速度，再转换到身体坐标系
-        vel_feet_target.col(i) = G2B_RotMat * (vel_feet_global_goal_.col(i) - vel_body_to_use);
+    if(troting_kalman == 1)
+    {
+        // 遍历4个足端，转换足端目标轨迹到身体坐标系
+        for (int i(0); i < 4; ++i) {
+            // 足端目标位置（身体坐标系）：全局目标位置 - 身体实际位置，再转换到身体坐标系
+            pos_feet_target.col(i) = G2B_RotMat * (pos_feet_global_goal_.col(i) - pos_body_to_use);
+            // 足端目标速度（身体坐标系）：全局目标速度 - 身体实际速度，再转换到身体坐标系
+            vel_feet_target.col(i) = G2B_RotMat * (vel_feet_global_goal_.col(i) - vel_body_to_use);
+        }
+    }
+    else if(troting_kalman == 0)
+    {
+        // 开环：GaitGenerator 输出的真的已经是身体坐标系了，直接赋值！(真的不需要转换了，只是变量名字没改在误导)
+        pos_feet_target = pos_feet_global_goal_;
+        vel_feet_target = vel_feet_global_goal_;
     }
 
     // 通过机器人模型逆运动学，根据足端目标位置求解关节目标位置q_goal（12个关节，4条腿×3个）

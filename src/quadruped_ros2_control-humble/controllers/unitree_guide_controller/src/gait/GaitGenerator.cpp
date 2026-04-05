@@ -41,6 +41,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
     if (first_run_) {
         if (trotting_ptr_ && trotting_ptr_->troting_kalman == 1) 
         {
+            // 闭环：原来的逻辑，用 estimator 的全局足端位置
             start_p_ = estimator_->getFeetPos();
         }
         else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0) 

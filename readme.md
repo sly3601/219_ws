@@ -28,3 +28,5 @@
   * 重大修改2：StateTrotting.cpp中加入一个标志位：troting_kalman，其值为1时使用卡尔曼滤波的位姿闭环，其值为0时则开环调试。
   * 重大修改3：passive到fixdown状态的平滑启动，不会再有冲击启动了。
   * 重大修改4：troting步态大量调整，加入大量的脱离estimator的开环troting代码，代码基本可以用了，理论上可以站在地上troting，但是实际上应该需要再对准一下电机绝对位置。
+* 2026.04.05 v1.8
+  * 优化了补全开环troting的代码
