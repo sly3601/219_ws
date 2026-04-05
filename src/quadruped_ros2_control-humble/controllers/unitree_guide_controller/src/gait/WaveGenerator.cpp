@@ -39,7 +39,8 @@ auto WaveGenerator::update() -> void {
     calcWave(phase_, contact_, status_);
 
     // 【第2步】检测状态是否发生了切换（当前状态 != 上一帧状态）
-    if (status_ != status_past_) {
+    if (status_ != status_past_) 
+    {
         // 【2.1】如果是刚开始切换（switch_status_全是0），就把切换标志全设为1
         // switch_status_(i)=1 代表第i条腿还没完成状态切换
         if (switch_status_.sum() == 0) {
@@ -64,9 +65,11 @@ auto WaveGenerator::update() -> void {
 
     // 【第3步】状态切换平滑逻辑（死锁的核心！！！）
     // 如果switch_status_不全为0，说明还有腿没完成切换
-    if (switch_status_.sum() != 0) {
+    if (switch_status_.sum() != 0) 
+    {
         // 遍历4条腿，逐条处理切换
-        for (int i(0); i < 4; ++i) {
+        for (int i(0); i < 4; ++i) 
+        {
             // 【3.1】如果这条腿的【新contact】和【旧contact_past_】一样
             if (contact_(i) == contact_past_(i)) {
                 switch_status_(i) = 0; // 这条腿切换完成，标志设为0

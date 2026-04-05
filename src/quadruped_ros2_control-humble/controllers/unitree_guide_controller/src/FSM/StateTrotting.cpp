@@ -150,8 +150,22 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     else if(troting_kalman == 0)
     {
         /* kalman滤波异常的调试期间 */
-        // ========== 调试期间强制迈步 ==========
-        wave_generator_->status_ = WaveStatus::WAVE_ALL; // 开环调试时强制迈步，方便看步态
+        // ========== 核心修复：模拟闭环流程，先切到全支撑，再切到迈步 ==========
+        // 加一个静态变量，记录是不是第一次进入开环
+        static bool first_time_open_loop = true;
+        
+        if(first_time_open_loop)
+        {
+            // 第一次：先强制切到 STANCE_ALL（全支撑），模拟闭环的初始状态
+            wave_generator_->status_ = WaveStatus::STANCE_ALL;
+            first_time_open_loop = false;
+        }
+        else
+        {
+            // 之后：再强制切到 WAVE_ALL（迈步）
+            // 因为是从 STANCE_ALL 切过来的，作者的平滑逻辑能处理，不会死锁！
+            wave_generator_->status_ = WaveStatus::WAVE_ALL;
+        }
     }
 
     // 计算并设置关节PID增益（支撑相/摆动相使用不同增益）
