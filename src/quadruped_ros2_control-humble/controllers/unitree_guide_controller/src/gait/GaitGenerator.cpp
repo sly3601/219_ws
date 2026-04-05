@@ -96,7 +96,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0)
             {
                 // 步长：每次迈步向前移动5厘米（可调节）
-                double step_length = 0.005;
+                double step_length = 0.000005;
                 // 方向规则：对角腿(0+3)向前，(1+2)向后 → 标准Trot步态
                 double dir = (i == 0 || i == 3) ? 1.0 : -1.0;
 

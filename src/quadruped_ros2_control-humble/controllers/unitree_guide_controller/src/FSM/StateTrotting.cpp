@@ -34,7 +34,7 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 初始化成员变量：步态生成器（从控制组件中初始化，用于生成足端目标轨迹）
     gait_generator_(ctrl_component) {
     // 提高摆动高度：避免足端落地过浅，增强整体支撑余量（适配1.5倍腿长）
-    gait_height_ = 0.003;
+    gait_height_ = 0.00003;
     // 身体位置比例增益：大幅提高z轴抑制下沉，x/y提高增强平动控制（全局优化，无后腿单独补偿）
     Kpp = Vec3(3, 3, 3).asDiagonal();
     // 身体速度阻尼增益：增强z轴阻尼抗抖动，x/y提高抑制大惯性超调
@@ -84,7 +84,8 @@ void StateTrotting::enter() {
         // 开环：不用 estimator，用正运动学算足端高度
         auto feet_2b = robot_model_->getFeet2BPositions();
         double foot_z_avg = (feet_2b[0].p.z() + feet_2b[1].p.z() + feet_2b[2].p.z() + feet_2b[3].p.z()) / 4.0;
-        pcd_ << 0.0, 0.0, -foot_z_avg + 0.03; // 直接设XY为0，Z用正运动学算
+        // pcd_ << 0.0, 0.0, -foot_z_avg + 0.03; // 直接设XY为0，Z用正运动学算
+        pcd_ << 0.0, 0.0, -foot_z_avg;
         yaw_cmd_ = 0;
         Rd.setIdentity();
     }
