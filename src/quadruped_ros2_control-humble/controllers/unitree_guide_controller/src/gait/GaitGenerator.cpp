@@ -64,8 +64,10 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
     }
 
     for (int i = 0; i < 4; i++) {
-        if (wave_generator_->contact_(i) == 1) {
-            if (wave_generator_->phase_(i) < 0.5) {
+        if (wave_generator_->contact_(i) == 1) 
+        {
+            if (wave_generator_->phase_(i) < 0.5) 
+            {
                 // foot contact the ground
                 if (trotting_ptr_ && trotting_ptr_->troting_kalman == 1) 
                 {
@@ -73,20 +75,15 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 }
                 else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0) 
                 {
-                    // 【修复】每次支撑相都重新取正运动学，保证最新
-                    auto feet_2b = ctrl_component_.robot_model_->getFeet2BPositions();
-                    current_feet_pos.col(i) = Eigen::Vector3d(
-                        feet_2b[i].p.x(),
-                        feet_2b[i].p.y(),
-                        feet_2b[i].p.z()
-                    );
-                    start_p_.col(i) = current_feet_pos.col(i);
+                    // 开环：只在first_run_初始化一次 start_p_，之后就完全不更新了（不依赖 estimator）
                 }
                 
             }
             feet_pos.col(i) = start_p_.col(i);
             feet_vel.col(i).setZero();
-        } else {
+        } 
+        else 
+        {
             // foot not contact, swing
             end_p_.col(i) = feet_end_calc_.calcFootPos(i, vxy_goal_, d_yaw_goal_, wave_generator_->phase_(i)); // 足端终点位置规划器,计算摆动末端位置
             feet_pos.col(i) = getFootPos(i);
