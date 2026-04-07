@@ -56,3 +56,5 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
  
  ## V2系列
 **V2系列正在开发中**
+* 2026.04.07 v2.01
+  * 修复1：单圈第二编码器导致电机初始化移动位置舍近求远的问题（未实机验证）

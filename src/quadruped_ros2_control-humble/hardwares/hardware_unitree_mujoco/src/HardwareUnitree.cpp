@@ -9,8 +9,8 @@
 
 #include "crc32.h"
 
-
-
+#include <cmath>
+#include <unordered_map>
 
 
 using hardware_interface::return_type;
@@ -557,10 +557,40 @@ bool HardwareUnitree::parseDmActData(const std::string& yaml_file_path)
     }
 }
 
+// ========== 新增：全局函数和变量，用于电机状态/指令修正（转向+偏置） ==========
+namespace
+{
+    constexpr float PI_F = 3.14159265358979323846f;
+    constexpr float TWO_PI_F = 2.0f * PI_F;
+
+    float wrapToPi(float angle)
+    {
+        while (angle > PI_F)
+        {
+            angle -= TWO_PI_F;
+        }
+        while (angle <= -PI_F)
+        {
+            angle += TWO_PI_F;
+        }
+        return angle;
+    }
+
+    std::unordered_map<std::string, float> g_last_raw_pos;
+    // 新增：存储每个电机的周期偏移量（上电初始化一次）
+    std::unordered_map<std::string, float> g_angle_cycle_offset;
+}
+
 // 修正电机原始状态（硬件→ROS2：匹配真实机器人）
 void HardwareUnitree::correctMotorState(damiao::DmActData& dm_data) {
+    // 新增：仅在上电后第一次运行时存储原始位置
+    if (g_last_raw_pos.find(dm_data.name) == g_last_raw_pos.end()) {
+        g_last_raw_pos[dm_data.name] = dm_data.pos;
+    }
+
     // 1. 位置修正：原始位置 × 转向系数 + 零点偏置
     dm_data.pos = dm_data.pos * dm_data.direction + dm_data.offset;
+    dm_data.pos = wrapToPi(dm_data.pos);
     // 2. 速度修正：原始速度 × 转向系数（方向同步）
     dm_data.vel = dm_data.vel * dm_data.direction;
     // 3. 力矩修正：原始力矩 × 转向系数（方向同步）
@@ -570,13 +600,42 @@ void HardwareUnitree::correctMotorState(damiao::DmActData& dm_data) {
 // 修正电机下发指令（ROS2→硬件：匹配硬件原始值）
 void HardwareUnitree::correctMotorCommand(damiao::DmActData& dm_data) {
     // 1. 位置指令：(目标位置 - 零点偏置) ÷ 转向系数（反向计算）
-    dm_data.cmd_pos = (dm_data.cmd_pos - dm_data.offset) / dm_data.direction;
+    float raw_cmd_base = (dm_data.cmd_pos - dm_data.offset) / dm_data.direction;
+    
+    // 新增：仅在上电后第一次运行时计算周期偏移量
+    if (g_angle_cycle_offset.find(dm_data.name) == g_angle_cycle_offset.end()) {
+        float raw_pos_ref = g_last_raw_pos.at(dm_data.name);
+        g_angle_cycle_offset[dm_data.name] = std::round((raw_pos_ref - raw_cmd_base) / TWO_PI_F) * TWO_PI_F;
+    }
+    dm_data.cmd_pos = raw_cmd_base + g_angle_cycle_offset[dm_data.name];
+
     // 2. 速度指令：目标速度 ÷ 转向系数
     dm_data.cmd_vel = dm_data.cmd_vel / dm_data.direction;
     // 3. 力矩指令：目标力矩 ÷ 转向系数
     dm_data.cmd_effort = dm_data.cmd_effort / dm_data.direction;
     // KP/KD无需修正（比例参数，与方向无关）
 }
+
+// // 修正电机原始状态（硬件→ROS2：匹配真实机器人）
+// void HardwareUnitree::correctMotorState(damiao::DmActData& dm_data) {
+//     // 1. 位置修正：原始位置 × 转向系数 + 零点偏置
+//     dm_data.pos = dm_data.pos * dm_data.direction + dm_data.offset;
+//     // 2. 速度修正：原始速度 × 转向系数（方向同步）
+//     dm_data.vel = dm_data.vel * dm_data.direction;
+//     // 3. 力矩修正：原始力矩 × 转向系数（方向同步）
+//     dm_data.effort = dm_data.effort * dm_data.direction;
+// }
+
+// // 修正电机下发指令（ROS2→硬件：匹配硬件原始值）
+// void HardwareUnitree::correctMotorCommand(damiao::DmActData& dm_data) {
+//     // 1. 位置指令：(目标位置 - 零点偏置) ÷ 转向系数（反向计算）
+//     dm_data.cmd_pos = (dm_data.cmd_pos - dm_data.offset) / dm_data.direction;
+//     // 2. 速度指令：目标速度 ÷ 转向系数
+//     dm_data.cmd_vel = dm_data.cmd_vel / dm_data.direction;
+//     // 3. 力矩指令：目标力矩 ÷ 转向系数
+//     dm_data.cmd_effort = dm_data.cmd_effort / dm_data.direction;
+//     // KP/KD无需修正（比例参数，与方向无关）
+// }
 
 
 
