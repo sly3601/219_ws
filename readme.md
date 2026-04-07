@@ -1,6 +1,25 @@
-该版本正式成为云端版本V1系列
+# 1. 代码运行方式
+1. 编译
+```
+colcon build --packages-up-to unitree_guide_controller go1_description keyboard_input hardware_unitree_mujoco --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --event-handlers console_direct+ --continue-on-error --cmake-args -DCMAKE_INSTALL_PREFIX=${HOME}/219_ws/install
+```
+2. source一下资源目录
+```
+source install/setup.bash
+```
+3. 运行launch文件
+```
+ros2 launch unitree_guide_controller gazebo_classic.launch.py
+```
+4. 开启plotjugger进行数据可视化
+```
+LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/opt/ros/humble/lib ros2 run plotjuggler plotjuggler
+```
 
 
+# 2. 四足机器人开发过程记录
+## V1系列
+**V1系列跑通了所有底层硬件通讯和初始机器人数学建模和姿态调试，并完成至troting状态的正常开环运行**
 * 2026.01.14 V1.1 完成了新硬件接口的初步对接！
 * 2026.01.16 V1.2 补充了imu的硬件底层（未测试）
   *使用下面指令编译整个工程： colcon build --packages-up-to unitree_guide_controller go1_description keyboard_input hardware_unitree_mujoco --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --event-handlers console_direct+ --continue-on-error --cmake-args -DCMAKE_INSTALL_PREFIX=${HOME}/219_ws/install # 仅加这行，确保路径统一
@@ -34,3 +53,6 @@
   * 重大修改3：第一次跑通开环troting！新加入了大量的开环troting内容。其中有大量需要优化的代码如自己写的二连杆的运动学逆解。
   * 明确了：关节最大扭矩的限幅处，就在HardwareUnitree.cpp文件的注释：修改限幅2026.02.06这里，我改大了一些。
   * 至此，V1系列完结，流程全部跑通。
+ 
+ ## V2系列
+**V2系列正在开发中**
