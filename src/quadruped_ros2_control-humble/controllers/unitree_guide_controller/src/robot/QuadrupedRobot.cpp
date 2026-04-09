@@ -48,6 +48,7 @@ std::vector<KDL::JntArray> QuadrupedRobot::getQ(const std::vector<KDL::Frame> &p
     return result;
 }
 
+// 注意这个函数是强旋转约束
 Vec12 QuadrupedRobot::getQ(const Vec34 &vecP) const {
     Vec12 q;
     for (int i(0); i < 4; ++i) {
@@ -75,7 +76,6 @@ std::vector<KDL::Frame> QuadrupedRobot::getFeet2BPositions() const {
     result.resize(4);
     for (int i = 0; i < 4; i++) {
         result[i] = robot_legs_[i]->calcPEe2B(current_joint_pos_[i]);
-        result[i].M = KDL::Rotation::Identity();  // 单位矩阵，表示足底坐标无旋转
     }
     return result;
 }

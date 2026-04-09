@@ -59,6 +59,11 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 
                 // 正运动学计算足端位置
                 KDL::Frame foot_frame = ctrl_component_.robot_model_->calcPEe2B_four_feet(i, fixed_q);
+                
+                start_p_(0, i) = foot_frame.p.x();
+                start_p_(1, i) = foot_frame.p.y();
+                start_p_(2, i) = foot_frame.p.z();
+                end_p_.col(i) = start_p_.col(i);
             }
         }
         first_run_ = false;
