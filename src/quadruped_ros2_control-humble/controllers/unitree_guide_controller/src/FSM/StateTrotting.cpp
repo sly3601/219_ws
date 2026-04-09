@@ -400,6 +400,7 @@ void StateTrotting::calcTau() {
 
 /**
  * @brief 计算关节位置和速度指令（通过足端目标轨迹逆运动学求解）
+ * 这函数只管目标足底位置的逆解，别的不管
  */
 void StateTrotting::calcQQd() {
     Vec3 pos_body_to_use;
@@ -439,136 +440,50 @@ void StateTrotting::calcQQd() {
     // 通过机器人模型逆运动学，根据足端目标位置求解关节目标位置q_goal（12个关节，4条腿×3个）
     Vec12 q_goal;
     Vec12 qd_goal;
-    qd_goal.setZero(); // 开环模式速度全设为0
+    q_goal.setZero();
+    qd_goal.setZero();
 
-    if(troting_kalman == 1) {
-        // 闭环：完全保留你原来的逻辑
-        q_goal = robot_model_->getQ(pos_feet_target);
+    // =====================================================
+    // 1) 统一恢复为正常三轴逆解：不再区分闭环/开环使用不同IK
+    //    开环和闭环都统一走 robot_model_->getQ(pos_feet_target)
+    // =====================================================
+    q_goal = robot_model_->getQ(pos_feet_target);
+    if(troting_kalman == 1) 
+    {
+        // 闭环模式保留原来的关节速度逆解
         qd_goal = robot_model_->getQd(pos_feet_body, vel_feet_target);
     } 
-    else 
+    else if(troting_kalman == 0)
     {
-        // ==============================================
-        // 【开环模式最小修复】
-        // 目标：
-        // 1) 保留 step_length = 0 的原地摆动
-        // 2) 保留 fixed_q = [0, 0.67, -1.3]
-        // 3) 保留你自己的二维平面二连杆逆解
-        //
-        // 核心思想：
-        // 不再直接把 body 坐标下的绝对 x/z 喂给二维逆解；
-        // 而是让二维逆解围绕 fixedstand 的局部平面参考点工作。
-        // 对于原地摆动，X 保持 fixedstand 的局部参考值，
-        // Z 只跟随 gait 带来的竖直位移增量。
-        // ==============================================
+        // 开环模式速度先清零，避免额外扰动
+        qd_goal.setZero();
+    }   
+    // =====================================================
+    // 2) 关节命令最终限幅（重点限制髋关节）
+    //    这是“命令层限幅”，为了安全应急的，但足够适合作为当前版本
+    // =====================================================
 
-        const double L_THIGH = 0.2835; // 大腿长度
-        const double L_CALF  = 0.2835; // 小腿长度
+    // ---------- 髋关节（第0关节）小范围限制 ----------
+    const double hip_center = 0.0;    // 希望髋关节稳定在0附近
+    const double hip_range  = 0.15;   // 先用 ±0.15 rad（约 ±8.6°）
 
-        // 你认可的 fixedstand 关节角
-        KDL::JntArray fixed_q(3);
-        fixed_q(0) = 0.0;
-        fixed_q(1) = 0.67;
-        fixed_q(2) = -1.3;
-
-        // --------------------------------------------------
-        // 1) 先用“当前这套二维逆解的几何定义”反推：
-        //    fixed_q 对应的局部平面参考点 (x_local_ref, z_local_ref)
-        // --------------------------------------------------
-        const double q1_ref = fixed_q(1);
-        const double q2_ref = fixed_q(2);
-
-        // 从“大腿根关节”到“脚点”的直线距离 L_ref
-        // 二连杆三角形里，已知两边 L_THIGH,L_CALF 和夹角 |q2_ref|，求第三边。这是标准余弦定理。
-        double L_ref = sqrt(L_THIGH * L_THIGH +
-                            L_CALF  * L_CALF -
-                            2.0 * L_THIGH * L_CALF * cos(fabs(q2_ref)));
-        // 这一步是在求 alpha_ref：alpha_ref 是“大腿杆”和“髋到脚的连线 L_ref”之间的夹角；也是三角形里另一个角；同样来自余弦定理。这里夹 [-1,1] 是数值保护，防止浮点误差让 acos() 爆掉。
-        double cos_alpha_ref =
-            (L_THIGH * L_THIGH + L_ref * L_ref - L_CALF * L_CALF) /
-            (2.0 * L_THIGH * L_ref);
-        cos_alpha_ref = std::max(-1.0, std::min(1.0, cos_alpha_ref));
-        double alpha_ref = acos(cos_alpha_ref);
-
-        // theta_ref是固定站姿下，髋到脚的那根连线 L_ref，在这个局部二维平面里指向哪里。
-        double theta_ref = q1_ref + alpha_ref;
-
-        // 这一步把极坐标 (L_ref, theta_ref) 变成局部二维坐标 (x_local_ref, z_local_ref)。
-        const double x_local_ref = L_ref * sin(theta_ref);
-        const double z_local_ref = L_ref * cos(theta_ref);
-
-        // --------------------------------------------------
-        // 2) 对四条腿分别求解：
-        //    只读取 gait 带来的“竖直位移增量 dz”
-        //    X 一律固定在局部参考值 x_local_ref
-        // --------------------------------------------------
-        for (int i = 0; i < 4; ++i) {
-            // 髋关节依然固定为 0
-            q_goal(i * 3 + 0) = 0.0;
-
-            // 用 fixed stand理想状态下的正运动学，算出该腿在 body 坐标下的“基准脚高”
-            KDL::Frame foot_fixed = robot_model_->calcPEe2B_openloop(i, fixed_q);
-            double z_body_ref = foot_fixed.p.z();
-
-            // 只取 目标脚高 相对 fixedstand 的竖直变化量
-            double dz = pos_feet_target(2, i) - z_body_ref;
-
-            // 局部二维逆解输入：
-            // X 固定为 fixedstand 的局部参考值
-            // Z = 局部参考值 + 固定竖直增量
-            double x = x_local_ref;
-            double z = z_local_ref + dz;
-
-            // 这里的 L 是当前目标点 (x,z) 到髋关节原点的直线距离。
-            double L = sqrt(x * x + z * z);
-            // 限幅
-            L = std::max(L, 1e-6);
-            L = std::min(L, L_THIGH + L_CALF - 1e-6);
-
-            // 先解膝关节 q2。大腿长 L1，小腿长 L2，髋到脚距离 L，就能求出膝处夹角的余弦。
-            double cos_q2 =
-                (L_THIGH * L_THIGH + L_CALF * L_CALF - L * L) /
-                (2.0 * L_THIGH * L_CALF);
-            cos_q2 = std::max(-1.0, std::min(1.0, cos_q2));
-            // 这个负号特别重要：确定正方向
-            double q2 = -acos(cos_q2);
-
-            // 再解大腿关节 q1，一样的高中数学解三角形
-            double theta = atan2(x, z);
-            double cos_q1 =
-                (L_THIGH * L_THIGH + L * L - L_CALF * L_CALF) /
-                (2.0 * L_THIGH * L);
-            cos_q1 = std::max(-1.0, std::min(1.0, cos_q1));
-            double alpha = acos(cos_q1);
-            double q1 = theta - alpha;
-
-            // 写回 12 维关节目标
-            q_goal(i * 3 + 1) = q1; // 大腿关节
-            q_goal(i * 3 + 2) = q2; // 小腿关节
-        }
-    }
-
-
-    // ========== 核心修改：限制髋关节在小区间内 ==========
-    // 1. 定义小区间 (单位: 弧度)
-    //    建议先从 ±0.15 开始 (约 ±8.6度)，觉得不够再慢慢加到 ±0.2 或 ±0.25
-    const double hip_center = 0.0; // 区间中心，通常是0，或者你正常站立时的角度
-    const double hip_range = 0.15;  // 区间半长
-    
-    const double hip_max = hip_center + hip_range;
     const double hip_min = hip_center - hip_range;
+    const double hip_max = hip_center + hip_range;
 
-    // 2. 对四条腿的髋关节进行位置限幅
-    for (int leg_idx = 0; leg_idx < 4; leg_idx++) {
-        int hip_joint_idx = leg_idx * 3;
-        
+
+
+    // ---------- 逐条腿做髋关节限幅 ----------
+    for (int leg_idx = 0; leg_idx < 4; ++leg_idx) 
+    {
+        const int hip_idx   = leg_idx * 3 + 0;
+        const int thigh_idx = leg_idx * 3 + 1;
+        const int calf_idx  = leg_idx * 3 + 2;
+
         // 位置限幅
-        q_goal(hip_joint_idx) = saturation(q_goal(hip_joint_idx), Vec2(hip_min, hip_max));
-        
-        // (可选) 速度也适当限制一下，防止抽风
-        qd_goal(hip_joint_idx) = saturation(qd_goal(hip_joint_idx), Vec2(-2.0, 2.0)); 
+        q_goal(hip_idx)  = saturation(q_goal(hip_idx),   Vec2(hip_min,   hip_max));
+        // 髋关节速度也顺手限一下，防止突然抽动
+        qd_goal(hip_idx) = saturation(qd_goal(hip_idx), Vec2(-2.0, 2.0));
     }
-    // =================================================
 
     // 将关节目标位置和速度赋值给控制接口
     for (int i = 0; i < 12; i++) {
@@ -588,19 +503,19 @@ void StateTrotting::calcGain() const {
             if (wave_generator_->contact_(i) == 0) {
                 // ================= 摆动相（脚在空中） =================
                 // 增益中等，跟轨迹但不僵硬
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(65.0); // 从3改到12
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(6.3);  // 从0.1改到0.5
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(65.0); // 从65
+                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(6.3);  
             } else {
                 // ================= 支撑相（脚踩地） =================
                 // 增益拉高，抗干扰、站稳
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(68.0); // 从3改到45
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(6.8);  // 从0.1改到1.5
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(68.0); // 从68
+                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(6.8);  
             }
         }
 
-        // 【单独设置髋关节】不管什么状态，都用超大增益锁死（你现在的是对的，保持）
+        // 【单独设置髋关节】
         int hip_idx = i * 3 + 0;
-        ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(70.0); 
+        ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(70.0); // 70
         ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(7.0);
     }
 }

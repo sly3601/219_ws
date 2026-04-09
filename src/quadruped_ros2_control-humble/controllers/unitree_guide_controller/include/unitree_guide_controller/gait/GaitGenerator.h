@@ -83,7 +83,6 @@ private:
     StateTrotting* trotting_ptr_; // 【新增】保存 StateTrotting 的指针
     CtrlComponent& ctrl_component_; // 新增：引用控制组件，获取robot_model_
 
-    Vec4 fixed_foot_y_; // 【新增】4条腿的固定Y坐标，对应髋关节0度
 };
 
 

@@ -130,37 +130,9 @@ void QuadrupedRobot::update() {
 }
 
 
-// 【新增实现】锁死髋关节的逆解
-Vec12 QuadrupedRobot::getQLockedHip(const Vec34 &vecP, double locked_hip_pos) const {
-    Vec12 q;
-    for (int i(0); i < 4; ++i) {
-        // 1. 构造目标足端 Frame
-        KDL::Frame frame;
-        frame.p = KDL::Vector(vecP.col(i)[0], vecP.col(i)[1], vecP.col(i)[2]);
-        frame.M = KDL::Rotation::Identity();
-
-        // 2. 构造初始猜测值 (Initial Guess)
-        // 这是关键：我们把当前的关节角读出来，但是强制把髋关节替换成我们想要的锁定值
-        KDL::JntArray q_init = current_joint_pos_[i];
-        q_init(0) = locked_hip_pos; // 强制髋关节初始角度为 0
-
-        // 3. 调用 KDL 逆解
-        // 因为初始猜测里髋关节已经是 0 了，数值求解器会尽量保持这个角度不变
-        KDL::JntArray q_result = robot_legs_[i]->calcQ(frame, q_init);
-
-        // 4. 双重保险：算完后再次强制覆盖髋关节角度
-        q_result(0) = locked_hip_pos;
-
-        // 5. 赋值给输出向量
-        q.segment(3 * i, 3) = q_result.data;
-    }
-    return q;
-}
-
-// 【新增实现】给定关节角算足端位置
-KDL::Frame QuadrupedRobot::calcPEe2B_openloop(const int index, const KDL::JntArray& q) const {
+// 【新增实现】同时运动学正解所有四个足底坐标
+KDL::Frame QuadrupedRobot::calcPEe2B_four_feet(const int index, const KDL::JntArray& q) const {
     // calcPEe2B函数：运动学正解，计算身体坐标系下足底位置
     KDL::Frame foot_frame = robot_legs_[index]->calcPEe2B(q);
-    foot_frame.M = KDL::Rotation::Identity();  // 与 getFeet2BPositions() 保持一致
     return foot_frame;
 }

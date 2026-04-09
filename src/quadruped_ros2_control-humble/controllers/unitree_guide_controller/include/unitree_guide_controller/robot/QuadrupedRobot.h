@@ -90,11 +90,9 @@ public:
     std::vector<KDL::JntArray> current_joint_vel_;
 
     void update();
-    // 【新增 1/2：声明】锁死髋关节的逆解
-    [[nodiscard]] Vec12 getQLockedHip(const Vec34 &vecP, double locked_hip_pos = 0.0) const;
 
-    // 【新增 2/2：声明】给定关节角算足端位置
-    [[nodiscard]] KDL::Frame calcPEe2B_openloop(const int index, const KDL::JntArray& q) const;
+    // 【新增】同时运动学正解所有四个足底坐标
+    [[nodiscard]] KDL::Frame calcPEe2B_four_feet(const int index, const KDL::JntArray& q) const;
 
 
 
