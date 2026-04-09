@@ -70,7 +70,7 @@ Vec12 QuadrupedRobot::getQd(const std::vector<KDL::Frame> &pos, const Vec34 &vel
 }
 
 /* 运动学逆解，算出足底位姿 */
-std::vector<KDL::Frame> QuadrupedRobot::getFeet2BPositions() const { 
+std::vector<KDL::Frame> QuadrupedRobot::getFeet2BPositions() const {
     std::vector<KDL::Frame> result;
     result.resize(4);
     for (int i = 0; i < 4; i++) {
@@ -158,7 +158,8 @@ Vec12 QuadrupedRobot::getQLockedHip(const Vec34 &vecP, double locked_hip_pos) co
 }
 
 // 【新增实现】给定关节角算足端位置
-KDL::Frame QuadrupedRobot::calcFootPosFromJoints(const int index, const KDL::JntArray& q) const {
+KDL::Frame QuadrupedRobot::calcPEe2B_openloop(const int index, const KDL::JntArray& q) const {
+    // calcPEe2B函数：运动学正解，计算身体坐标系下足底位置
     KDL::Frame foot_frame = robot_legs_[index]->calcPEe2B(q);
     foot_frame.M = KDL::Rotation::Identity();  // 与 getFeet2BPositions() 保持一致
     return foot_frame;

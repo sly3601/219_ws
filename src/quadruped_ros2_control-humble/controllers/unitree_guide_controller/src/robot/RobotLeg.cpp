@@ -15,6 +15,7 @@ RobotLeg::RobotLeg(const KDL::Chain &chain) {
     jac_solver_ = std::make_shared<KDL::ChainJntToJacSolver>(chain);
 }
 
+// calcPEe2B函数：运动学正解，计算身体坐标系下足底位置
 KDL::Frame RobotLeg::calcPEe2B(const KDL::JntArray &joint_positions) const {
     KDL::Frame pEe;
     fk_pose_solver_->JntToCart(joint_positions, pEe);

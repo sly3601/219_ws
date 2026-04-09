@@ -28,44 +28,47 @@ GaitGenerator::GaitGenerator(CtrlComponent &ctrl_component, StateTrotting* trott
 
 
 
-/* 纯赋值函数 */
+/* 纯赋值函数，无分析意义 */
 void GaitGenerator::setGait(Vec2 vxy_goal_global, const double d_yaw_goal, const double gait_height) {
     vxy_goal_ = std::move(vxy_goal_global);
     d_yaw_goal_ = d_yaw_goal;
     gait_height_ = gait_height;
 }
 
+/* 核心：步态生成函数 */
 void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
-    // 【修复】先定义变量！你之前没定义，所以报错未定义！
     Vec34 current_feet_pos;
-    if (first_run_) {
+    if (first_run_) 
+    {
         if (trotting_ptr_ && trotting_ptr_->troting_kalman == 1) 
         {
             // 闭环：原来的逻辑，用 estimator 的全局足端位置
+            // 初始化时，start_p_就是当前的足端位置，后续每次落地都会刷新足底起始位置
             start_p_ = estimator_->getFeetPos();
         }
         else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0) 
         {
+            // 开环：直接用正运动学计算当前足端位置，完全不依赖估计器
             for (int i = 0; i < 4; i++) 
             {
+                // fixed_q 是 FIXEDSTAND状态下，任意一条腿，完美站立时的关节角度矩阵
                 KDL::JntArray fixed_q(3);
                 fixed_q(0) = 0.0;
                 fixed_q(1) = 0.67;
                 fixed_q(2) = -1.3;
                 
-                // 【修复】调用新增的 public 函数
-                KDL::Frame foot_frame = ctrl_component_.robot_model_->calcFootPosFromJoints(i, fixed_q);
-                
-                start_p_.col(i) << foot_frame.p.x(), foot_frame.p.y(), foot_frame.p.z();
-                // 【新增】记录初始站立位的Y坐标，全程固定不变
+                // 正运动学计算足端位置
+                KDL::Frame foot_frame = ctrl_component_.robot_model_->calcPEe2B_openloop(i, fixed_q);
+                // 记录初始站立位的Y坐标，全程固定不变
                 fixed_foot_y_(i) = foot_frame.p.y();
             }
-}
+        }
         first_run_ = false;
     }
 
     // 遍历机器人的4条腿（0:右前 1:左前 2:右后 3:左后）
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 4; i++) 
+    {
         // 条件1：当前腿处于支撑相（踩地）
         if (wave_generator_->contact_(i) == 1) 
         {

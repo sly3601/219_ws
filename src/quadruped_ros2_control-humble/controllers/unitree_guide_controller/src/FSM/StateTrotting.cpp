@@ -81,10 +81,9 @@ void StateTrotting::enter() {
     }
     else if(troting_kalman == 0)
     {
-        // 开环：不用 estimator，用正运动学算足端高度
+        // 得到四足当前实时的四个足底末端位置
         auto feet_2b = robot_model_->getFeet2BPositions();
         double foot_z_avg = (feet_2b[0].p.z() + feet_2b[1].p.z() + feet_2b[2].p.z() + feet_2b[3].p.z()) / 4.0;
-        // pcd_ << 0.0, 0.0, -foot_z_avg + 0.03; // 直接设XY为0，Z用正运动学算
         pcd_ << 0.0, 0.0, -foot_z_avg;
         yaw_cmd_ = 0;
         Rd.setIdentity();
@@ -117,9 +116,7 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     }
     else if(troting_kalman == 0)
     {
-        // 开环模式：位置、速度全设为0，旋转矩阵固定为单位矩阵（完全不用IMU）
-        pos_body_.setZero();
-        vel_body_.setZero();
+        // 全局坐标系 = 身体坐标系，不考虑任何移动的情况。
         B2G_RotMat.setIdentity(); // 固定身体坐标系和全局坐标系一致，不受实际姿态影响
     }
     // 计算全局坐标系到身体坐标系的旋转矩阵G2B_RotMat（为B2G_RotMat的转置，正交矩阵性质）
@@ -448,98 +445,108 @@ void StateTrotting::calcQQd() {
         // 闭环：完全保留你原来的逻辑
         q_goal = robot_model_->getQ(pos_feet_target);
         qd_goal = robot_model_->getQd(pos_feet_body, vel_feet_target);
-    } else {
-    // ==============================================
-    // 【开环模式最小修复】
-    // 目标：
-    // 1) 保留 step_length = 0 的原地摆动
-    // 2) 保留 fixed_q = [0, 0.67, -1.3]
-    // 3) 保留你自己的二维平面二连杆逆解
-    //
-    // 核心思想：
-    // 不再直接把 body 坐标下的绝对 x/z 喂给二维逆解；
-    // 而是让二维逆解围绕 fixedstand 的局部平面参考点工作。
-    // 对于原地摆动，X 保持 fixedstand 的局部参考值，
-    // Z 只跟随 gait 带来的竖直位移增量。
-    // ==============================================
+    } 
+    else 
+    {
+        // ==============================================
+        // 【开环模式最小修复】
+        // 目标：
+        // 1) 保留 step_length = 0 的原地摆动
+        // 2) 保留 fixed_q = [0, 0.67, -1.3]
+        // 3) 保留你自己的二维平面二连杆逆解
+        //
+        // 核心思想：
+        // 不再直接把 body 坐标下的绝对 x/z 喂给二维逆解；
+        // 而是让二维逆解围绕 fixedstand 的局部平面参考点工作。
+        // 对于原地摆动，X 保持 fixedstand 的局部参考值，
+        // Z 只跟随 gait 带来的竖直位移增量。
+        // ==============================================
 
-    const double L_THIGH = 0.2835; // 大腿长度
-    const double L_CALF  = 0.2835; // 小腿长度
+        const double L_THIGH = 0.2835; // 大腿长度
+        const double L_CALF  = 0.2835; // 小腿长度
 
-    // 你认可的 fixedstand 关节角
-    KDL::JntArray fixed_q(3);
-    fixed_q(0) = 0.0;
-    fixed_q(1) = 0.67;
-    fixed_q(2) = -1.3;
+        // 你认可的 fixedstand 关节角
+        KDL::JntArray fixed_q(3);
+        fixed_q(0) = 0.0;
+        fixed_q(1) = 0.67;
+        fixed_q(2) = -1.3;
 
-    // --------------------------------------------------
-    // 1) 先用“当前这套二维逆解的几何定义”反推：
-    //    fixed_q 对应的局部平面参考点 (x_local_ref, z_local_ref)
-    // --------------------------------------------------
-    const double q1_ref = fixed_q(1);
-    const double q2_ref = fixed_q(2);
+        // --------------------------------------------------
+        // 1) 先用“当前这套二维逆解的几何定义”反推：
+        //    fixed_q 对应的局部平面参考点 (x_local_ref, z_local_ref)
+        // --------------------------------------------------
+        const double q1_ref = fixed_q(1);
+        const double q2_ref = fixed_q(2);
 
-    double L_ref = sqrt(L_THIGH * L_THIGH +
-                        L_CALF  * L_CALF -
-                        2.0 * L_THIGH * L_CALF * cos(fabs(q2_ref)));
+        // 从“大腿根关节”到“脚点”的直线距离 L_ref
+        // 二连杆三角形里，已知两边 L_THIGH,L_CALF 和夹角 |q2_ref|，求第三边。这是标准余弦定理。
+        double L_ref = sqrt(L_THIGH * L_THIGH +
+                            L_CALF  * L_CALF -
+                            2.0 * L_THIGH * L_CALF * cos(fabs(q2_ref)));
+        // 这一步是在求 alpha_ref：alpha_ref 是“大腿杆”和“髋到脚的连线 L_ref”之间的夹角；也是三角形里另一个角；同样来自余弦定理。这里夹 [-1,1] 是数值保护，防止浮点误差让 acos() 爆掉。
+        double cos_alpha_ref =
+            (L_THIGH * L_THIGH + L_ref * L_ref - L_CALF * L_CALF) /
+            (2.0 * L_THIGH * L_ref);
+        cos_alpha_ref = std::max(-1.0, std::min(1.0, cos_alpha_ref));
+        double alpha_ref = acos(cos_alpha_ref);
 
-    double cos_alpha_ref =
-        (L_THIGH * L_THIGH + L_ref * L_ref - L_CALF * L_CALF) /
-        (2.0 * L_THIGH * L_ref);
-    cos_alpha_ref = std::max(-1.0, std::min(1.0, cos_alpha_ref));
+        // theta_ref是固定站姿下，髋到脚的那根连线 L_ref，在这个局部二维平面里指向哪里。
+        double theta_ref = q1_ref + alpha_ref;
 
-    double alpha_ref = acos(cos_alpha_ref);
-    double theta_ref = q1_ref + alpha_ref;
+        // 这一步把极坐标 (L_ref, theta_ref) 变成局部二维坐标 (x_local_ref, z_local_ref)。
+        const double x_local_ref = L_ref * sin(theta_ref);
+        const double z_local_ref = L_ref * cos(theta_ref);
 
-    // 这是“局部二维平面”里，与 fixed_q 完全一致的参考脚点
-    const double x_local_ref = L_ref * sin(theta_ref);
-    const double z_local_ref = L_ref * cos(theta_ref);
+        // --------------------------------------------------
+        // 2) 对四条腿分别求解：
+        //    只读取 gait 带来的“竖直位移增量 dz”
+        //    X 一律固定在局部参考值 x_local_ref
+        // --------------------------------------------------
+        for (int i = 0; i < 4; ++i) {
+            // 髋关节依然固定为 0
+            q_goal(i * 3 + 0) = 0.0;
 
-    // --------------------------------------------------
-    // 2) 对四条腿分别求解：
-    //    只读取 gait 带来的“竖直位移增量 dz”
-    //    X 一律固定在局部参考值 x_local_ref
-    // --------------------------------------------------
-    for (int i = 0; i < 4; ++i) {
-        // 髋关节依然固定为 0
-        q_goal(i * 3 + 0) = 0.0;
+            // 用 fixed stand理想状态下的正运动学，算出该腿在 body 坐标下的“基准脚高”
+            KDL::Frame foot_fixed = robot_model_->calcPEe2B_openloop(i, fixed_q);
+            double z_body_ref = foot_fixed.p.z();
 
-        // 用 fixed_q 的正运动学，算出该腿在 body 坐标下的“基准脚高”
-        KDL::Frame foot_fixed = robot_model_->calcFootPosFromJoints(i, fixed_q);
-        double z_body_ref = foot_fixed.p.z();
+            // 只取 目标脚高 相对 fixedstand 的竖直变化量
+            double dz = pos_feet_target(2, i) - z_body_ref;
 
-        // 只取 gait 相对 fixedstand 的竖直变化量
-        double dz = pos_feet_target(2, i) - z_body_ref;
+            // 局部二维逆解输入：
+            // X 固定为 fixedstand 的局部参考值
+            // Z = 局部参考值 + 固定竖直增量
+            double x = x_local_ref;
+            double z = z_local_ref + dz;
 
-        // 局部二维逆解输入：
-        // X 固定为 fixedstand 的局部参考值
-        // Z = 局部参考值 + gait 竖直增量
-        double x = x_local_ref;
-        double z = z_local_ref + dz;
+            // 这里的 L 是当前目标点 (x,z) 到髋关节原点的直线距离。
+            double L = sqrt(x * x + z * z);
+            // 限幅
+            L = std::max(L, 1e-6);
+            L = std::min(L, L_THIGH + L_CALF - 1e-6);
 
-        // 3) 你的二维平面二连杆逆解 —— 原样保留
-        double L = sqrt(x * x + z * z);
-        L = std::max(L, 1e-6);
-        L = std::min(L, L_THIGH + L_CALF - 1e-6);
+            // 先解膝关节 q2。大腿长 L1，小腿长 L2，髋到脚距离 L，就能求出膝处夹角的余弦。
+            double cos_q2 =
+                (L_THIGH * L_THIGH + L_CALF * L_CALF - L * L) /
+                (2.0 * L_THIGH * L_CALF);
+            cos_q2 = std::max(-1.0, std::min(1.0, cos_q2));
+            // 这个负号特别重要：确定正方向
+            double q2 = -acos(cos_q2);
 
-        double cos_q2 =
-            (L_THIGH * L_THIGH + L_CALF * L_CALF - L * L) /
-            (2.0 * L_THIGH * L_CALF);
-        cos_q2 = std::max(-1.0, std::min(1.0, cos_q2));
-        double q2 = -acos(cos_q2);
+            // 再解大腿关节 q1，一样的高中数学解三角形
+            double theta = atan2(x, z);
+            double cos_q1 =
+                (L_THIGH * L_THIGH + L * L - L_CALF * L_CALF) /
+                (2.0 * L_THIGH * L);
+            cos_q1 = std::max(-1.0, std::min(1.0, cos_q1));
+            double alpha = acos(cos_q1);
+            double q1 = theta - alpha;
 
-        double theta = atan2(x, z);
-        double cos_q1 =
-            (L_THIGH * L_THIGH + L * L - L_CALF * L_CALF) /
-            (2.0 * L_THIGH * L);
-        cos_q1 = std::max(-1.0, std::min(1.0, cos_q1));
-        double alpha = acos(cos_q1);
-        double q1 = theta - alpha;
-
-        q_goal(i * 3 + 1) = q1; // 大腿关节
-        q_goal(i * 3 + 2) = q2; // 小腿关节
+            // 写回 12 维关节目标
+            q_goal(i * 3 + 1) = q1; // 大腿关节
+            q_goal(i * 3 + 2) = q2; // 小腿关节
+        }
     }
-}
 
 
     // ========== 核心修改：限制髋关节在小区间内 ==========

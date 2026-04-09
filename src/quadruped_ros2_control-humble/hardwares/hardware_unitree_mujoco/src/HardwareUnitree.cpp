@@ -616,29 +616,6 @@ void HardwareUnitree::correctMotorCommand(damiao::DmActData& dm_data) {
     // KP/KD无需修正（比例参数，与方向无关）
 }
 
-// // 修正电机原始状态（硬件→ROS2：匹配真实机器人）
-// void HardwareUnitree::correctMotorState(damiao::DmActData& dm_data) {
-//     // 1. 位置修正：原始位置 × 转向系数 + 零点偏置
-//     dm_data.pos = dm_data.pos * dm_data.direction + dm_data.offset;
-//     // 2. 速度修正：原始速度 × 转向系数（方向同步）
-//     dm_data.vel = dm_data.vel * dm_data.direction;
-//     // 3. 力矩修正：原始力矩 × 转向系数（方向同步）
-//     dm_data.effort = dm_data.effort * dm_data.direction;
-// }
-
-// // 修正电机下发指令（ROS2→硬件：匹配硬件原始值）
-// void HardwareUnitree::correctMotorCommand(damiao::DmActData& dm_data) {
-//     // 1. 位置指令：(目标位置 - 零点偏置) ÷ 转向系数（反向计算）
-//     dm_data.cmd_pos = (dm_data.cmd_pos - dm_data.offset) / dm_data.direction;
-//     // 2. 速度指令：目标速度 ÷ 转向系数
-//     dm_data.cmd_vel = dm_data.cmd_vel / dm_data.direction;
-//     // 3. 力矩指令：目标力矩 ÷ 转向系数
-//     dm_data.cmd_effort = dm_data.cmd_effort / dm_data.direction;
-//     // KP/KD无需修正（比例参数，与方向无关）
-// }
-
-
-
 // 新增析构函数：释放达妙电机串口和线程资源
 HardwareUnitree::~HardwareUnitree() {
     // 清空motor_ports_，自动调用Motor_Control的析构函数（关闭串口、停止线程）

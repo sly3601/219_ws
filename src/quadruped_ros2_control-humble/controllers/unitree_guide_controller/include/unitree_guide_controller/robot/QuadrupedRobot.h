@@ -94,7 +94,7 @@ public:
     [[nodiscard]] Vec12 getQLockedHip(const Vec34 &vecP, double locked_hip_pos = 0.0) const;
 
     // 【新增 2/2：声明】给定关节角算足端位置
-    [[nodiscard]] KDL::Frame calcFootPosFromJoints(const int index, const KDL::JntArray& q) const;
+    [[nodiscard]] KDL::Frame calcPEe2B_openloop(const int index, const KDL::JntArray& q) const;
 
 
 
