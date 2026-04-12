@@ -8,7 +8,7 @@ FootMarkerPublisher::FootMarkerPublisher(rclcpp_lifecycle::LifecycleNode::Shared
 {
   // 创建发布者，话题名为 /foot_markers，QoS适合实时数据
   marker_pub_ = node_->create_publisher<visualization_msgs::msg::MarkerArray>(
-    "foot_markers", rclcpp::SensorDataQoS());
+    "/foot_markers", 10);
   
   // 初始化Marker基础属性
   initMarkers();
@@ -64,7 +64,8 @@ void FootMarkerPublisher::update(const std::array<geometry_msgs::msg::Point, 4> 
   // 循环更新4个Marker的位置和时间戳
   for (size_t i = 0; i < 4; ++i) {
     marker_array_.markers[i].pose.position = foot_positions[i];
-    marker_array_.markers[i].header.stamp = node_->now(); // 【关键】必须更新时间戳
+    // 强制时间戳为0，RViz会忽略时间检查
+    marker_array_.markers[i].header.stamp = rclcpp::Time(0); 
   }
 }
 
