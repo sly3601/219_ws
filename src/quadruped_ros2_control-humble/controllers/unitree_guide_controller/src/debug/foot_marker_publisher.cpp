@@ -41,9 +41,9 @@ void FootMarkerPublisher::initMarkers()
     marker.pose.orientation.w = 1.0; // 四元数必须初始化
     
     // 3. 大小配置（球体直径5cm，根据你的机器人大小调整）
-    marker.scale.x = 5;
-    marker.scale.y = 5;
-    marker.scale.z = 5;
+    marker.scale.x = 0.05;
+    marker.scale.y = 0.05;
+    marker.scale.z = 0.05;
     
     // 4. 颜色配置
     marker.color.r = FOOT_COLORS[i][0];
