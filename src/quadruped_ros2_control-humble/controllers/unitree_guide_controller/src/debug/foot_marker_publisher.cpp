@@ -90,7 +90,7 @@ void FootMarkerPublisher::update(const std::array<geometry_msgs::msg::Point, 4> 
   }
 
   for (size_t i = 0; i < 4; ++i) {
-    // ========== 1. 更新你原有的当前足底位置 ==========
+    // ========== 1. 更新你原有的当前足底位置 (索引 0-3) ==========
     marker_array_.markers[i].pose.position = foot_positions[i];
     marker_array_.markers[i].header.stamp = rclcpp::Time(0);
 
@@ -100,12 +100,12 @@ void FootMarkerPublisher::update(const std::array<geometry_msgs::msg::Point, 4> 
       foot_history_[i].pop_front();
     }
 
-    // 更新轨迹线的点列表
-    marker_array_.markers[10 + i].points.clear();
+    // ========== 关键修复：这里改成 4 + i (索引 4-7) ==========
+    marker_array_.markers[4 + i].points.clear();
     for (const auto& point : foot_history_[i]) {
-      marker_array_.markers[10 + i].points.push_back(point);
+      marker_array_.markers[4 + i].points.push_back(point);
     }
-    marker_array_.markers[10 + i].header.stamp = rclcpp::Time(0);
+    marker_array_.markers[4 + i].header.stamp = rclcpp::Time(0);
   }
 }
 
