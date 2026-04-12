@@ -25,7 +25,7 @@ void FootMarkerPublisher::initMarkers()
     visualization_msgs::msg::Marker marker;
     
     // 1. 基础配置
-    marker.header.frame_id = "base_link"; // 【关键】足底坐标的参考系（根据你的工程修改）
+    marker.header.frame_id = "base"; // 【关键】足底坐标的参考系（根据你的工程修改）
     marker.ns = "foot_markers";           // 命名空间，避免与其他Marker冲突
     marker.id = static_cast<int32_t>(i);  // 唯一ID：0-FL, 1-FR, 2-RL, 3-RR
     marker.type = visualization_msgs::msg::Marker::SPHERE; // 用球体表示足底
@@ -41,9 +41,9 @@ void FootMarkerPublisher::initMarkers()
     marker.pose.orientation.w = 1.0; // 四元数必须初始化
     
     // 3. 大小配置（球体直径5cm，根据你的机器人大小调整）
-    marker.scale.x = 0.05;
-    marker.scale.y = 0.05;
-    marker.scale.z = 0.05;
+    marker.scale.x = 5;
+    marker.scale.y = 5;
+    marker.scale.z = 5;
     
     // 4. 颜色配置
     marker.color.r = FOOT_COLORS[i][0];
