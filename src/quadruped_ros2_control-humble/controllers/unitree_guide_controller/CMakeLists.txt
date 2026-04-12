@@ -17,10 +17,18 @@ set(CONTROLLER_INCLUDE_DEPENDS
         control_input_msgs
         controller_common
         kdl_parser
+
+        rclcpp
+        visualization_msgs
+        geometry_msgs
 )
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(visualization_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+
 foreach (Dependency IN ITEMS ${CONTROLLER_INCLUDE_DEPENDS})
     find_package(${Dependency} REQUIRED)
 endforeach ()
@@ -48,6 +56,8 @@ add_library(${PROJECT_NAME} SHARED
         src/gait/WaveGenerator.cpp
         src/gait/FeetEndCalc.cpp
         src/gait/GaitGenerator.cpp
+
+        src/debug/foot_marker_publisher.cpp
 
 )
 target_include_directories(${PROJECT_NAME}

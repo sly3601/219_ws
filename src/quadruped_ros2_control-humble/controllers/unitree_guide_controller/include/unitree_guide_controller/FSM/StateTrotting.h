@@ -7,6 +7,8 @@
 #include <unitree_guide_controller/control/BalanceCtrl.h>
 #include <unitree_guide_controller/gait/GaitGenerator.h>
 #include "controller_common/FSM/FSMState.h"
+// marker array可视化插件
+#include "unitree_guide_controller/debug/foot_marker_publisher.hpp"
 
 class StateTrotting final : public FSMState {
 public:
@@ -83,6 +85,7 @@ private:
 
     // debug 参数
     Vec12 q_goal_debug;
+    std::unique_ptr<quadruped_controller::FootMarkerPublisher> foot_marker_pub_; // 新增：足底可视化发布器
 };
 
 

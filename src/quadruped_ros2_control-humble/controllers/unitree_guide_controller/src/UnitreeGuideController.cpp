@@ -218,7 +218,7 @@ namespace unitree_guide_controller
         // ========== 新增：初始化调试发布器 ==========
         // get_node() 是 Controller 基类提供的方法
         ctrl_interfaces_.debug_pub = get_node()->create_publisher<std_msgs::msg::Float64MultiArray>("/trotting_debug", 10);
-
+        ctrl_interfaces_.node = get_node(); // 将节点指针传递给 CtrlInterfaces 以供 FSM 状态使用
         return CallbackReturn::SUCCESS;
     }
 

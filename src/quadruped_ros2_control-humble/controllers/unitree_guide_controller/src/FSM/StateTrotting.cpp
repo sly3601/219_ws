@@ -14,6 +14,7 @@
 // 包含步态波发生器头文件（管理支撑相/摆动相状态）
 #include <unitree_guide_controller/gait/WaveGenerator.h>
 
+
 /**
  * @brief Trotting状态类构造函数
  * @param ctrl_interfaces 控制接口（包含指令输入、关节控制接口等）
@@ -56,6 +57,9 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     dt_ = 1.0 / ctrl_interfaces_.frequency_;
     //是否使用卡尔曼滤波位姿闭环
     troting_kalman = 0; //0 代表不使用
+
+    // 新增：初始化足底可视化发布器
+    foot_marker_pub_ = std::make_unique<quadruped_controller::FootMarkerPublisher>(this->ctrl_interfaces_.node);
 }
 
 
@@ -198,7 +202,28 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
         // msg.data.push_back(wave_generator_->contact_(3)); // 6-9: contact
 
         ctrl_interfaces_.debug_pub->publish(msg);
+        
     }
+    // -------------------------------------------------------------------------
+    // 新增：准备4个足底坐标（替换为你实际的足底坐标计算结果）
+    // -------------------------------------------------------------------------
+
+    std::array<geometry_msgs::msg::Point, 4> foot_positions;
+    foot_positions[0].x = pos_feet_global_goal_(0,0);  
+    foot_positions[0].y = pos_feet_global_goal_(1,0); 
+    foot_positions[0].z = pos_feet_global_goal_(2,0); // FR
+    foot_positions[1].x = pos_feet_global_goal_(0,1);  
+    foot_positions[1].y = pos_feet_global_goal_(1,1); 
+    foot_positions[1].z = pos_feet_global_goal_(2,1); // FL
+    foot_positions[2].x = pos_feet_global_goal_(0,2); 
+    foot_positions[2].y = pos_feet_global_goal_(1,2); 
+    foot_positions[2].z = pos_feet_global_goal_(2,2); // RR
+    foot_positions[3].x = pos_feet_global_goal_(0,3); 
+    foot_positions[3].y = pos_feet_global_goal_(1,3); 
+    foot_positions[3].z = pos_feet_global_goal_(2,3); // RL
+    // 新增：更新并发布足底Marker1
+    foot_marker_pub_->update(foot_positions);
+    foot_marker_pub_->publish();
 }
 
 /**
