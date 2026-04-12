@@ -86,6 +86,9 @@ private:
     // debug 参数
     Vec12 q_goal_debug;
     std::unique_ptr<quadruped_controller::FootMarkerPublisher> foot_marker_pub_; // 新增：足底可视化发布器
+
+    // 新增：发布频率控制计数器
+    int publish_counter_ = 0;
 };
 
 

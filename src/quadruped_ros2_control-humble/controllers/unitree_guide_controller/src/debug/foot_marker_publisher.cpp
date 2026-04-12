@@ -41,9 +41,9 @@ void FootMarkerPublisher::initMarkers()
     marker.pose.orientation.w = 1.0; // 四元数必须初始化
     
     // 3. 大小配置（球体直径5cm，根据你的机器人大小调整）
-    marker.scale.x = 0.05;
-    marker.scale.y = 0.05;
-    marker.scale.z = 0.05;
+    marker.scale.x = 0.01;
+    marker.scale.y = 0.01;
+    marker.scale.z = 0.01;
     
     // 4. 颜色配置
     marker.color.r = FOOT_COLORS[i][0];
@@ -57,20 +57,63 @@ void FootMarkerPublisher::initMarkers()
     
     marker_array_.markers.push_back(marker);
   }
+
+  // ========== 2. 新增：4条历史轨迹线Marker (ID 10-13) ==========
+  for (size_t i = 0; i < 4; ++i) {
+    visualization_msgs::msg::Marker line_marker;
+    line_marker.header.frame_id = "base";
+    line_marker.ns = "foot_trajectory";
+    line_marker.id = static_cast<int32_t>(10 + i);
+    line_marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+    line_marker.action = visualization_msgs::msg::Marker::ADD;
+    
+    line_marker.pose.orientation.w = 1.0;
+    line_marker.scale.x = 0.005; // 线宽5mm
+    
+    line_marker.color.r = FOOT_COLORS[i][0];
+    line_marker.color.g = FOOT_COLORS[i][1];
+    line_marker.color.b = FOOT_COLORS[i][2];
+    line_marker.color.a = 0.6; // 轨迹线半透明
+    
+    line_marker.lifetime = rclcpp::Duration(0, 0);
+    line_marker.frame_locked = true;
+    
+    marker_array_.markers.push_back(line_marker);
+  }
 }
 
 void FootMarkerPublisher::update(const std::array<geometry_msgs::msg::Point, 4> & foot_positions)
 {
-  // 循环更新4个Marker的位置和时间戳
+  // 先检查markers是否初始化
+  if (marker_array_.markers.size() < 8) {
+    return;
+  }
+
   for (size_t i = 0; i < 4; ++i) {
+    // ========== 1. 更新你原有的当前足底位置 ==========
     marker_array_.markers[i].pose.position = foot_positions[i];
-    // 强制时间戳为0，RViz会忽略时间检查
-    marker_array_.markers[i].header.stamp = rclcpp::Time(0); 
+    marker_array_.markers[i].header.stamp = rclcpp::Time(0);
+
+    // ========== 2. 新增：更新历史轨迹 ==========
+    foot_history_[i].push_back(foot_positions[i]);
+    if (foot_history_[i].size() > HISTORY_LENGTH) {
+      foot_history_[i].pop_front();
+    }
+
+    // 更新轨迹线的点列表
+    marker_array_.markers[10 + i].points.clear();
+    for (const auto& point : foot_history_[i]) {
+      marker_array_.markers[10 + i].points.push_back(point);
+    }
+    marker_array_.markers[10 + i].header.stamp = rclcpp::Time(0);
   }
 }
 
 void FootMarkerPublisher::publish()
 {
+  if (marker_array_.markers.empty()) {
+    initMarkers();
+  }
   marker_pub_->publish(marker_array_);
 }
 

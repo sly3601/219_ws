@@ -341,7 +341,8 @@ return_type HardwareUnitree::read(const rclcpp::Time& /*time*/, const rclcpp::Du
     tf_msg.transform.rotation.y = imu_data.orientation.y;
     tf_msg.transform.rotation.z = imu_data.orientation.z;
     // 发布TF
-    tf_broadcaster_->sendTransform(tf_msg);
+    // 2026.04.12 我把这一行注释了！用于开环调试！闭环的时候要调回来并且还要改开闭环控制参数的逻辑！
+    // tf_broadcaster_->sendTransform(tf_msg);
     
   }
     // ========== 可选：保留足端力逻辑（如果需要） ==========

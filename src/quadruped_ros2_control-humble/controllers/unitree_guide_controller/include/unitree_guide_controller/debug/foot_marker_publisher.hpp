@@ -7,6 +7,7 @@
 #include <array>
 #include <string>
 #include <memory>
+#include <deque> // 新增：用于存储历史轨迹点
 
 namespace quadruped_controller
 {
@@ -31,6 +32,9 @@ private:
   rclcpp_lifecycle::LifecycleNode::SharedPtr node_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
   visualization_msgs::msg::MarkerArray marker_array_;
+
+  // ========== 新增：历史轨迹配置 ==========
+  static constexpr int HISTORY_LENGTH = 100; // 保留最近100帧
 
   // 常量配置：4个足的名称和颜色（FR红/FL绿/RR蓝/RL黄）
   static constexpr std::array<const char *, 4> FOOT_NAMES = {"FR", "FL", "RR", "RL"};

@@ -222,8 +222,13 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     foot_positions[3].y = pos_feet_global_goal_(1,3); 
     foot_positions[3].z = pos_feet_global_goal_(2,3); // RL
     // 新增：更新并发布足底Marker1
-    foot_marker_pub_->update(foot_positions);
-    foot_marker_pub_->publish();
+    // 新增：降低发布频率到50Hz (500Hz / 10 = 50Hz)
+    publish_counter_++;
+    if (publish_counter_ >= 10) {
+        foot_marker_pub_->update(foot_positions);
+        foot_marker_pub_->publish();
+        publish_counter_ = 0;
+    }
 }
 
 /**
