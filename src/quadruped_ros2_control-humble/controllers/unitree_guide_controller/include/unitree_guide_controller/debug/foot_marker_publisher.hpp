@@ -35,6 +35,7 @@ private:
 
   // ========== 新增：历史轨迹配置 ==========
   static constexpr int HISTORY_LENGTH = 100; // 保留最近100帧
+  std::array<std::deque<geometry_msgs::msg::Point>, 4> foot_history_; // 每个足一个历史轨迹队列
 
   // 常量配置：4个足的名称和颜色（FR红/FL绿/RR蓝/RL黄）
   static constexpr std::array<const char *, 4> FOOT_NAMES = {"FR", "FL", "RR", "RL"};
