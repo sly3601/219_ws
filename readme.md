@@ -64,3 +64,5 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
   * 成功改掉所有的不标准正逆解,完成了很完美的纯位置的正逆解(还未考虑旋转).足端位置已经有明显的摆线运行轨迹
 * 2026.04.12 v2.11
   * 尝试加入MarkerArray库进行轨迹可视化，成功，可在rviz中实时显示100个队列的实时最新的四个足底坐标
+* 2026.04.13 v2.2
+  * 机器人落地开环troting成功，进行了一定的kp kd调参，机器人基本troting完成了，开始闭环控制。
