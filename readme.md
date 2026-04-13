@@ -68,3 +68,5 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
   * 机器人落地开环troting成功，进行了一定的kp kd调参，机器人基本troting完成了，开始闭环控制。
 * 2026.04.13 v2.21
   * 开始闭环调试之前，最后补充了雅可比关节速度逆解,实机测试成功，正式开始闭环控制。
+* 2026.04.13 v2.3
+  * 完成了第一个闭环：roll/pitch闭环的实机调试。还需要调参数
