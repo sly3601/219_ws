@@ -66,3 +66,5 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
   * 尝试加入MarkerArray库进行轨迹可视化，成功，可在rviz中实时显示100个队列的实时最新的四个足底坐标
 * 2026.04.13 v2.2
   * 机器人落地开环troting成功，进行了一定的kp kd调参，机器人基本troting完成了，开始闭环控制。
+* 2026.04.13 v2.21
+  * 开始闭环调试之前，最后补充了雅可比关节速度逆解,实机测试成功，正式开始闭环控制。

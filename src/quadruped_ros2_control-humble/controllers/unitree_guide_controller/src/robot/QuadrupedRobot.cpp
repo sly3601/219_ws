@@ -65,7 +65,7 @@ Vec12 QuadrupedRobot::getQd(const std::vector<KDL::Frame> &pos, const Vec34 &vel
     const std::vector<KDL::JntArray> q = getQ(pos);
     for (int i(0); i < 4; ++i) {
         Mat3 jacobian = robot_legs_[i]->calcJaco(q[i]).data.topRows(3);
-        qd.segment(3 * i, 3) = jacobian.inverse() * vel.col(i);
+        qd.segment(3 * i, 3) = jacobian.inverse() * vel.col(i); // 逆解速度：qd = J^-1 * v，只取前三行线速度
     }
     return qd;
 }
