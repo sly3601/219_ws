@@ -90,7 +90,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 
             }
             feet_pos.col(i) = start_p_.col(i);
-            feet_vel.col(i).setZero();
+            feet_vel.col(i).setZero();// 这里本来就应该是零的，支撑相不需要移动，速度为0
         } 
         // 条件2：当前腿处于摆动相（抬脚迈步）
         else 
@@ -115,7 +115,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 // end_p_(0, i) = start_p_.col(i)[0] + dir * step_length;
             }
             // 【闭环模式】：完全保留你原来的代码，用官方轨迹规划器
-            else
+            else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 1)
             {
                 // 闭环：保持原来的逻辑不变
                 end_p_.col(i) = feet_end_calc_.calcFootPos(i, vxy_goal_, d_yaw_goal_, wave_generator_->phase_(i));
@@ -124,11 +124,6 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             // 调用你原有的摆线函数：计算平滑的足端轨迹/速度
             feet_pos.col(i) = getFootPos(i);
             feet_vel.col(i) = getFootVel(i);
-            // 速度清零临时保险
-            if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0)
-            {
-                feet_vel(1, i) = 0.0;
-            }
         }
     }
 }
@@ -151,6 +146,7 @@ Vec3 GaitGenerator::getFootPos(const int i) {
 
     return foot_pos;
 }
+
 
 Vec3 GaitGenerator::getFootVel(const int i) {
     Vec3 foot_vel;

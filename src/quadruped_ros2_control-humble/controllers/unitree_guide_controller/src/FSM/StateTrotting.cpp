@@ -478,16 +478,18 @@ void StateTrotting::calcQQd() {
     //    开环和闭环都统一走 robot_model_->getQ(pos_feet_target)
     // =====================================================
     q_goal = robot_model_->getQ(pos_feet_target);
-    if(troting_kalman == 1) 
-    {
-        // 闭环模式保留原来的关节速度逆解
-        qd_goal = robot_model_->getQd(pos_feet_body, vel_feet_target);
-    } 
-    else if(troting_kalman == 0)
-    {
-        // 开环模式速度先清零，避免额外扰动
-        qd_goal.setZero();
-    }   
+
+    std::vector<KDL::Frame> pos_feet_target_frame(4);
+    for (int i = 0; i < 4; ++i) {
+        pos_feet_target_frame[i].p = KDL::Vector(
+            pos_feet_target(0, i),
+            pos_feet_target(1, i),
+            pos_feet_target(2, i)
+        );
+        pos_feet_target_frame[i].M = KDL::Rotation::Identity();
+    }
+    qd_goal = robot_model_->getQd(pos_feet_target_frame, vel_feet_target);
+    
     // =====================================================
     // 2) 关节命令最终限幅（重点限制髋关节）
     //    这是“命令层限幅”，为了安全应急的，但足够适合作为当前版本
@@ -519,7 +521,7 @@ void StateTrotting::calcQQd() {
     for (int i = 0; i < 12; i++) {
         q_goal_debug = q_goal; // 用于调试，发布到ROS2话题
         ctrl_interfaces_.joint_position_command_interface_[i].get().set_value(q_goal(i));
-        // ctrl_interfaces_.joint_velocity_command_interface_[i].get().set_value(qd_goal(i));
+        ctrl_interfaces_.joint_velocity_command_interface_[i].get().set_value(qd_goal(i));
     }
 }
 
@@ -538,8 +540,8 @@ void StateTrotting::calcGain() const {
             } else {
                 // ================= 支撑相（脚踩地） =================
                 // 增益拉高，抗干扰、站稳
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(220.0); // 从68
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(3.5);  
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(180.0); // 从68
+                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(3.1);  
             }
         }
 
