@@ -588,19 +588,19 @@ void StateTrotting::calcGain() const {
             if (wave_generator_->contact_(i) == 0) {
                 // ================= 摆动相（脚在空中） =================
                 // 增益中等，跟轨迹但不僵硬
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(140.0); // 从65
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(160.0); // 从65
                 ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(2.8);  
             } else {
                 // ================= 支撑相（脚踩地） =================
                 // 增益拉高，抗干扰、站稳
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(180.0); // 从68
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(220.0); // 从68
                 ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(3.1);  
             }
         }
 
         // 【单独设置髋关节】
         int hip_idx = i * 3 + 0;
-        ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(180.0); // 70
+        ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(220.0); // 70
         ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(3.5);
     }
 }
