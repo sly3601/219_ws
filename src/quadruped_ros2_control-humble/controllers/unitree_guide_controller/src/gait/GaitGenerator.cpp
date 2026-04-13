@@ -103,7 +103,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0)
             {
                 // 步长：每次迈步向前移动5厘米（可调节）
-                double step_length = 0.06;
+                double step_length = 0;
                 // 方向规则：1向前，-1向后
                 double dir = 1;
 
@@ -111,8 +111,8 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 // 核心修复：永远基于【固定的start_p】计算终点
                 // 绝不基于上一次的end_p累加，彻底杜绝发散！
                 // ==============================================
-                // end_p_.col(i) = start_p_.col(i);
-                end_p_(0, i) = start_p_.col(i)[0] + dir * step_length;
+                end_p_.col(i) = start_p_.col(i);
+                // end_p_(0, i) = start_p_.col(i)[0] + dir * step_length;
             }
             // 【闭环模式】：完全保留你原来的代码，用官方轨迹规划器
             else
