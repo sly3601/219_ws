@@ -40,7 +40,7 @@ inline Mat3 skew(const Vec3 &v) {
 }
 
 inline Vec3 rotMatToExp(const RotMat &rm) {
-    double cosValue = rm.trace() / 2.0 - 1 / 2.0;
+    double cosValue = rm.trace() / 2.0 - 1 / 2.0; // 从矩阵迹算旋转角
     if (cosValue > 1.0f) {
         cosValue = 1.0f;
     } else if (cosValue < -1.0f) {

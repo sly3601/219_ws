@@ -27,7 +27,7 @@ public:
 
 
     // 调试参数
-    int troting_kalman; // 使用卡尔曼滤波位姿闭环（1），不使用（0）
+    int troting_kalman; // 使用卡尔曼滤波位姿闭环（1），纯开环（0），仅roll/pitch闭环（2）
 
 private:
     void getUserCmd();
@@ -85,6 +85,7 @@ private:
 
     // debug 参数
     Vec12 q_goal_debug;
+    double debug_z_[4]; // 新增：足底高度调试信息
     std::unique_ptr<quadruped_controller::FootMarkerPublisher> foot_marker_pub_; // 新增：足底可视化发布器
 
     // 新增：发布频率控制计数器

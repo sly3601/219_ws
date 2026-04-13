@@ -46,7 +46,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             // 初始化时，start_p_就是当前的足端位置，后续每次落地都会刷新足底起始位置
             start_p_ = estimator_->getFeetPos();
         }
-        else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0) 
+        else if (trotting_ptr_ && (trotting_ptr_->troting_kalman == 0 || trotting_ptr_->troting_kalman == 2))
         {
             // 开环：直接用正运动学计算当前足端位置，完全不依赖估计器
             for (int i = 0; i < 4; i++) 
@@ -83,7 +83,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 {
                     start_p_.col(i) = estimator_->getFootPos(i);
                 }
-                else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0) 
+                else if (trotting_ptr_ && (trotting_ptr_->troting_kalman == 0 || trotting_ptr_->troting_kalman == 2))
                 {
                     // 开环：只在first_run_初始化一次 start_p_，之后就完全不更新了（不依赖 estimator）
                 }
@@ -100,7 +100,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             // 核心修复：开环/闭环 分两套逻辑计算「迈步终点」
             // ==============================================
             // 【开环模式】：纯身体坐标系，不用估计器，不用calcFootPos
-            if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0)
+            if (trotting_ptr_ && (trotting_ptr_->troting_kalman == 0 || trotting_ptr_->troting_kalman == 2))
             {
                 // 步长：每次迈步向前移动5厘米（可调节）
                 double step_length = 0;

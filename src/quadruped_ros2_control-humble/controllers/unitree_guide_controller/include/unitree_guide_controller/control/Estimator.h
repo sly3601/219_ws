@@ -92,6 +92,8 @@ public:
         return gyro_;
     }
 
+    //  getGyro()：IMU 原始角速度，机身坐标系
+    //  getGyroGlobal()：把它乘 rotation_，变成 全局坐标系 角速度
     [[nodiscard]] Vec3 getGyroGlobal() const {
         return rotation_ * gyro_;
     }

@@ -56,7 +56,7 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 计算控制周期dt（1/控制频率，由控制接口传入）
     dt_ = 1.0 / ctrl_interfaces_.frequency_;
     //是否使用卡尔曼滤波位姿闭环
-    troting_kalman = 0; //0 代表不使用
+    troting_kalman = 2; //0 - 纯开环，1 - 卡尔曼滤波全闭环，2 - 卡尔曼滤波仅roll/pitch闭环
 
     // 新增：初始化足底可视化发布器
     foot_marker_pub_ = std::make_unique<quadruped_controller::FootMarkerPublisher>(this->ctrl_interfaces_.node);
@@ -83,7 +83,7 @@ void StateTrotting::enter() {
         // 初始化期望旋转矩阵Rd为绕z轴（yaw轴）旋转yaw_cmd_的矩阵
         Rd = rotz(yaw_cmd_);
     }
-    else if(troting_kalman == 0)
+    else if(troting_kalman == 0 || troting_kalman == 2)
     {
         // 得到四足当前实时的四个足底末端位置
         auto feet_2b = robot_model_->getFeet2BPositions();
@@ -118,6 +118,11 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
         // 获取当前身体坐标系到全局坐标系的旋转矩阵B2G_RotMat
         B2G_RotMat = estimator_->getRotation();
     }
+    else if(troting_kalman == 2)
+    {
+        // v2.3修改：仅roll/pitch闭环时，仍然需要真实IMU姿态
+        B2G_RotMat = estimator_->getRotation();
+    }
     else if(troting_kalman == 0)
     {
         // 全局坐标系 = 身体坐标系，不考虑任何移动的情况。
@@ -150,10 +155,9 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
             wave_generator_->status_ = WaveStatus::STANCE_ALL;
         }
     }
-    else if(troting_kalman == 0)
+    else if(troting_kalman == 0 || troting_kalman == 2)
     {
-        /* kalman滤波异常的调试期间 */
-        // ========== 核心修复：模拟闭环流程，先切到全支撑，再切到迈步 ==========
+        // ========== 先切到全支撑，再切到迈步 ==========
         // 加一个静态变量，记录是不是第一次进入开环
         static bool first_time_open_loop = true;
         
@@ -179,19 +183,11 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     if (ctrl_interfaces_.debug_pub) { // 检查指针是否存在
         std_msgs::msg::Float64MultiArray msg;
         // 0-11: q_goal_debug
-        msg.data.push_back(q_goal_debug(0));
-        msg.data.push_back(q_goal_debug(1));
-        msg.data.push_back(q_goal_debug(2));           
-        msg.data.push_back(q_goal_debug(3));
-        msg.data.push_back(q_goal_debug(4));
-        msg.data.push_back(q_goal_debug(5)); 
-        msg.data.push_back(q_goal_debug(6));
-        msg.data.push_back(q_goal_debug(7));
-        msg.data.push_back(q_goal_debug(8));           
-        msg.data.push_back(q_goal_debug(9));
-        msg.data.push_back(q_goal_debug(10));
-        msg.data.push_back(q_goal_debug(11)); 
-        
+        msg.data.push_back(debug_z_[0]);
+        msg.data.push_back(debug_z_[1]);
+        msg.data.push_back(debug_z_[2]);
+        msg.data.push_back(debug_z_[3]);
+
         // msg.data.push_back(pos_body_(0));
         // msg.data.push_back(pos_body_(1));
         // msg.data.push_back(pos_body_(2));      // 3-5: pos_body
@@ -335,7 +331,7 @@ void StateTrotting::calcCmd() {
         // 全局坐标系下的yaw轴角速度指令设为滤波后的d_yaw_cmd_
         w_cmd_global_(2) = d_yaw_cmd_;
     }
-    else if(troting_kalman == 0)
+    else if(troting_kalman == 0 || troting_kalman == 2)
     {
         /* 2026.04.04 无卡尔曼的开环步态*/
         // 无卡尔曼滤波的开环troting
@@ -419,7 +415,7 @@ void StateTrotting::calcTau() {
             }
         }
     }
-    else if(troting_kalman == 0)
+    else if(troting_kalman == 0 || troting_kalman == 2)
     {
         /* 开环troting不计算力矩，直接位置控制 */
         for (int i = 0; i < 12; i++) {
@@ -440,7 +436,7 @@ void StateTrotting::calcQQd() {
         pos_body_to_use = pos_body_;
         vel_body_to_use = vel_body_;
     }
-    else if(troting_kalman == 0)
+    else if(troting_kalman == 0 || troting_kalman == 2)
     {
         pos_body_to_use = pcd_; // 开环时用固定的期望位置
         vel_body_to_use = vel_target_; // 开环时用固定的期望速度
@@ -460,7 +456,7 @@ void StateTrotting::calcQQd() {
             vel_feet_target.col(i) = G2B_RotMat * (vel_feet_global_goal_.col(i) - vel_body_to_use);
         }
     }
-    else if(troting_kalman == 0)
+    else if(troting_kalman == 0 || troting_kalman == 2)
     {
         // 开环：GaitGenerator 输出的真的已经是身体坐标系了，直接赋值！(真的不需要转换了，只是变量名字没改在误导)
         pos_feet_target = pos_feet_global_goal_;
@@ -472,6 +468,63 @@ void StateTrotting::calcQQd() {
     Vec12 qd_goal;
     q_goal.setZero();
     qd_goal.setZero();
+
+    // v2.3修改：仅roll/pitch闭环框架，只修正支撑腿目标足端z
+    // 闭环思路： 机身姿态误差 → 支撑腿脚高修正（pos_feet_target）
+    if (troting_kalman == 2)
+    {
+        // roll 和 pitch 的 PD 增益
+        const double kp_roll = 0.60;
+        const double kd_roll = 0.03;
+        const double kp_pitch = 0.60;
+        const double kd_pitch = 0.03;
+
+        const double k_roll_to_z = 0.08; // roll 方向的纠正量，映射到支撑腿 z 修正时，放大/缩小多少
+        const double k_pitch_to_z = 0.08;// pitch 方向的纠正量，映射到支撑腿 z 修正时，放大/缩小多少
+        const double dz_limit = 0.015;   // 单条腿这次最多只允许修正这么高，防止闭环一上来把腿拉太狠。
+
+        Vec3 attitude_error = rotMatToExp(Rd * G2B_RotMat); // Rd 期望姿态旋转矩阵，是单位阵，也就是“希望机身保持水平”
+        Vec3 gyro = estimator_->getGyroGlobal(); // 预期：gyro(0)：roll 方向角速度 gyro(1)：pitch 方向角速度
+
+        double roll_cmd = kp_roll * attitude_error(0) + kd_roll * (0.0 - gyro(0));
+        double pitch_cmd = kp_pitch * attitude_error(1) + kd_pitch * (0.0 - gyro(1));
+
+        for (int i = 0; i < 4; ++i)
+        {
+            if (wave_generator_->contact_(i) == 1)
+            {
+                bool is_front = (i == 0 || i == 1);  // FR / FL
+                bool is_rear  = (i == 2 || i == 3);  // RR / RL
+                bool is_left  = (i == 1 || i == 3);  // FL / RL
+                bool is_right = (i == 0 || i == 2);  // FR / RR
+
+                double roll_correction = 0.0;
+                double pitch_correction = 0.0;
+
+                // v2.3修改：roll 纠正左右倾斜
+                // 如果方向反了，只交换左右两边的正负号
+                if (is_left) {
+                    roll_correction = -k_roll_to_z * roll_cmd;
+                } else if (is_right) {
+                    roll_correction = +k_roll_to_z * roll_cmd;
+                }
+
+                // v2.3修改：pitch 纠正前后俯仰
+                // 如果方向反了，只交换前后两边的正负号
+                if (is_front) {
+                    pitch_correction = -k_pitch_to_z * pitch_cmd;
+                } else if (is_rear) {
+                    pitch_correction = +k_pitch_to_z * pitch_cmd;
+                }
+
+                double dz_correction = roll_correction + pitch_correction;
+                dz_correction = saturation(dz_correction, Vec2(-dz_limit, dz_limit));
+                debug_z_[i] = dz_correction; // 用于调试，发布到ROS2话题
+                // pos_feet_target(2, i) += dz_correction;
+            }
+        }
+    }
+
 
     // =====================================================
     // 1) 统一恢复为正常三轴逆解：不再区分闭环/开环使用不同IK
@@ -489,7 +542,7 @@ void StateTrotting::calcQQd() {
         pos_feet_target_frame[i].M = KDL::Rotation::Identity();
     }
     qd_goal = robot_model_->getQd(pos_feet_target_frame, vel_feet_target);
-    
+
     // =====================================================
     // 2) 关节命令最终限幅（重点限制髋关节）
     //    这是“命令层限幅”，为了安全应急的，但足够适合作为当前版本
