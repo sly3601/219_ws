@@ -520,7 +520,7 @@ void StateTrotting::calcQQd() {
                 double dz_correction = roll_correction + pitch_correction;
                 dz_correction = saturation(dz_correction, Vec2(-dz_limit, dz_limit));
                 debug_z_[i] = dz_correction; // 用于调试，发布到ROS2话题
-                // pos_feet_target(2, i) += dz_correction;
+                pos_feet_target(2, i) += dz_correction;
             }
         }
     }
