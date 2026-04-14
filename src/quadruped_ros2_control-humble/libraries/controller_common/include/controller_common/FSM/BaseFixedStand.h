@@ -47,7 +47,7 @@ protected:
     bool fixedstand_active_ = false;
 
     double offset_step_ = 0.01;   // 每次按键调 0.01 rad
-    double offset_limit_ = 0.30;  // 防止调飞，可改
+    double offset_limit_ = 0.60;  // 防止调飞，可改
 
     rclcpp::Subscription<std_msgs::msg::Int32MultiArray>::SharedPtr fixedstand_offset_sub_;
 };

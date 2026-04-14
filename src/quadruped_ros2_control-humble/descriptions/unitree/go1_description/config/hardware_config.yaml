@@ -12,27 +12,27 @@ motor_ports:
 
 motors:
   # 后左腿（RL）关节
-  - port: "/dev/ttyACM3"
+  - port: "/dev/ttyACM0"
     can_id: 0x01
     master_id: 0x11          
     name: "RL_hip_joint"   
     type: "DM10010"
     direction: -1          # 正向（反转-1）
-    offset: -0.50336         # 零点偏置/rad
-  - port: "/dev/ttyACM3"
+    offset: -0.56336         # 零点偏置/rad
+  - port: "/dev/ttyACM0"
     can_id: 0x02
     master_id: 0x12
     name: "RL_thigh_joint"
     type: "DM10010"
     direction: 1      
-    offset: 0.44         
-  - port: "/dev/ttyACM3"
+    offset: 0.53         
+  - port: "/dev/ttyACM0"
     can_id: 0x03
     master_id: 0x13
     name: "RL_calf_joint"
     type: "DM10010"
     direction: 1
-    offset: -4.6657
+    offset: -4.4457
 
   # 前右腿（FR）关节
   - port: "/dev/ttyACM1"
@@ -41,44 +41,44 @@ motors:
     name: "FR_hip_joint"
     type: "DM10010"
     direction: 1
-    offset: 0.97219
+    offset: 1.06219
   - port: "/dev/ttyACM1"
     can_id: 0x02
     master_id: 0x12
     name: "FR_thigh_joint"
     type: "DM10010"
     direction: -1
-    offset: 3.458
+    offset: 3.488
   - port: "/dev/ttyACM1"
     can_id: 0x03
     master_id: 0x13
     name: "FR_calf_joint"
     type: "DM10010"
     direction: -1
-    offset: -4.1177
+    offset: -3.9877
 
   # 前左腿（FL）关节 
-  - port: "/dev/ttyACM0"
+  - port: "/dev/ttyACM3"
     can_id: 0x01
     master_id: 0x11          
     name: "FL_hip_joint"
     type: "DM10010"
     direction: 1
     offset: -0.57545
-  - port: "/dev/ttyACM0"
+  - port: "/dev/ttyACM3"
     can_id: 0x02
     master_id: 0x12
     name: "FL_thigh_joint"
     type: "DM10010"
     direction: 1
-    offset: -0.832
-  - port: "/dev/ttyACM0"
+    offset: -0.782
+  - port: "/dev/ttyACM3"
     can_id: 0x03
     master_id: 0x13
     name: "FL_calf_joint"
     type: "DM10010"
     direction: 1
-    offset: -0.2637
+    offset: -0.0037
 
   # 后右腿（RR）关节 
   - port: "/dev/ttyACM2"
@@ -87,18 +87,18 @@ motors:
     name: "RR_hip_joint"
     type: "DM10010"
     direction: -1
-    offset: 0.9222
+    offset: 1.0222
   - port: "/dev/ttyACM2"
     can_id: 0x02
     master_id: 0x12
     name: "RR_thigh_joint"
     type: "DM10010"
     direction: -1
-    offset: 0.7658
+    offset: 0.7958
   - port: "/dev/ttyACM2"
     can_id: 0x03
     master_id: 0x13
     name: "RR_calf_joint"
     type: "DM10010"
     direction: -1
-    offset: 0
+    offset: 0.15
