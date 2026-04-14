@@ -474,12 +474,12 @@ void StateTrotting::calcQQd() {
     if (troting_kalman == 2)
     {
         // roll 和 pitch 的 PD 增益
-        const double kp_roll = 0.90;
-        const double kd_roll = 0.03;
-        const double kp_pitch = 0.70;
-        const double kd_pitch = 0.03;
+        const double kp_roll = 0.70;
+        const double kd_roll = 0.07;
+        const double kp_pitch = 0.60;
+        const double kd_pitch = 0.04;
 
-        const double k_roll_to_z = 0.08; // roll 方向的纠正量，映射到支撑腿 z 修正时，放大/缩小多少
+        const double k_roll_to_z = 0.1; // roll 方向的纠正量，映射到支撑腿 z 修正时，放大/缩小多少
         const double k_pitch_to_z = 0.08;// pitch 方向的纠正量，映射到支撑腿 z 修正时，放大/缩小多少
         const double dz_limit = 0.03;   // 单条腿这次最多只允许修正这么高，防止闭环一上来把腿拉太狠。
 
