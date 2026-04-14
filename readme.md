@@ -72,3 +72,4 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
   * 完成了第一个闭环：roll/pitch闭环的实机调试。还需要调参数
 * 2026.04.14 v2.4
   * 加入了一个新的FixedStandOffsetKeyboard.cpp，键盘控制节点，可以同时与原先的键盘控制节点同时开启，此节点只可以用于fixedstand模式！用于微调四足机器人的标准站立步态！
+  * 微调模块很正常，但现在最大的问题是什么样的站姿是正确的？
