@@ -474,9 +474,9 @@ void StateTrotting::calcQQd() {
     if (troting_kalman == 2)
     {
         // roll 和 pitch 的 PD 增益
-        const double kp_roll = 0.90;
-        const double kd_roll = 0.03;
-        const double kp_pitch = 0.70;
+        const double kp_roll = 1.00;
+        const double kd_roll = 0.06;
+        const double kp_pitch = 0.60;
         const double kd_pitch = 0.03;
 
         const double k_roll_to_z = 0.08; // roll 方向的纠正量，映射到支撑腿 z 修正时，放大/缩小多少
