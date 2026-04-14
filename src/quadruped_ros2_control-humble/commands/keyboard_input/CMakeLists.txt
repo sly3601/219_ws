@@ -11,6 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(control_input_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 
 add_executable(keyboard_input src/KeyboardInput.cpp)
 target_include_directories(keyboard_input
@@ -22,9 +23,21 @@ ament_target_dependencies(
         rclcpp
         control_input_msgs
 )
+# 新增：FixedStand 专用键盘节点
+add_executable(fixedstand_offset_keyboard src/FixedStandOffsetKeyboard.cpp)
+target_include_directories(fixedstand_offset_keyboard
+        PUBLIC
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+        "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>")
+ament_target_dependencies(
+        fixedstand_offset_keyboard PUBLIC
+        rclcpp
+        std_msgs
+)
 
 install(TARGETS
         keyboard_input
+        fixedstand_offset_keyboard
         DESTINATION lib/${PROJECT_NAME})
 
 ament_package()
