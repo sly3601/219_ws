@@ -64,7 +64,7 @@ private:
 
     // Robot State
     Vec3 pos_body_, vel_body_;
-    RotMat B2G_RotMat, G2B_RotMat;
+    RotMat B2G_RotMat, G2B_RotMat; // 世界系和身体系都固定在机身上，区别在于是否包含姿态旋转（开环时不包含，因为不考虑姿态，闭环时包含）
 
     // Robot command
     Vec3 pcd_;
@@ -73,7 +73,7 @@ private:
     double yaw_cmd_{}, d_yaw_cmd_{}, d_yaw_cmd_past_{};
     Vec3 w_cmd_global_;
     Vec34 pos_feet_global_goal_, vel_feet_global_goal_;
-    RotMat Rd;
+    RotMat Rd;  // 期望的躯体姿态的B2G旋转矩阵
 
     // Control Parameters
     double gait_height_;

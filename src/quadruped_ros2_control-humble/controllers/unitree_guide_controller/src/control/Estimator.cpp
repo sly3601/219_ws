@@ -186,7 +186,7 @@ void Estimator::update() {
             ctrl_interfaces_.imu_state_interface_[1].get().get_value(),
             ctrl_interfaces_.imu_state_interface_[2].get().get_value(),
             ctrl_interfaces_.imu_state_interface_[3].get().get_value();
-    rotation_ = quatToRotMat(quat);
+    rotation_ = quatToRotMat(quat); // 四元数转旋转矩阵，这里得到的就是B2G_RotMat，身体系到世界系的旋转矩阵
 
     gyro_ << ctrl_interfaces_.imu_state_interface_[4].get().get_value(),
             ctrl_interfaces_.imu_state_interface_[5].get().get_value(),

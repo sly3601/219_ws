@@ -81,7 +81,7 @@ void StateTrotting::enter() {
         // 初始化期望偏航角yaw_cmd_为当前估计的机器人偏航角
         yaw_cmd_ = estimator_->getYaw();
         // 初始化期望旋转矩阵Rd为绕z轴（yaw轴）旋转yaw_cmd_的矩阵
-        Rd = rotz(yaw_cmd_);
+        Rd = rotz(yaw_cmd_); // 期望的躯体姿态的B2G旋转矩阵
     }
     else if(troting_kalman == 0 || troting_kalman == 2)
     {
@@ -90,7 +90,7 @@ void StateTrotting::enter() {
         double foot_z_avg = (feet_2b[0].p.z() + feet_2b[1].p.z() + feet_2b[2].p.z() + feet_2b[3].p.z()) / 4.0;
         pcd_ << 0.0, 0.0, -foot_z_avg;
         yaw_cmd_ = 0;
-        Rd.setIdentity();
+        Rd.setIdentity(); // 期望的躯体姿态的B2G旋转矩阵，暂无yaw角闭环所以单位矩阵即可，单位矩阵的意思就是躯体的躯体姿态与世界系完全一样。
         wave_generator_->status_ = WaveStatus::STANCE_ALL;   // 先明确给全支撑
     }
     // 初始化全局坐标系下的角速度指令w_cmd_global_为零向量
@@ -120,7 +120,7 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     }
     else if(troting_kalman == 2)
     {
-        // v2.3修改：仅roll/pitch闭环时，仍然需要真实IMU姿态
+        // imu数据源内容就是身体系到世界系的旋转矩阵
         B2G_RotMat = estimator_->getRotation();
     }
     else if(troting_kalman == 0)
@@ -358,6 +358,42 @@ void StateTrotting::calcCmd() {
  */
 
 void StateTrotting::calcTau() {
+    // ========== 函数公共变量 统一声明 ==========
+    Vec3 dd_pcd; // 期望机身中心线加速度，dd = 二阶导数，也就是加速度。dd_pcd(0)是x轴加速度，dd_pcd(1)是y轴加速度，dd_pcd(2)是z轴加速度
+    dd_pcd.setZero();
+
+    Vec3 d_wbd; // 期望机身角运动控制量， d = 一阶导数。wb指机身角速度。d = desired，指期望的
+    d_wbd.setZero();
+
+    Vec34 pos_feet_body_global; // 全局坐标系下的足端位置（相对于身体坐标系）
+    pos_feet_body_global.setZero();
+
+    Vec34 force_feet_global;    // 全局坐标系下的期望足底反力
+    force_feet_global.setZero();
+
+    Vec34 pos_feet_global;      // 全局坐标系下，四个足端当前实际位置
+    pos_feet_global.setZero();
+
+    Vec34 vel_feet_global;      // 全局坐标系下，四个足端当前实际速度
+    vel_feet_global.setZero();
+
+    Vec34 force_feet_body_;     // 身体坐标系下的期望足底反力
+    force_feet_body_.setZero();
+
+    // ========== 新增：仅 troting_kalman == 2 会用到的中间变量，也统一放到判断外 ==========
+    std::vector<KDL::Frame> feet_frames_body;
+    Vec34 pos_feet_body;
+    pos_feet_body.setZero();
+
+    Vec3 rot_err;
+    rot_err.setZero();
+
+    Vec3 gyro_global;
+    gyro_global.setZero();
+
+    Vec3 zero_w_cmd;
+    zero_w_cmd.setZero();
+
     if(troting_kalman == 1)
     {
         // 计算身体位置误差：期望位置pcd_ - 实际位置pos_body_
@@ -365,10 +401,10 @@ void StateTrotting::calcTau() {
         // 计算身体速度误差：目标速度vel_target_ - 实际速度vel_body_
         vel_error_ = vel_target_ - vel_body_;
         // 计算期望身体加速度dd_pcd：位置误差×比例增益 + 速度误差×阻尼增益
-        Vec3 dd_pcd = Kpp * pos_error_ + Kdp * vel_error_;
+        dd_pcd = Kpp * pos_error_ + Kdp * vel_error_;
         // 计算期望身体角速度增量d_wbd：姿态误差×比例增益 + 角速度误差×阻尼增益
-        // rotMatToExp(Rd * G2B_RotMat)：将期望姿态与实际姿态的偏差转换为欧拉角误差
-        Vec3 d_wbd = kp_w_ * rotMatToExp(Rd * G2B_RotMat) + Kd_w_ * (w_cmd_global_ - estimator_->getGyroGlobal());
+        // Rd * G2B_RotMat就是误差旋转矩阵。rotMatToExp()函数能：将期望姿态与实际姿态的偏差转换为欧拉角误差
+        d_wbd = kp_w_ * rotMatToExp(Rd * G2B_RotMat) + Kd_w_ * (w_cmd_global_ - estimator_->getGyroGlobal());
 
         // 调整加速度限制：缩小x/y范围减少前后左右失衡，放宽z轴增强垂直支撑力
         dd_pcd(0) = saturation(dd_pcd(0), Vec2(-1.5, 1.5));
@@ -381,14 +417,14 @@ void StateTrotting::calcTau() {
         d_wbd(2) = saturation(d_wbd(2), Vec2(-8, 8));
 
         // 获取当前足端相对于身体的位置（全局坐标系，4个足端，3维坐标）
-        const Vec34 pos_feet_body_global = estimator_->getFeetPos2Body();
+        pos_feet_body_global = estimator_->getFeetPos2Body();
         // 通过平衡控制器计算足端支撑力（全局坐标系）：依赖高增益参数实现均匀支撑，无后腿单独补偿
-        Vec34 force_feet_global = -balance_ctrl_->calF(dd_pcd, d_wbd, B2G_RotMat, pos_feet_body_global, wave_generator_->contact_);
+        force_feet_global = -balance_ctrl_->calF(dd_pcd, d_wbd, B2G_RotMat, pos_feet_body_global, wave_generator_->contact_);
 
         // 获取当前足端实际位置（全局坐标系）
-        Vec34 pos_feet_global = estimator_->getFeetPos();
+        pos_feet_global = estimator_->getFeetPos();
         // 获取当前足端实际速度（全局坐标系）
-        Vec34 vel_feet_global = estimator_->getFeetVel();
+        vel_feet_global = estimator_->getFeetVel();
 
         // 遍历4个足端，修正摆动相足端力（支撑相使用平衡控制的力，摆动相使用轨迹跟踪的力）
         for (int i(0); i < 4; ++i) {
@@ -401,7 +437,7 @@ void StateTrotting::calcTau() {
         }
 
         // 将足端力从全局坐标系转换为身体坐标系
-        Vec34 force_feet_body_ = G2B_RotMat * force_feet_global;
+        force_feet_body_ = G2B_RotMat * force_feet_global;
 
         // 获取当前机器人关节位置（4条腿，每条腿3个关节）
         std::vector<KDL::JntArray> current_joints = robot_model_->current_joint_pos_;
@@ -415,7 +451,97 @@ void StateTrotting::calcTau() {
             }
         }
     }
-    else if(troting_kalman == 0 || troting_kalman == 2)
+
+    // ========== troting_kalman == 2 基础支撑腿力分配/摆动腿轨迹闭环 ==========
+    // 整段逻辑： 不做机身位置闭环，只利用当前接触腿，分配一组足底支撑力，让机器人一边托住自身重力，一边把 roll / pitch 姿态往期望方向拉回去。
+    /* 
+        姿态误差 / 角速度
+            ↓
+        机身想要的总力矩（以及重力支撑）
+            ↓
+        各支撑腿应该承担多少足底反力
+            ↓
+        每条腿对应的关节力矩
+            ↓
+        写入电机关节 torque
+    */
+    else if(troting_kalman == 2)
+    {
+        // ========== 新增：不做任何位置/速度闭环，只做“托住重力 + roll/pitch姿态纠正” ==========
+
+        dd_pcd.setZero(); // 机身质心的期望线加速度,原地踏步不需要
+
+        // ========== 新增：只保留 roll / pitch 的姿态误差和角速度阻尼 ==========
+        rot_err = rotMatToExp(Rd * G2B_RotMat);
+        gyro_global = estimator_->getGyroGlobal();
+
+        rot_err(2) = 0.0;
+        gyro_global(2) = 0.0;
+
+        // 标准的 PD 姿态控制
+        d_wbd = kp_w_ * rot_err + Kd_w_ * (zero_w_cmd - gyro_global);
+
+        // ========== 新增：只限制 roll / pitch，yaw 先不接入 ==========
+        d_wbd(0) = saturation(d_wbd(0), Vec2(-20, 20));
+        d_wbd(1) = saturation(d_wbd(1), Vec2(-20, 20));
+        d_wbd(2) = 0.0;
+
+        // ========== 新增：当前足端相对于身体的位置，直接用机器人模型正运动学，不依赖位置/速度估计 ==========
+        feet_frames_body = robot_model_->getFeet2BPositions();
+        for (int i = 0; i < 4; ++i) {
+            pos_feet_body.col(i) = Vec3(feet_frames_body[i].p.data);
+        }
+
+        // ========== 新增：与 troting_kalman == 1 的接口保持一致，传入全局坐标系表达的“相对身体足端位置” ==========
+        pos_feet_body_global = B2G_RotMat * pos_feet_body;
+
+        // 通过平衡控制器计算足端支撑力（全局坐标系）
+        // dd_pcd，期望机身加速度，原地踏步不需要，所以全设为0
+        // d_wbd，期望机身角运动控制量，只保留roll/pitch的姿态误差和角速度阻尼，yaw先不接入
+        // B2G_RotMat，身体坐标系到全局坐标系的旋转矩阵
+        // pos_feet_body_global，全局坐标系下的足端位置（相对于身体坐标系）
+        // 输出force_feet_global，全局坐标系下的期望足底反力
+        force_feet_global = -balance_ctrl_->calF(dd_pcd, d_wbd, B2G_RotMat, pos_feet_body_global, wave_generator_->contact_);
+
+        // ========== 摆动腿先不做力控，只给0，摆动腿仍然主要靠位置/速度轨迹 ==========
+        for (int i(0); i < 4; ++i) {
+            if (wave_generator_->contact_(i) == 0) {
+                force_feet_global.col(i).setZero();
+            }
+        }
+
+                // 将足端力从全局坐标系转换为身体坐标系
+        force_feet_body_ = G2B_RotMat * force_feet_global;
+
+        // ========== 新增：MIT模式下，这里更适合作为前馈/偏置力矩，而不是直接满量目标力矩 ==========
+        // 足底反力没有精确控制，而是变成偏置力矩*小于1的比例系数进行修正控制
+        const double tau_ff_scale = 0.15;   // 衰减系数 先从0.25开始，后面可再调大
+        const double tau_ff_limit_hip = 4.0;
+        const double tau_ff_limit_thigh = 8.0;
+        const double tau_ff_limit_calf = 8.0;
+
+        // 遍历4条腿，计算每条腿的关节力矩并赋值给控制接口
+        for (int i = 0; i < 4; i++) {
+            KDL::JntArray torque = robot_model_->getTorque(force_feet_body_.col(i), i);
+            for (int j = 0; j < 3; j++) {
+                // ========== 新增：先缩放，再按关节类型限幅 ==========
+                double tau_cmd = tau_ff_scale * torque(j);
+
+                if (j == 0) {
+                    tau_cmd = saturation(tau_cmd, Vec2(-tau_ff_limit_hip, tau_ff_limit_hip));
+                } else if (j == 1) {
+                    tau_cmd = saturation(tau_cmd, Vec2(-tau_ff_limit_thigh, tau_ff_limit_thigh));
+                } else {
+                    tau_cmd = saturation(tau_cmd, Vec2(-tau_ff_limit_calf, tau_ff_limit_calf));
+                }
+
+                ctrl_interfaces_.joint_torque_command_interface_[i * 3 + j].get().set_value(tau_cmd);
+            }
+        }
+
+    }
+
+    else if(troting_kalman == 0)
     {
         /* 开环troting不计算力矩，直接位置控制 */
         for (int i = 0; i < 12; i++) {
@@ -458,7 +584,7 @@ void StateTrotting::calcQQd() {
     }
     else if(troting_kalman == 0 || troting_kalman == 2)
     {
-        // 开环：GaitGenerator 输出的真的已经是身体坐标系了，直接赋值！(真的不需要转换了，只是变量名字没改在误导)
+        // 开环下世界系和本体系重合：GaitGenerator 输出的直接是身体坐标系了，直接当身体坐标系用即可(变量名字还是全局的，在误导)，因为generate函数内部就是身体系的姿势参数，再转到世界系再转回身体系那就有点可笑了。
         pos_feet_target = pos_feet_global_goal_;
         vel_feet_target = vel_feet_global_goal_;
     }

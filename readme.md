@@ -75,3 +75,5 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
   * 微调模块很正常，但现在最大的问题是什么样的站姿是正确的？
 * 2026.04.15 v2.5
   * 在郭久双的帮助下在solidworks标定物理极限时各关节位置，并完成关节位置的精准标定。现在正式完成关节位置标定的关节位置offset后面会加一个“# accurate”，表示这是绝对精准的真实角度了
+* 2026.04.16 v2.61
+  * 加入了未完成的足底反力分配算法，但是核心balance_ctrl_->calF函数还没改，而且电机MIT控制的话是没法做到精准力控的，但是改成了目标力乘以衰减系数，然后加到tauff里面实现调节。

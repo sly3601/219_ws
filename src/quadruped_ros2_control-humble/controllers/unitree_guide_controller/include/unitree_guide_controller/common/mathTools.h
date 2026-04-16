@@ -81,6 +81,7 @@ T saturation(const T a, Vec2 limits) {
     return a;
 }
 
+// 四元数转旋转矩阵
 inline RotMat quatToRotMat(const Quat &q) {
     double e0 = q(0);
     double e1 = q(1);
