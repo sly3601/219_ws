@@ -20,8 +20,8 @@ BalanceCtrl::BalanceCtrl(const std::shared_ptr<QuadrupedRobot> &robot) {
     friction_mat_ << 1, 0, friction_ratio_, -1, 0, friction_ratio_, 0, 1, friction_ratio_, 0, -1,
             friction_ratio_, 0, 0, 1;
 
-    pcb_ = Vec3(0.0, 0.0, 0.0);  //修改了质心位置，原本0 0 0 注意，这里的pcb_是质心位置，这个变量是balance控制器内部的private参数，和troting的pcb_没有关系了。
-    // pcb_ = Vec3(-0.03, -0.02, -0.04);
+    // pcb_ = Vec3(0.0, 0.0, 0.0);  //修改了质心位置，原本0 0 0 注意，这里的pcb_是质心位置，这个变量是balance控制器内部的private参数，和troting的pcb_没有关系了。
+    pcb_ = Vec3(-0.10, -0.02, -0.04);
     // Ib_ = Vec3(0.0792, 0.2085, 0.2265).asDiagonal(); // 原来宇树的参数
     Ib_ = Vec3(0.624, 2.683, 2.934).asDiagonal(); // 暂定的参数
 

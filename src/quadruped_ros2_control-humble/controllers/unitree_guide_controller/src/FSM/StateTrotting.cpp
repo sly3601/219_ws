@@ -522,7 +522,7 @@ void StateTrotting::calcTau() {
 
         // ========== 新增：MIT模式下，这里更适合作为前馈/偏置力矩，而不是直接满量目标力矩 ==========
         // 足底反力没有精确控制，而是变成偏置力矩*小于1的比例系数进行修正控制
-        const double tau_ff_scale = 0.1;   // 衰减系数 先从0.25开始，后面可再调大
+        const double tau_ff_scale = 0.8;   // 衰减系数 先从0.25开始，后面可再调大
         const double tau_ff_limit_hip = 4.0;
         const double tau_ff_limit_thigh = 8.0;
         const double tau_ff_limit_calf = 8.0;
@@ -726,14 +726,14 @@ void StateTrotting::calcGain() const {
             } else {
                 // ================= 支撑相（脚踩地） =================
                 // 增益拉高，抗干扰、站稳
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(270.0); // 从68
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(350.0); // 从68
                 ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(3.4);  
             }
         }
 
         // 【单独设置髋关节】
         int hip_idx = i * 3 + 0;
-        ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(270.0); // 70
+        ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(350.0); // 70
         ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(3.9);
     }
 }
