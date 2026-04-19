@@ -19,7 +19,7 @@ BalanceCtrl::BalanceCtrl(const std::shared_ptr<QuadrupedRobot> &robot) {
     friction_mat_ << 1, 0, friction_ratio_, -1, 0, friction_ratio_, 0, 1, friction_ratio_, 0, -1,
             friction_ratio_, 0, 0, 1;
 
-    pcb_ = Vec3(0.0, 0.0, 0.0);  //修改了质心位置，原本0 0 0 
+    pcb_ = Vec3(0.0, 0.0, 0.0);  //修改了质心位置，原本0 0 0 注意，这里的pcb_是质心位置，这个变量是balance控制器内部的private参数，和troting的pcb_没有关系了。
     Ib_ = Vec3(0.0792, 0.2085, 0.2265).asDiagonal();
 
     Vec6 s;
@@ -35,6 +35,7 @@ BalanceCtrl::BalanceCtrl(const std::shared_ptr<QuadrupedRobot> &robot) {
     F_prev_.setZero();
 }
 
+// 已知机身现在“想要”的总力和总力矩，求四条腿各自应该提供多少足底反力。
 Vec34 BalanceCtrl::calF(const Vec3 &ddPcd, const Vec3 &dWbd, const RotMat &rot_matrix,
                         const Vec34 &feet_pos_2_body, const VecInt4 &contact) {
     calMatrixA(feet_pos_2_body, rot_matrix);

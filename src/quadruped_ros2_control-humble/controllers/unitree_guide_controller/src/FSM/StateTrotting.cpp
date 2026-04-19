@@ -89,8 +89,16 @@ void StateTrotting::enter() {
         auto feet_2b = robot_model_->getFeet2BPositions();
         double foot_z_avg = (feet_2b[0].p.z() + feet_2b[1].p.z() + feet_2b[2].p.z() + feet_2b[3].p.z()) / 4.0;
         pcd_ << 0.0, 0.0, -foot_z_avg;
-        yaw_cmd_ = 0;
-        Rd.setIdentity(); // 期望的躯体姿态的B2G旋转矩阵，暂无yaw角闭环所以单位矩阵即可，单位矩阵的意思就是躯体的躯体姿态与世界系完全一样。
+        if(troting_kalman == 2)
+        {
+            yaw_cmd_ = estimator_->getYaw();
+            Rd = rotz(yaw_cmd_);
+        }
+        else
+        {
+            yaw_cmd_ = 0;
+            Rd.setIdentity();// 期望的躯体姿态的B2G旋转矩阵，暂无yaw角闭环所以单位矩阵即可，单位矩阵的意思就是躯体的躯体姿态与世界系完全一样。
+        }
         wave_generator_->status_ = WaveStatus::STANCE_ALL;   // 先明确给全支撑
     }
     // 初始化全局坐标系下的角速度指令w_cmd_global_为零向量
@@ -350,6 +358,7 @@ void StateTrotting::calcCmd() {
         yaw_cmd_ = 0;
         Rd.setIdentity(); // 期望旋转矩阵固定为单位矩阵（完全水平）
         w_cmd_global_.setZero(); // 角速度固定为0
+        
     }
 }
 
@@ -475,16 +484,14 @@ void StateTrotting::calcTau() {
         rot_err = rotMatToExp(Rd * G2B_RotMat);
         gyro_global = estimator_->getGyroGlobal();
 
-        rot_err(2) = 0.0;
-        gyro_global(2) = 0.0;
 
-        // 标准的 PD 姿态控制
+        // 角度误差乘以比例增益 + 角速度乘以阻尼增益，得到期望的机身角运动控制量（力矩）
         d_wbd = kp_w_ * rot_err + Kd_w_ * (zero_w_cmd - gyro_global);
 
-        // ========== 新增：只限制 roll / pitch，yaw 先不接入 ==========
+        // ========== 限制 roll， pitch，yaw ==========
         d_wbd(0) = saturation(d_wbd(0), Vec2(-20, 20));
         d_wbd(1) = saturation(d_wbd(1), Vec2(-20, 20));
-        d_wbd(2) = 0.0;
+        d_wbd(2) = saturation(d_wbd(2), Vec2(-8, 8));
 
         // ========== 新增：当前足端相对于身体的位置，直接用机器人模型正运动学，不依赖位置/速度估计 ==========
         feet_frames_body = robot_model_->getFeet2BPositions();
@@ -497,7 +504,7 @@ void StateTrotting::calcTau() {
 
         // 通过平衡控制器计算足端支撑力（全局坐标系）
         // dd_pcd，期望机身加速度，原地踏步不需要，所以全设为0
-        // d_wbd，期望机身角运动控制量，只保留roll/pitch的姿态误差和角速度阻尼，yaw先不接入
+        // d_wbd，期望机身角运动控制量（期望机身力矩），只保留roll/pitch的姿态误差和角速度阻尼，yaw先不接入，但是其实需要接入yaw，下一步接入
         // B2G_RotMat，身体坐标系到全局坐标系的旋转矩阵
         // pos_feet_body_global，全局坐标系下的足端位置（相对于身体坐标系）
         // 输出force_feet_global，全局坐标系下的期望足底反力
@@ -607,7 +614,7 @@ void StateTrotting::calcQQd() {
 
         const double k_roll_to_z = 0.1; // roll 方向的纠正量，映射到支撑腿 z 修正时，放大/缩小多少
         const double k_pitch_to_z = 0.08;// pitch 方向的纠正量，映射到支撑腿 z 修正时，放大/缩小多少
-        const double dz_limit = 0.03;   // 单条腿这次最多只允许修正这么高，防止闭环一上来把腿拉太狠。
+        const double dz_limit = 0;   // roll/pitch闭环已暂时禁用！单条腿这次最多只允许修正这么高，防止闭环一上来把腿拉太狠。
 
         Vec3 attitude_error = rotMatToExp(Rd * G2B_RotMat); // Rd 期望姿态旋转矩阵，是单位阵，也就是“希望机身保持水平”
         Vec3 gyro = estimator_->getGyroGlobal(); // 预期：gyro(0)：roll 方向角速度 gyro(1)：pitch 方向角速度
