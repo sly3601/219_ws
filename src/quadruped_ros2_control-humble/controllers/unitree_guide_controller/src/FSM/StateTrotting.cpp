@@ -35,7 +35,7 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 初始化成员变量：步态生成器（从控制组件中初始化，用于生成足端目标轨迹）
     gait_generator_(ctrl_component, this){
     // 提高摆动高度：避免足端落地过浅，增强整体支撑余量（适配1.5倍腿长）
-    gait_height_ = 0.03;
+    gait_height_ = 0.05;
     // 身体位置比例增益：大幅提高z轴抑制下沉，x/y提高增强平动控制（全局优化，无后腿单独补偿）
     Kpp = Vec3(3, 3, 3).asDiagonal();
     // 身体速度阻尼增益：增强z轴阻尼抗抖动，x/y提高抑制大惯性超调
@@ -491,7 +491,7 @@ void StateTrotting::calcTau() {
         // ========== 限制 roll， pitch，yaw ==========
         d_wbd(0) = saturation(d_wbd(0), Vec2(-20, 20));
         d_wbd(1) = saturation(d_wbd(1), Vec2(-20, 20));
-        d_wbd(2) = saturation(d_wbd(2), Vec2(-8, 8));
+        d_wbd(2) = saturation(d_wbd(2), Vec2(-7, 7));
 
         // ========== 新增：当前足端相对于身体的位置，直接用机器人模型正运动学，不依赖位置/速度估计 ==========
         feet_frames_body = robot_model_->getFeet2BPositions();
@@ -522,10 +522,10 @@ void StateTrotting::calcTau() {
 
         // ========== 新增：MIT模式下，这里更适合作为前馈/偏置力矩，而不是直接满量目标力矩 ==========
         // 足底反力没有精确控制，而是变成偏置力矩*小于1的比例系数进行修正控制
-        const double tau_ff_scale = 0.8;   // 衰减系数 先从0.25开始，后面可再调大
+        const double tau_ff_scale = 0.2;   // 衰减系数 先从0.25开始，后面可再调大
         const double tau_ff_limit_hip = 4.0;
-        const double tau_ff_limit_thigh = 8.0;
-        const double tau_ff_limit_calf = 8.0;
+        const double tau_ff_limit_thigh = 16.0;
+        const double tau_ff_limit_calf = 16.0;
 
         // 遍历4条腿，计算每条腿的关节力矩并赋值给控制接口
         for (int i = 0; i < 4; i++) {
@@ -721,19 +721,19 @@ void StateTrotting::calcGain() const {
             if (wave_generator_->contact_(i) == 0) {
                 // ================= 摆动相（脚在空中） =================
                 // 增益中等，跟轨迹但不僵硬
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(220.0); // 从65
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(260.0); // 从65
                 ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(3.1);  
             } else {
                 // ================= 支撑相（脚踩地） =================
                 // 增益拉高，抗干扰、站稳
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(350.0); // 从68
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(260.0); // 从68
                 ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(3.4);  
             }
         }
 
         // 【单独设置髋关节】
         int hip_idx = i * 3 + 0;
-        ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(350.0); // 70
+        ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(300.0); // 70
         ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(3.9);
     }
 }
