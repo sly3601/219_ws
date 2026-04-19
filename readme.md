@@ -77,3 +77,5 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
   * 在郭久双的帮助下在solidworks标定物理极限时各关节位置，并完成关节位置的精准标定。现在正式完成关节位置标定的关节位置offset后面会加一个“# accurate”，表示这是绝对精准的真实角度了
 * 2026.04.16 v2.61
   * 加入了未完成的足底反力分配算法，但是核心balance_ctrl_->calF函数还没改，而且电机MIT控制的话是没法做到精准力控的，但是改成了目标力乘以衰减系数，然后加到tauff里面实现调节。
+* 2026.04.19 v2.62
+  * 完成了足底力分配算法核心balance_ctrl_->calF函数QP二次优化问题的学习，暂时禁用roll/pitch闭环，物理参数待更新标定。
