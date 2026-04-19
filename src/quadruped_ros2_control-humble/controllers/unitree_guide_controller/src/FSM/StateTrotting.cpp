@@ -491,7 +491,7 @@ void StateTrotting::calcTau() {
         // ========== 限制 roll， pitch，yaw ==========
         d_wbd(0) = saturation(d_wbd(0), Vec2(-20, 20));
         d_wbd(1) = saturation(d_wbd(1), Vec2(-20, 20));
-        d_wbd(2) = saturation(d_wbd(2), Vec2(-7, 7));
+        d_wbd(2) = saturation(d_wbd(2), Vec2(-12, 12));
 
         // ========== 新增：当前足端相对于身体的位置，直接用机器人模型正运动学，不依赖位置/速度估计 ==========
         feet_frames_body = robot_model_->getFeet2BPositions();
