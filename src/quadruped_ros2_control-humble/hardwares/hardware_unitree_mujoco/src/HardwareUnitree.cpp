@@ -252,6 +252,16 @@ return_type HardwareUnitree::read(const rclcpp::Time& /*time*/, const rclcpp::Du
             correctMotorState(can_entry.second);
         }
     }
+    // ========== 新增：读取到 offset 处理后的关节角明显超出 120 度，直接卡死 ==========
+    const float max_safe_joint_pos = 180.0f * 3.14159265358979323846f / 180.0f;  // 120° = 2.094 rad
+
+    for (auto& port_entry : port_id2dm_data_) {
+        for (auto& can_entry : port_entry.second) {
+            if (std::fabs(can_entry.second.pos) > max_safe_joint_pos) {
+                while (1) {}
+            }
+        }
+    }
 
     // 2. 把达妙电机的状态赋值给ROS2的状态数组（joint_position_/joint_velocities_/joint_effort_）
     // 2.1 读取位置状态
@@ -615,13 +625,6 @@ void HardwareUnitree::correctMotorCommand(damiao::DmActData& dm_data) {
         
         float raw_pos_ref = it->second;
         g_angle_cycle_offset[dm_data.name] = std::round((raw_pos_ref - raw_cmd_base) / TWO_PI_F) * TWO_PI_F;
-
-        // ========== 新增：第一次write命令时的超差保护 ==========
-        float raw_cmd_first = raw_cmd_base + g_angle_cycle_offset[dm_data.name];
-        const float max_first_write_error = 1.0f;  // 可按需改成0.8f或更小
-        if (std::fabs(raw_cmd_first - raw_pos_ref) > max_first_write_error) {
-            while (1) {}
-        }
     }
     dm_data.cmd_pos = raw_cmd_base + g_angle_cycle_offset[dm_data.name];
 
