@@ -252,16 +252,6 @@ return_type HardwareUnitree::read(const rclcpp::Time& /*time*/, const rclcpp::Du
             correctMotorState(can_entry.second);
         }
     }
-    // ========== 新增：读取到 offset 处理后的关节角明显超出 120 度，直接卡死 ==========
-    const float max_safe_joint_pos = 180.0f * 3.14159265358979323846f / 180.0f;  // 120° = 2.094 rad
-
-    for (auto& port_entry : port_id2dm_data_) {
-        for (auto& can_entry : port_entry.second) {
-            if (std::fabs(can_entry.second.pos) > max_safe_joint_pos) {
-                while (1) {}
-            }
-        }
-    }
 
     // 2. 把达妙电机的状态赋值给ROS2的状态数组（joint_position_/joint_velocities_/joint_effort_）
     // 2.1 读取位置状态
