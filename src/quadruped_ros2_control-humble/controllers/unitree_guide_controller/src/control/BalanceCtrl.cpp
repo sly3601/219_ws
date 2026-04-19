@@ -27,7 +27,10 @@ BalanceCtrl::BalanceCtrl(const std::shared_ptr<QuadrupedRobot> &robot) {
 
     Vec6 s;
     Vec12 w, u;
-    w << 10, 10, 4, 10, 10, 4, 10, 10, 4, 10, 10, 4;
+    w << 10, 10, 4, 
+         10, 10, 4, 
+         10, 10, 4, 
+         10, 10, 4; // 提高后腿 fz 的惩罚
     u << 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3;
     s << 20, 20, 50, 450, 450, 80; // 减小yaw方向权重到80
 
