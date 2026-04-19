@@ -603,6 +603,12 @@ void HardwareUnitree::correctMotorCommand(damiao::DmActData& dm_data) {
     // 1. 新增：如果还没读过数据（read没执行过），直接跑路，防止崩溃
     if (g_last_raw_pos.find(dm_data.name) == g_last_raw_pos.end()) return;
 
+    // 如果目标位置和当前位置差别过大，直接卡死程序
+    const float max_pos_error = 1.0f;  // 可自行改小，比如 0.8f
+    if (std::fabs(dm_data.cmd_pos - dm_data.pos) > max_pos_error) {
+        while (1) {}
+    }
+
     // 1. 位置指令：(目标位置 - 零点偏置) ÷ 转向系数（反向计算）
     float raw_cmd_base = (dm_data.cmd_pos - dm_data.offset) / dm_data.direction;
     
