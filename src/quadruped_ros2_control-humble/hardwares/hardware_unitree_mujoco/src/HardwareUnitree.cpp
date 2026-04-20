@@ -262,6 +262,11 @@ return_type HardwareUnitree::read(const rclcpp::Time& /*time*/, const rclcpp::Du
             for (auto& can_entry : port_entry.second) {
                 if (can_entry.second.name == joint_name) {
                     joint_position_[ind] = can_entry.second.pos;
+                    if(joint_position_[ind]>3.14 || joint_position_[ind]<-3.14){
+                        RCLCPP_WARN(rclcpp::get_logger("unitree_hardware"), 
+                            "关节%s位置异常：%f！", joint_name.c_str(), joint_position_[ind]);
+                        while(1){}
+                    }
                     found = true;
                     break;
                 }
