@@ -16,7 +16,24 @@
 using hardware_interface::return_type;
 
 
+// ========== 新增：全局函数和变量，用于电机状态/指令修正（转向+偏置） ==========
+namespace
+{
+    constexpr float PI_F = 3.14159265358979323846f;
+    constexpr float TWO_PI_F = 2.0f * PI_F;
 
+    // 达妙驱动默认位置量程：±12.5 rad
+    constexpr float DM_PMAX_F = 12.5f;
+    // 靠近边界时报警阈值，你可以自己改
+    constexpr float EDGE_WARN_THRESHOLD_F = 11.5f;
+
+    // 当前这一拍驱动直接返回的原始位置（不累计，不展开）
+    std::unordered_map<std::string, float> g_current_raw_pos;
+
+    // 防止报警刷屏
+    std::unordered_map<std::string, bool> g_edge_warned;
+
+}
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn HardwareUnitree::on_init(
     const hardware_interface::HardwareInfo& info)
 {
@@ -580,24 +597,7 @@ bool HardwareUnitree::parseDmActData(const std::string& yaml_file_path)
     }
 }
 
-// ========== 新增：全局函数和变量，用于电机状态/指令修正（转向+偏置） ==========
-namespace
-{
-    constexpr float PI_F = 3.14159265358979323846f;
-    constexpr float TWO_PI_F = 2.0f * PI_F;
 
-    // 达妙驱动默认位置量程：±12.5 rad
-    constexpr float DM_PMAX_F = 12.5f;
-    // 靠近边界时报警阈值，你可以自己改
-    constexpr float EDGE_WARN_THRESHOLD_F = 11.5f;
-
-    // 当前这一拍驱动直接返回的原始位置（不累计，不展开）
-    std::unordered_map<std::string, float> g_current_raw_pos;
-
-    // 防止报警刷屏
-    std::unordered_map<std::string, bool> g_edge_warned;
-
-}
 
 void HardwareUnitree::correctMotorState(damiao::DmActData& dm_data) {
     // 1. 先把驱动当前原始位置映射到机器人建模空间
