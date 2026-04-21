@@ -600,27 +600,38 @@ bool HardwareUnitree::parseDmActData(const std::string& yaml_file_path)
 
 
 void HardwareUnitree::correctMotorState(damiao::DmActData& dm_data) {
-    // 1. 先把驱动当前原始位置映射到机器人建模空间
+    // 1. 先做方向和 offset 映射
     float q_model = dm_data.pos * dm_data.direction + dm_data.offset;
 
-    // 2. 再把它映射到该关节自己的物理建模范围，而不是统一 wrapToPi
+    // 2. 只放宽“换算窗口”，不改真实关节限位
+    const float read_margin = 1.0f;   // 你可以先试 1.0，再看情况改成 0.8 或 1.2
+
     if (dm_data.name.find("hip") != std::string::npos) {
         auto& limit = joint_type_limits_["hip"];
-        while (q_model < limit.pos_min) q_model += TWO_PI_F;
-        while (q_model > limit.pos_max) q_model -= TWO_PI_F;
+        float read_min = limit.pos_min - read_margin;
+        float read_max = limit.pos_max + read_margin;
+
+        while (q_model < read_min) q_model += TWO_PI_F;
+        while (q_model > read_max) q_model -= TWO_PI_F;
     } else if (dm_data.name.find("thigh") != std::string::npos) {
         auto& limit = joint_type_limits_["thigh"];
-        while (q_model < limit.pos_min) q_model += TWO_PI_F;
-        while (q_model > limit.pos_max) q_model -= TWO_PI_F;
+        float read_min = limit.pos_min - read_margin;
+        float read_max = limit.pos_max + read_margin;
+
+        while (q_model < read_min) q_model += TWO_PI_F;
+        while (q_model > read_max) q_model -= TWO_PI_F;
     } else if (dm_data.name.find("calf") != std::string::npos) {
         auto& limit = joint_type_limits_["calf"];
-        while (q_model < limit.pos_min) q_model += TWO_PI_F;
-        while (q_model > limit.pos_max) q_model -= TWO_PI_F;
+        float read_min = limit.pos_min - read_margin;
+        float read_max = limit.pos_max + read_margin;
+
+        while (q_model < read_min) q_model += TWO_PI_F;
+        while (q_model > read_max) q_model -= TWO_PI_F;
     }
 
     dm_data.pos = q_model;
 
-    // 3. 速度、力矩仍然按方向修正
+    // 3. 速度、力矩照旧
     dm_data.vel = dm_data.vel * dm_data.direction;
     dm_data.effort = dm_data.effort * dm_data.direction;
 }
