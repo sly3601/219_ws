@@ -480,6 +480,20 @@ return_type HardwareUnitree::write(const rclcpp::Time& /*time*/, const rclcpp::D
             joint_torque_command_[ind] = std::clamp(joint_torque_command_[ind], limit.torque_min, limit.torque_max);
         }
 
+        const double max_pos_error = 1.5;  // 极简统一阈值，先用1.5rad
+
+        if (joint_kp_command_[ind] > 1e-3 &&
+            std::fabs(joint_position_command_[ind] - joint_position_[ind]) > max_pos_error) {
+            RCLCPP_FATAL(
+                rclcpp::get_logger("unitree_hardware"),
+                "硬停：关节[%s] 位置命令超差！cmd=%.4f current=%.4f diff=%.4f",
+                joint_name.c_str(),
+                joint_position_command_[ind],
+                joint_position_[ind],
+                std::fabs(joint_position_command_[ind] - joint_position_[ind]));
+            while (1) {}
+        }
+
 
         for (auto& port_entry : port_id2dm_data_) {
             for (auto& can_entry : port_entry.second) {
