@@ -246,10 +246,32 @@ return_type HardwareUnitree::read(const rclcpp::Time& /*time*/, const rclcpp::Du
         motor_control->read();
     }
 
-    // ========== 新增：修正所有电机的原始状态 ==========
-    for (auto& port_entry : port_id2dm_data_) {
-        for (auto& can_entry : port_entry.second) {
-            correctMotorState(can_entry.second);
+    for (auto& port_entry : port_id2dm_data_) 
+    {
+        for (auto& can_entry : port_entry.second) 
+        {
+            auto& dm_data = can_entry.second;
+            const std::string& name = dm_data.name;
+
+            // 1. 先记录驱动这一拍直接返回的原始位置（多圈值，可能到 ±12.5）
+            float raw_now = dm_data.pos;
+            g_current_raw_pos[name] = raw_now;
+
+            // 2. 如果靠近 ±12.5，报警
+            if (std::fabs(raw_now) > EDGE_WARN_THRESHOLD_F) {
+                if (!g_edge_warned[name]) {
+                    RCLCPP_WARN(
+                        rclcpp::get_logger("unitree_hardware"),
+                        "电机[%s] 原始位置 raw=%.4f 接近 ±12.5rad 边界，当前位置控制存在分支风险！",
+                        name.c_str(), raw_now);
+                    g_edge_warned[name] = true;
+                }
+            } else {
+                g_edge_warned[name] = false;
+            }
+
+            // 3. 再做状态映射
+            correctMotorState(dm_data);
         }
     }
 
@@ -262,11 +284,6 @@ return_type HardwareUnitree::read(const rclcpp::Time& /*time*/, const rclcpp::Du
             for (auto& can_entry : port_entry.second) {
                 if (can_entry.second.name == joint_name) {
                     joint_position_[ind] = can_entry.second.pos;
-                    if(joint_position_[ind]>3.14 || joint_position_[ind]<-3.14){
-                        RCLCPP_WARN(rclcpp::get_logger("unitree_hardware"), 
-                            "关节%s位置异常：%f！", joint_name.c_str(), joint_position_[ind]);
-                        while(1){}
-                    }
                     found = true;
                     break;
                 }
@@ -569,66 +586,84 @@ namespace
     constexpr float PI_F = 3.14159265358979323846f;
     constexpr float TWO_PI_F = 2.0f * PI_F;
 
-    float wrapToPi(float angle)
-    {
-        while (angle > PI_F)
-        {
-            angle -= TWO_PI_F;
-        }
-        while (angle <= -PI_F)
-        {
-            angle += TWO_PI_F;
-        }
-        return angle;
-    }
+    // 达妙驱动默认位置量程：±12.5 rad
+    constexpr float DM_PMAX_F = 12.5f;
+    // 靠近边界时报警阈值，你可以自己改
+    constexpr float EDGE_WARN_THRESHOLD_F = 11.5f;
 
-    std::unordered_map<std::string, float> g_last_raw_pos;
-    // 新增：存储每个电机的周期偏移量（上电初始化一次）
-    std::unordered_map<std::string, float> g_angle_cycle_offset;
+    // 当前这一拍驱动直接返回的原始位置（不累计，不展开）
+    std::unordered_map<std::string, float> g_current_raw_pos;
+
+    // 防止报警刷屏
+    std::unordered_map<std::string, bool> g_edge_warned;
+
 }
 
-// 修正电机原始状态（硬件→ROS2：匹配真实机器人）
 void HardwareUnitree::correctMotorState(damiao::DmActData& dm_data) {
-    // 新增：仅在上电后第一次运行时存储原始位置
-    if (g_last_raw_pos.find(dm_data.name) == g_last_raw_pos.end()) {
-        g_last_raw_pos[dm_data.name] = dm_data.pos;
+    // 1. 先把驱动当前原始位置映射到机器人建模空间
+    float q_model = dm_data.pos * dm_data.direction + dm_data.offset;
+
+    // 2. 再把它映射到该关节自己的物理建模范围，而不是统一 wrapToPi
+    if (dm_data.name.find("hip") != std::string::npos) {
+        auto& limit = joint_type_limits_["hip"];
+        while (q_model < limit.pos_min) q_model += TWO_PI_F;
+        while (q_model > limit.pos_max) q_model -= TWO_PI_F;
+    } else if (dm_data.name.find("thigh") != std::string::npos) {
+        auto& limit = joint_type_limits_["thigh"];
+        while (q_model < limit.pos_min) q_model += TWO_PI_F;
+        while (q_model > limit.pos_max) q_model -= TWO_PI_F;
+    } else if (dm_data.name.find("calf") != std::string::npos) {
+        auto& limit = joint_type_limits_["calf"];
+        while (q_model < limit.pos_min) q_model += TWO_PI_F;
+        while (q_model > limit.pos_max) q_model -= TWO_PI_F;
     }
 
-    // 1. 位置修正：原始位置 × 转向系数 + 零点偏置
-    dm_data.pos = dm_data.pos * dm_data.direction + dm_data.offset;
-    dm_data.pos = wrapToPi(dm_data.pos);
-    // 2. 速度修正：原始速度 × 转向系数（方向同步）
+    dm_data.pos = q_model;
+
+    // 3. 速度、力矩仍然按方向修正
     dm_data.vel = dm_data.vel * dm_data.direction;
-    // 3. 力矩修正：原始力矩 × 转向系数（方向同步）
     dm_data.effort = dm_data.effort * dm_data.direction;
 }
 
-// 修正电机下发指令（ROS2→硬件：匹配硬件原始值）
+
 void HardwareUnitree::correctMotorCommand(damiao::DmActData& dm_data) {
-    // 1. 新增：如果还没读过数据（read没执行过），直接跑路，防止崩溃
-    if (g_last_raw_pos.find(dm_data.name) == g_last_raw_pos.end()) return;
+    auto it = g_current_raw_pos.find(dm_data.name);
+    if (it == g_current_raw_pos.end()) return;
 
+    float raw_now = it->second;
 
-    // 1. 位置指令：(目标位置 - 零点偏置) ÷ 转向系数（反向计算）
+    // 1. 上层目标角先反算成 raw 空间基础解
     float raw_cmd_base = (dm_data.cmd_pos - dm_data.offset) / dm_data.direction;
-    
-    // 新增：仅在上电后第一次运行时计算周期偏移量
-    if (g_angle_cycle_offset.find(dm_data.name) == g_angle_cycle_offset.end()) {
-        // 2. 修改：把 .at() 改成 .find()，双重保险
-        auto it = g_last_raw_pos.find(dm_data.name);
-        if (it == g_last_raw_pos.end()) return; // 3. 新增：找不到就返回
-        
-        float raw_pos_ref = it->second;
-        g_angle_cycle_offset[dm_data.name] = std::round((raw_pos_ref - raw_cmd_base) / TWO_PI_F) * TWO_PI_F;
-    }
-    dm_data.cmd_pos = raw_cmd_base + g_angle_cycle_offset[dm_data.name];
 
-    // 2. 速度指令：目标速度 ÷ 转向系数
+    // 2. 用“当前这一拍的 raw_now”选最近的等价 2π 分支
+    float k = std::round((raw_now - raw_cmd_base) / TWO_PI_F);
+    float raw_cmd_candidate = raw_cmd_base + k * TWO_PI_F;
+
+    // 3. 如果当前 raw 或目标 raw 已经靠近 ±12.5，报警
+    if (std::fabs(raw_now) > EDGE_WARN_THRESHOLD_F ||
+        std::fabs(raw_cmd_candidate) > EDGE_WARN_THRESHOLD_F) {
+        RCLCPP_WARN(
+            rclcpp::get_logger("unitree_hardware"),
+            "电机[%s] 当前位置 raw=%.4f 或目标 raw=%.4f 接近 ±12.5rad 边界，分支选择风险较高！",
+            dm_data.name.c_str(), raw_now, raw_cmd_candidate);
+    }
+
+    // 4. 如果目标已经超出驱动默认量程，也报警
+    if (std::fabs(raw_cmd_candidate) > DM_PMAX_F) {
+        RCLCPP_ERROR(
+            rclcpp::get_logger("unitree_hardware"),
+            "电机[%s] 目标 raw=%.4f 超出驱动默认 ±12.5rad 量程！",
+            dm_data.name.c_str(), raw_cmd_candidate);
+        while (1) {}
+    }
+
+    dm_data.cmd_pos = raw_cmd_candidate;
+
+    // 5. 速度、力矩照旧反向映射
     dm_data.cmd_vel = dm_data.cmd_vel / dm_data.direction;
-    // 3. 力矩指令：目标力矩 ÷ 转向系数
     dm_data.cmd_effort = dm_data.cmd_effort / dm_data.direction;
-    // KP/KD无需修正（比例参数，与方向无关）
 }
+
 
 // 新增析构函数：释放达妙电机串口和线程资源
 HardwareUnitree::~HardwareUnitree() {
