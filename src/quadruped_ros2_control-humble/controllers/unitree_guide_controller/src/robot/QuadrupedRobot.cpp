@@ -75,7 +75,7 @@ std::vector<KDL::Frame> QuadrupedRobot::getFeet2BPositions() const {
     std::vector<KDL::Frame> result;
     result.resize(4);
     for (int i = 0; i < 4; i++) {
-        result[i] = robot_legs_[i]->calcPEe2B(current_joint_pos_[i]);
+        result[i] = robot_legs_[i]->calcPEe2B(current_joint_pos_[i]);// 运动学正解，计算身体坐标系下足底位置
     }
     return result;
 }
@@ -84,7 +84,7 @@ KDL::Frame QuadrupedRobot::getFeet2BPositions(const int index) const {
     return robot_legs_[index]->calcPEe2B(current_joint_pos_[index]);
 }
 
-KDL::Jacobian QuadrupedRobot::getJacobian(const int index) const {
+KDL::Jacobian QuadrupedRobot::getJacobian(const int index) const {// 这一定是身体坐标系下，计算雅可比矩阵需要输入当前关节位置
     return robot_legs_[index]->calcJaco(current_joint_pos_[index]);
 }
 
@@ -97,13 +97,13 @@ KDL::JntArray QuadrupedRobot::getTorque(const KDL::Vector &force, int index) con
     return robot_legs_[index]->calcTorque(current_joint_pos_[index], Vec3(force.data));
 }
 
-KDL::Vector QuadrupedRobot::getFeet2BVelocities(const int index) const {
-    const Mat3 jacobian = getJacobian(index).data.topRows(3);
-    Vec3 foot_velocity = jacobian * current_joint_vel_[index].data;
+KDL::Vector QuadrupedRobot::getFeet2BVelocities(const int index) const {// 
+    const Mat3 jacobian = getJacobian(index).data.topRows(3);// 只取前三行线速度部分的雅可比矩阵
+    Vec3 foot_velocity = jacobian * current_joint_vel_[index].data; // v = J * qd，速度的正解
     return {foot_velocity(0), foot_velocity(1), foot_velocity(2)};
 }
 
-std::vector<KDL::Vector> QuadrupedRobot::getFeet2BVelocities() const {
+std::vector<KDL::Vector> QuadrupedRobot::getFeet2BVelocities() const { // 也是身体坐标系下的足底速度
     std::vector<KDL::Vector> result;
     result.resize(4);
     for (int i = 0; i < 4; i++) {

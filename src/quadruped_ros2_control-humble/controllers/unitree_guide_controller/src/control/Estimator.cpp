@@ -155,17 +155,20 @@ void Estimator::update() {
     R = RInit_;
 
     foot_poses_ = robot_model_->getFeet2BPositions(); // 运动学正解
-    foot_vels_ = robot_model_->getFeet2BVelocities(); // 运动学正解
+    foot_vels_ = robot_model_->getFeet2BVelocities(); // 运动学正解,身体坐标系
     feet_h_.setZero();
 
     // Adjust the covariance based on foot contact and phase.
     for (int i(0); i < 4; ++i) {
-        if (wave_generator_->contact_[i] == 0) {
+        if (wave_generator_->contact_[i] == 0) 
+        {
             // foot not contact
             Q.block(6 + 3 * i, 6 + 3 * i, 3, 3) = large_variance_ * Eigen::MatrixXd::Identity(3, 3);
             R.block(12 + 3 * i, 12 + 3 * i, 3, 3) = large_variance_ * Eigen::MatrixXd::Identity(3, 3);
             R(24 + i, 24 + i) = large_variance_;
-        } else {
+        } 
+        else 
+        {
             // foot contact
             const double trust = windowFunc(wave_generator_->phase_[i], 0.2);
             Q.block(6 + 3 * i, 6 + 3 * i, 3, 3) =
@@ -178,7 +181,7 @@ void Estimator::update() {
                     (1 + (1 - trust) * large_variance_) * RInit_(24 + i, 24 + i);
         }
         feet_pos_body_.segment(3 * i, 3) = Vec3(foot_poses_[i].p.data);
-        feet_vel_body_.segment(3 * i, 3) = Vec3(foot_vels_[i].data);
+        feet_vel_body_.segment(3 * i, 3) = Vec3(foot_vels_[i].data); // 身体坐标系
     }
 
     Quat quat;

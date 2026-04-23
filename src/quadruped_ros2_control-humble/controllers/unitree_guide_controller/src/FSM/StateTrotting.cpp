@@ -91,18 +91,20 @@ void StateTrotting::enter() {
         pcd_ << 0.0, 0.0, -foot_z_avg;
         if(troting_kalman == 2)
         {
-            yaw_cmd_ = estimator_->getYaw();
+            yaw_cmd_ = estimator_->getYaw(); // 这里非常对，把上电时初始yaw作为闭环目标
             Rd = rotz(yaw_cmd_);
         }
         else
         {
             yaw_cmd_ = 0;
-            Rd.setIdentity();// 期望的躯体姿态的B2G旋转矩阵，暂无yaw角闭环所以单位矩阵即可，单位矩阵的意思就是躯体的躯体姿态与世界系完全一样。
+            Rd.setIdentity();// 在开环中，期望姿态按B系与P系重合处理
         }
         wave_generator_->status_ = WaveStatus::STANCE_ALL;   // 先明确给全支撑
     }
-    // 初始化全局坐标系下的角速度指令w_cmd_global_为零向量
+    // 初始化G系下的角速度指令w_cmd_global_为零向量
     w_cmd_global_.setZero();
+    // 初始化P系下的角速度指令w_cmd_parallel_为零向量
+    w_cmd_parallel_.setZero();
 
     // 将控制输入指令重置为0（避免残留指令影响）
     ctrl_interfaces_.control_inputs_.command = 0;
@@ -116,38 +118,53 @@ void StateTrotting::enter() {
  * @param period 时间间隔（未使用）
  */
 void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*period*/) {
-    if(troting_kalman == 1)
+    if(troting_kalman == 2)
     {
         // 获取当前估计的身体位置（全局坐标系）
         pos_body_ = estimator_->getPosition();
         // 获取当前估计的身体速度（全局坐标系）
         vel_body_ = estimator_->getVelocity();
-
-        // 获取当前身体坐标系到全局坐标系的旋转矩阵B2G_RotMat
-        B2G_RotMat = estimator_->getRotation();
-    }
-    else if(troting_kalman == 2)
-    {
-        // imu数据源内容就是身体系到世界系的旋转矩阵
-        B2G_RotMat = estimator_->getRotation();
+        // 获取当前身体坐标系到定向身体坐标系的旋转矩阵B2P_RotMat
+        // imu数据源内容就是B系到P系的旋转矩阵
+        B2P_RotMat = estimator_->getRotation();
+        // 计算P系到B系的旋转矩阵P2B_RotMat（为B2P_RotMat的转置，正交矩阵性质）
+        P2B_RotMat = B2P_RotMat.transpose();
     }
     else if(troting_kalman == 0)
     {
-        // 全局坐标系 = 身体坐标系，不考虑任何移动的情况。
-        B2G_RotMat.setIdentity(); // 固定身体坐标系和全局坐标系一致，不受实际姿态影响
+        // P系 = B系，不考虑任何移动的情况。
+        B2P_RotMat.setIdentity(); // 固定B系和P系一致，不受实际姿态影响
+        // 计算P系到B系的旋转矩阵P2B_RotMat（为B2P_RotMat的转置，正交矩阵性质）
+        P2B_RotMat = B2P_RotMat.transpose();
     }
-    // 计算全局坐标系到身体坐标系的旋转矩阵G2B_RotMat（为B2G_RotMat的转置，正交矩阵性质）
-    G2B_RotMat = B2G_RotMat.transpose();
+
+    if (troting_kalman == 1) 
+    {
+        pos_body_ = estimator_->getPosition();
+        vel_body_ = estimator_->getVelocity();
+        B2G_RotMat = estimator_->getRotation();
+        G2B_RotMat = B2G_RotMat.transpose(); // 保留世界系G
+    } 
 
     // 解析用户输入指令（来自遥控器/上位机） 
-    getUserCmd(); // 得到本体系下的 期望线速度 和 期望角速度
+    getUserCmd(); // 得到B系下的 期望线速度 和 期望角速度
     // 计算全局坐标系下的期望控制指令（位置、速度、姿态）
     calcCmd();   // 并通过全局坐标系下的速度和角速度，计算出期望预期身体位置pcd_
 
-    // 给步态生成器设置输入：全局坐标系下的目标平面速度（x/y）、（既是全局系又是本体系的）目标yaw角速度、足端摆动高度
-    gait_generator_.setGait(vel_target_.segment(0, 2), w_cmd_global_(2), gait_height_);
-    // 生成四足的足端目标位置（pos_feet_global_goal_）和目标速度（vel_feet_global_goal_，全局坐标系）
-    gait_generator_.generate(pos_feet_global_goal_, vel_feet_global_goal_);
+    if(troting_kalman == 1)
+    {
+        // 给步态生成器设置输入：全局坐标系下的目标平面速度（x/y）、（既是全局系又是本体系的）目标yaw角速度、足端摆动高度
+        gait_generator_.setGait(vel_target_.segment(0, 2), w_cmd_global_(2), gait_height_);
+        // 生成四足的足端目标位置（pos_feet_global_goal_）和目标速度（vel_feet_global_goal_，全局坐标系）
+        gait_generator_.generate(pos_feet_global_goal_, vel_feet_global_goal_);
+    }
+    else if(troting_kalman == 2 || troting_kalman == 0)
+    {
+        // 给步态生成器设置输入：G系下的目标平面速度（x/y），P系下的目标yaw角速度，足端抬起高度
+        gait_generator_.setGait(vel_target_.segment(0, 2), w_cmd_parallel_(2), gait_height_);
+        // 生成四足的足端目标位置（pos_feet_parallel_goal_）和目标速度（vel_feet_parallel_goal_，B系，没错变量名带parallel但是是B系）
+        gait_generator_.generate(pos_feet_parallel_goal_, vel_feet_parallel_goal_);
+    }
 
     // 计算关节力矩指令
     calcTau();
@@ -190,20 +207,15 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     // ========== 新增：发布数据 ==========
     if (ctrl_interfaces_.debug_pub) { // 检查指针是否存在
         std_msgs::msg::Float64MultiArray msg;
-        // 0-11: q_goal_debug
-        msg.data.push_back(debug_z_[0]);
-        msg.data.push_back(debug_z_[1]);
-        msg.data.push_back(debug_z_[2]);
-        msg.data.push_back(debug_z_[3]);
+        // 0-2: pos_body_
+        msg.data.push_back(pos_body_(0));
+        msg.data.push_back(pos_body_(1));
+        msg.data.push_back(pos_body_(2));
 
-        // msg.data.push_back(pos_body_(0));
-        // msg.data.push_back(pos_body_(1));
-        // msg.data.push_back(pos_body_(2));      // 3-5: pos_body
-
-        // msg.data.push_back(wave_generator_->contact_(0));
-        // msg.data.push_back(wave_generator_->contact_(1));
-        // msg.data.push_back(wave_generator_->contact_(2));
-        // msg.data.push_back(wave_generator_->contact_(3)); // 6-9: contact
+        // 3-5: vel_body_
+        msg.data.push_back(vel_body_(0));
+        msg.data.push_back(vel_body_(1));
+        msg.data.push_back(vel_body_(2));
 
         ctrl_interfaces_.debug_pub->publish(msg);
         
@@ -265,7 +277,7 @@ FSMStateName StateTrotting::checkChange() {
 /**
  * @brief 解析用户输入指令（将遥控器摇杆值转换为机器人速度指令）
  */
-void StateTrotting::getUserCmd() {
+void StateTrotting::getUserCmd() { // 该函数P/B/G坐标系混乱 还没改
 
     // ========== 新增 ==========
     // 读取原始值
@@ -354,10 +366,13 @@ void StateTrotting::calcCmd() {
         pcd_(1) = 0.0; // 固定期望Y位置
         // pcd_(2) 保持原来的高度就行，不用改
 
-        /* 旋转指令：依然用IMU的直接姿态，不用改 */
-        yaw_cmd_ = 0;
-        Rd.setIdentity(); // 期望旋转矩阵固定为单位矩阵（完全水平）
-        w_cmd_global_.setZero(); // 角速度固定为0
+        if(troting_kalman == 0)
+        {
+            /* 旋转指令：依然用IMU的直接姿态，不用改 */
+            yaw_cmd_ = 0;
+            Rd.setIdentity(); // 期望旋转矩阵固定为单位矩阵（完全水平）
+        }
+        w_cmd_parallel_.setZero(); // 目标角速度固定为0
         
     }
 }
@@ -481,7 +496,7 @@ void StateTrotting::calcTau() {
         dd_pcd.setZero(); // 机身质心的期望线加速度,原地踏步不需要
 
         // ========== 新增：只保留 roll / pitch 的姿态误差和角速度阻尼 ==========
-        rot_err = rotMatToExp(Rd * G2B_RotMat);
+        rot_err = rotMatToExp(Rd * P2B_RotMat);
         gyro_global = estimator_->getGyroGlobal();
 
 
@@ -499,16 +514,16 @@ void StateTrotting::calcTau() {
             pos_feet_body.col(i) = Vec3(feet_frames_body[i].p.data);
         }
 
-        // ========== 新增：与 troting_kalman == 1 的接口保持一致，传入全局坐标系表达的“相对身体足端位置” ==========
-        pos_feet_body_global = B2G_RotMat * pos_feet_body;
+        // 得到P系下的足端位置
+        pos_feet_body_global = B2P_RotMat * pos_feet_body;
 
         // 通过平衡控制器计算足端支撑力（全局坐标系）
         // dd_pcd，期望机身加速度，原地踏步不需要，所以全设为0
-        // d_wbd，期望机身角运动控制量（期望机身力矩），只保留roll/pitch的姿态误差和角速度阻尼，yaw先不接入，但是其实需要接入yaw，下一步接入
-        // B2G_RotMat，身体坐标系到全局坐标系的旋转矩阵
-        // pos_feet_body_global，全局坐标系下的足端位置（相对于身体坐标系）
+        // d_wbd，期望机身角运动控制量（期望机身力矩），roll/pitch/yaw的姿态误差和角速度阻尼
+        // B2P_RotMat，B系到P系的旋转矩阵
+        // pos_feet_body_global，P系下的足端位置（相对于B系）
         // 输出force_feet_global，全局坐标系下的期望足底反力
-        force_feet_global = -balance_ctrl_->calF(dd_pcd, d_wbd, B2G_RotMat, pos_feet_body_global, wave_generator_->contact_);
+        force_feet_global = -balance_ctrl_->calF(dd_pcd, d_wbd, B2P_RotMat, pos_feet_body_global, wave_generator_->contact_);
 
         // ========== 摆动腿先不做力控，只给0，摆动腿仍然主要靠位置/速度轨迹 ==========
         for (int i(0); i < 4; ++i) {
@@ -517,8 +532,8 @@ void StateTrotting::calcTau() {
             }
         }
 
-                // 将足端力从全局坐标系转换为身体坐标系
-        force_feet_body_ = G2B_RotMat * force_feet_global;
+        // 将足端力从P系转换为B系
+        force_feet_body_ = P2B_RotMat * force_feet_global;
 
         // ========== 新增：MIT模式下，这里更适合作为前馈/偏置力矩，而不是直接满量目标力矩 ==========
         // 足底反力没有精确控制，而是变成偏置力矩*小于1的比例系数进行修正控制
@@ -574,7 +589,7 @@ void StateTrotting::calcQQd() {
         pos_body_to_use = pcd_; // 开环时用固定的期望位置
         vel_body_to_use = vel_target_; // 开环时用固定的期望速度
     }
-    // 获取当前足端相对于身体的位置（KDL Frame格式，4条腿）
+    // 获取当前足端在B系下的位置（KDL Frame格式，4条腿）
     const std::vector<KDL::Frame> pos_feet_body = robot_model_->getFeet2BPositions();
 
     // 定义足端目标位置和速度（身体坐标系，4个足端，3维坐标）
@@ -591,9 +606,9 @@ void StateTrotting::calcQQd() {
     }
     else if(troting_kalman == 0 || troting_kalman == 2)
     {
-        // 开环下世界系和本体系重合：GaitGenerator 输出的直接是身体坐标系了，直接当身体坐标系用即可(变量名字还是全局的，在误导)，因为generate函数内部就是身体系的姿势参数，再转到世界系再转回身体系那就有点可笑了。
-        pos_feet_target = pos_feet_global_goal_;
-        vel_feet_target = vel_feet_global_goal_;
+        // 开环下P系和B系重合：GaitGenerator 输出的直接是B系了，直接当B系用即可(变量名字还是P系的，其实在误导)，因为generate函数内部就是身体系的姿势参数，再转到P系再再转回B系那就有点可笑了。
+        pos_feet_target = pos_feet_parallel_goal_;
+        vel_feet_target = vel_feet_parallel_goal_;
     }
 
     // 通过机器人模型逆运动学，根据足端目标位置求解关节目标位置q_goal（12个关节，4条腿×3个）
@@ -616,7 +631,7 @@ void StateTrotting::calcQQd() {
         const double k_pitch_to_z = 0.08;// pitch 方向的纠正量，映射到支撑腿 z 修正时，放大/缩小多少
         const double dz_limit = 0;   // roll/pitch闭环已暂时禁用！单条腿这次最多只允许修正这么高，防止闭环一上来把腿拉太狠。
 
-        Vec3 attitude_error = rotMatToExp(Rd * G2B_RotMat); // Rd 期望姿态旋转矩阵，是单位阵，也就是“希望机身保持水平”
+        Vec3 attitude_error = rotMatToExp(Rd * P2B_RotMat); // Rd 期望姿态旋转矩阵，是单位阵，也就是“希望机身保持水平”
         Vec3 gyro = estimator_->getGyroGlobal(); // 预期：gyro(0)：roll 方向角速度 gyro(1)：pitch 方向角速度
 
         double roll_cmd = kp_roll * attitude_error(0) + kd_roll * (0.0 - gyro(0));

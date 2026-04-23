@@ -28,9 +28,9 @@ KDL::JntArray RobotLeg::calcQ(const KDL::Frame &pEe, const KDL::JntArray &q_init
     return q;
 }
 
-KDL::Jacobian RobotLeg::calcJaco(const KDL::JntArray &joint_positions) const {
+KDL::Jacobian RobotLeg::calcJaco(const KDL::JntArray &joint_positions) const { // 那肯定是身体坐标系下了
     KDL::Jacobian jacobian(chain_.getNrOfJoints());
-    jac_solver_->JntToJac(joint_positions, jacobian);
+    jac_solver_->JntToJac(joint_positions, jacobian); // 输入当前关节位置，输出雅可比矩阵   
     return jacobian;
 }
 

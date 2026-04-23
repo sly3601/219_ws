@@ -64,15 +64,27 @@ private:
 
     // Robot State
     Vec3 pos_body_, vel_body_;
-    RotMat B2G_RotMat, G2B_RotMat; // 世界系和身体系都固定在机身上，区别在于是否包含姿态旋转（开环时不包含，因为不考虑姿态，闭环时包含）
+
+    // P系原点跟随机身中心，但轴方向与G系保持平行，不随机身姿态转动
+    // P: 定向本体系（origin at body center, axes parallel to G, no body rotation）
+    // B系原点也在机身上，但轴方向随机身姿态转动
+    RotMat B2G_RotMat, G2B_RotMat; // G是世界系，固定在地面上
+    RotMat B2P_RotMat, P2B_RotMat; // P系原点跟随机身中心，轴方向不随机身转动，与G平行
 
     // Robot command
     Vec3 pcd_;
     Vec3 vel_target_, v_cmd_body_;
     double dt_;
     double yaw_cmd_{}, d_yaw_cmd_{}, d_yaw_cmd_past_{};
+    // G系下目标期望角速度
     Vec3 w_cmd_global_;
+    // G系下目标足底位置和速度
     Vec34 pos_feet_global_goal_, vel_feet_global_goal_;
+    // P系下目标期望角速度
+    Vec3 w_cmd_parallel_;
+    // P系下目标足底位置和速度
+    Vec34 pos_feet_parallel_goal_, vel_feet_parallel_goal_;
+
     RotMat Rd;  // 期望的躯体姿态的B2G旋转矩阵
 
     // Control Parameters

@@ -33,8 +33,8 @@ public:
      * Get the estimated robot central velocity
      * @return robot central velocity
      */
-    Vec3 getVelocity() {
-        return x_hat_.segment(3, 3);
+    Vec3 getVelocity() {    // 从状态向量x_hat_的第3个元素开始，截取3个元素（即速度部分）
+        return x_hat_.segment(3, 3); // 也是身体坐标系吧
     }
 
     /**
@@ -62,8 +62,8 @@ public:
      * Get the estimated feet velocity in world frame
      * @return feet velocity in world frame
      */
-    Vec34 getFeetVel() {
-        const std::vector<KDL::Vector> feet_vel = robot_model_->getFeet2BVelocities();
+    Vec34 getFeetVel() { // 
+        const std::vector<KDL::Vector> feet_vel = robot_model_->getFeet2BVelocities();// 先获取身体坐标系下的足底速度
         Vec34 result;
         for (int i(0); i < 4; ++i) {
             result.col(i) = Vec3(feet_vel[i].data) + getVelocity();
@@ -111,6 +111,7 @@ private:
     std::shared_ptr<QuadrupedRobot> &robot_model_;
     std::shared_ptr<WaveGenerator> &wave_generator_;
 
+    // 18维状态向量：[质心位置(3) + 质心速度(3) + 4条足端位置(3×4)]
     Eigen::Matrix<double, 18, 1> x_hat_; // The state of estimator, position(3)+velocity(3)+feet position(3x4)
 
     Eigen::Matrix<double, 3, 1> u_; // The input of estimator
