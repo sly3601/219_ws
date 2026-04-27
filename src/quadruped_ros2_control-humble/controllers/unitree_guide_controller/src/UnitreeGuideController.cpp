@@ -77,14 +77,18 @@ namespace unitree_guide_controller
 
         if (mode_ == FSMMode::NORMAL)
         {
-            current_state_->run(time, period);
             next_state_name_ = current_state_->checkChange();
+
             if (next_state_name_ != current_state_->state_name)
             {
                 mode_ = FSMMode::CHANGE;
                 next_state_ = getNextState(next_state_name_);
                 RCLCPP_INFO(get_node()->get_logger(), "Switched from %s to %s",
                             current_state_->state_name_string.c_str(), next_state_->state_name_string.c_str());
+            }
+            else
+            {
+                current_state_->run(time, period);
             }
         }
         else if (mode_ == FSMMode::CHANGE)
