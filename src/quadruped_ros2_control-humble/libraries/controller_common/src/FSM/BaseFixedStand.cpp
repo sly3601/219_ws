@@ -40,15 +40,6 @@ void BaseFixedStand::enter()
         start_pos_[i] = ctrl_interfaces_.joint_position_state_interface_[i].get().get_value();
     }
     int watch_joint = 2;
-    // 找刚性冲击尖峰用的log
-    RCLCPP_WARN(
-        ctrl_interfaces_.node->get_logger(),
-        "[FIXEDSTAND enter] joint=%d q_meas=%.4f start_pos=%.4f target_pos=%.4f",
-        watch_joint,
-        ctrl_interfaces_.joint_position_state_interface_[watch_joint].get().get_value(),
-        start_pos_[watch_joint],
-        target_pos_[watch_joint]);
-
 
     for (int i = 0; i < 12; i++)
     {
@@ -72,20 +63,6 @@ void BaseFixedStand::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*p
         // 关节位置指令 = 过渡阶段插值 + 键盘微调偏移
         cmd_pos_[i] = phase * target_pos_[i] + (1 - phase) * start_pos_[i] + offset_pos_[i];
         ctrl_interfaces_.joint_position_command_interface_[i].get().set_value(cmd_pos_[i]);
-    }
-
-    // 找刚性冲击尖峰用的log
-    int watch_joint = 2;
-    if (percent_ < 0.02)
-    {
-        RCLCPP_WARN(
-            ctrl_interfaces_.node->get_logger(),
-            "[FIXEDSTAND run] joint=%d phase=%.4f q_meas=%.4f start=%.4f target=%.4f",
-            watch_joint,
-            phase,
-            ctrl_interfaces_.joint_position_state_interface_[watch_joint].get().get_value(),
-            start_pos_[watch_joint],
-            target_pos_[watch_joint]);
     }
 
     if (ctrl_interfaces_.debug_pub)

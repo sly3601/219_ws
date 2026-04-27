@@ -75,6 +75,7 @@ namespace unitree_guide_controller
         ctrl_component_.wave_generator_->update();
         ctrl_component_.estimator_->update();
 
+        // 2026.04.28关键修改：把状态机的更新放在最后，否则会漏掉一拍新状态
         if (mode_ == FSMMode::NORMAL)
         {
             next_state_name_ = current_state_->checkChange();
