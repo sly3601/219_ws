@@ -88,3 +88,4 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
   * 开始调试里程计
 * 2026.04.27 v2.7加强
   * 经过电机基本安全测试之后，仍然怀疑电机异常转动，修改了更严格的电机底层安全代码。
+  * 再次经过数次测试，电机再没有出现故障。
