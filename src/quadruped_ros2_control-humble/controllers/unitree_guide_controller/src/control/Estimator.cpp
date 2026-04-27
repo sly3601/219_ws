@@ -8,6 +8,7 @@
 #include <unitree_guide_controller/control/CtrlComponent.h>
 
 #include "controller_common/CtrlInterfaces.h"
+#include <cmath>
 
 Estimator::Estimator(CtrlInterfaces &ctrl_interfaces, CtrlComponent &ctrl_component) : ctrl_interfaces_(ctrl_interfaces),
                                                       robot_model_(ctrl_component.robot_model_),
