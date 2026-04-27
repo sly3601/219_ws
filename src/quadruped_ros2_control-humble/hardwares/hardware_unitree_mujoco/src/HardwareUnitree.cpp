@@ -531,6 +531,20 @@ return_type HardwareUnitree::write(const rclcpp::Time& /*time*/, const rclcpp::D
                 joint_position_command_[ind],
                 joint_position_[ind],
                 std::fabs(joint_position_command_[ind] - joint_position_[ind]));
+            
+            // 先强制切断所有电机关节力矩
+            for (auto& port_entry_stop : port_id2dm_data_) {
+                for (auto& can_entry_stop : port_entry_stop.second) {
+                    can_entry_stop.second.cmd_effort = 0.0f;
+                    can_entry_stop.second.kp = 0.0f;
+                    can_entry_stop.second.kd = 0.0f;
+                    can_entry_stop.second.cmd_vel = 0.0f;
+                }
+            }
+
+            for (auto& motor_control_stop : motor_ports_) {
+                motor_control_stop->write();
+            }
             while (1) {}
         }
 
@@ -719,6 +733,20 @@ void HardwareUnitree::correctMotorCommand(damiao::DmActData& dm_data) {
             rclcpp::get_logger("unitree_hardware"),
             "电机[%s] 目标 raw=%.4f 超出驱动默认 ±12.5rad 量程！",
             dm_data.name.c_str(), raw_cmd_candidate);
+
+        // 先强制切断所有电机关节力矩
+        for (auto& port_entry_stop : port_id2dm_data_) {
+            for (auto& can_entry_stop : port_entry_stop.second) {
+                can_entry_stop.second.cmd_effort = 0.0f;
+                can_entry_stop.second.kp = 0.0f;
+                can_entry_stop.second.kd = 0.0f;
+                can_entry_stop.second.cmd_vel = 0.0f;
+            }
+        }
+
+        for (auto& motor_control_stop : motor_ports_) {
+            motor_control_stop->write();
+        }
         while (1) {}
     }
 
