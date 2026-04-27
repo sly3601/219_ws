@@ -32,6 +32,10 @@ namespace
 
     // 防止报警刷屏
     std::unordered_map<std::string, bool> g_edge_warned;
+    // 记录上一次的底层原始位置
+    std::unordered_map<std::string, float> g_last_good_raw_pos;
+    // 底层原始位置忍受的最大跳变（单位：rad），超过这个值认为是底层原始异常读数
+    constexpr float RAW_JUMP_HARD_STOP_F = 2.5f;
 
 }
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn HardwareUnitree::on_init(
@@ -272,7 +276,43 @@ return_type HardwareUnitree::read(const rclcpp::Time& /*time*/, const rclcpp::Du
 
             // 1. 先记录驱动这一拍直接返回的原始位置（多圈值，可能到 ±12.5）
             float raw_now = dm_data.pos;
+            // 第一拍：只记录，不判断跳变
+            if (g_last_good_raw_pos.find(name) == g_last_good_raw_pos.end()) {
+                g_last_good_raw_pos[name] = raw_now;
+            }
+            else {
+                float last_raw_now = g_last_good_raw_pos[name];
+
+                if (!std::isfinite(raw_now) ||
+                    std::fabs(raw_now - last_raw_now) > RAW_JUMP_HARD_STOP_F) {
+                    RCLCPP_FATAL(
+                        rclcpp::get_logger("unitree_hardware"),
+                        "硬停：电机[%s] raw位置异常跳变！last=%.4f now=%.4f diff=%.4f",
+                        name.c_str(),
+                        last_raw_now,
+                        raw_now,
+                        std::fabs(raw_now - last_raw_now));
+
+                    // 先强制切断所有电机关节力矩
+                    for (auto& port_entry_stop : port_id2dm_data_) {
+                        for (auto& can_entry_stop : port_entry_stop.second) {
+                            can_entry_stop.second.cmd_effort = 0.0f;
+                            can_entry_stop.second.kp = 0.0f;
+                            can_entry_stop.second.kd = 0.0f;
+                            can_entry_stop.second.cmd_vel = 0.0f;
+                        }
+                    }
+
+                    for (auto& motor_control_stop : motor_ports_) {
+                        motor_control_stop->write();
+                    }
+
+                    while (1) {}
+                }
+            }
+
             g_current_raw_pos[name] = raw_now;
+            g_last_good_raw_pos[name] = raw_now;
 
             // 2. 如果靠近 ±12.5，报警
             if (std::fabs(raw_now) > EDGE_WARN_THRESHOLD_F) {
