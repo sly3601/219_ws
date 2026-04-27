@@ -60,6 +60,10 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Hardwa
     foot_force_.assign(4, 0);
     high_states_.assign(6, 0);
 
+    g_current_raw_pos.clear();
+    g_edge_warned.clear();
+    g_last_good_raw_pos.clear();
+
     for (const auto& joint : info_.joints)
     {
         for (const auto& interface : joint.state_interfaces)
@@ -276,6 +280,25 @@ return_type HardwareUnitree::read(const rclcpp::Time& /*time*/, const rclcpp::Du
 
             // 1. 先记录驱动这一拍直接返回的原始位置（多圈值，可能到 ±12.5）
             float raw_now = dm_data.pos;
+            if (!std::isfinite(raw_now)) {
+                RCLCPP_FATAL(
+                    rclcpp::get_logger("unitree_hardware"),
+                    "硬停：电机[%s] raw_now 非法！",
+                    name.c_str());
+
+                for (auto& port_entry_stop : port_id2dm_data_) {
+                    for (auto& can_entry_stop : port_entry_stop.second) {
+                        can_entry_stop.second.cmd_effort = 0.0f;
+                        can_entry_stop.second.kp = 0.0f;
+                        can_entry_stop.second.kd = 0.0f;
+                        can_entry_stop.second.cmd_vel = 0.0f;
+                    }
+                }
+                for (auto& motor_control_stop : motor_ports_) {
+                    motor_control_stop->write();
+                }
+                while (1) {}
+            }
             // 第一拍：只记录，不判断跳变
             if (g_last_good_raw_pos.find(name) == g_last_good_raw_pos.end()) {
                 g_last_good_raw_pos[name] = raw_now;
@@ -283,8 +306,7 @@ return_type HardwareUnitree::read(const rclcpp::Time& /*time*/, const rclcpp::Du
             else {
                 float last_raw_now = g_last_good_raw_pos[name];
 
-                if (!std::isfinite(raw_now) ||
-                    std::fabs(raw_now - last_raw_now) > RAW_JUMP_HARD_STOP_F) {
+                if (std::fabs(raw_now - last_raw_now) > RAW_JUMP_HARD_STOP_F) {
                     RCLCPP_FATAL(
                         rclcpp::get_logger("unitree_hardware"),
                         "硬停：电机[%s] raw位置异常跳变！last=%.4f now=%.4f diff=%.4f",
