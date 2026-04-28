@@ -90,9 +90,17 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 {
                     start_p_.col(i) = estimator_->getFootPos(i);
                 }
-                else if (trotting_ptr_ && (trotting_ptr_->troting_kalman == 0 || trotting_ptr_->troting_kalman == 2))
+                else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0)
                 {
                     // 开环：只在first_run_初始化一次 start_p_，之后就完全不更新了（不依赖 estimator）
+                }
+                else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 2)
+                {
+                    auto feet_now = ctrl_component_.robot_model_->getFeet2BPositions();
+                    start_p_(0, i) = feet_now[i].p.x();
+                    start_p_(1, i) = feet_now[i].p.y();
+                    start_p_(2, i) = feet_now[i].p.z();
+                    end_p_.col(i) = start_p_.col(i); //原地踏步 当你以后要让机器人前进时，这里要改逻辑 别忘了
                 }
                 
             }
