@@ -539,7 +539,7 @@ void StateTrotting::calcTau() {
 
         // ========== 新增：MIT模式下，这里更适合作为前馈/偏置力矩，而不是直接满量目标力矩 ==========
         // 足底反力没有精确控制，而是变成偏置力矩*小于1的比例系数进行修正控制
-        const double tau_ff_scale = 0.0;   // 衰减系数 先从0.25开始，后面可再调大
+        const double tau_ff_scale = 0.2;   // 衰减系数 先从0.25开始，后面可再调大
         const double tau_ff_limit_hip = 4.0;
         const double tau_ff_limit_thigh = 16.0;
         const double tau_ff_limit_calf = 16.0;
@@ -738,13 +738,13 @@ void StateTrotting::calcGain() const {
             if (wave_generator_->contact_(i) == 0) {
                 // ================= 摆动相（脚在空中） =================
                 // 增益中等，跟轨迹但不僵硬
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(340.0); // 从65
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(4.1);  
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(260.0); // 从65
+                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(3.6);  
             } else {
                 // ================= 支撑相（脚踩地） =================
                 // 增益拉高，抗干扰、站稳
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(340.0); // 从68
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(4.0);  
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(260.0); // 从68
+                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(3.6);  
             }
         }
 
