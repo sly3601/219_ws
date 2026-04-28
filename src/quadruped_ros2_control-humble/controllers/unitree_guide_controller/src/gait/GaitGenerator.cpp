@@ -51,15 +51,22 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             // 开环：直接用正运动学计算当前足端位置，完全不依赖估计器
             for (int i = 0; i < 4; i++) 
             {
-                // fixed_q 是 FIXEDSTAND状态下，任意一条腿，完美站立时的关节角度矩阵
                 KDL::JntArray fixed_q(3);
-                fixed_q(0) = 0.0;
-                fixed_q(1) = 0.67;
-                fixed_q(2) = -1.3;
-                
-                // 正运动学计算足端位置
+
+                // FR FL RR RL
+                static const double stand_q[4][3] = {
+                    {0.0, 0.9, -1.53},  // FR
+                    {0.0, 0.9, -1.53},  // FL
+                    {0.0, 0.9, -1.3 },  // RR
+                    {0.0, 0.9, -1.3 }   // RL
+                };
+
+                fixed_q(0) = stand_q[i][0];
+                fixed_q(1) = stand_q[i][1];
+                fixed_q(2) = stand_q[i][2];
+
                 KDL::Frame foot_frame = ctrl_component_.robot_model_->calcPEe2B_four_feet(i, fixed_q);
-                
+
                 start_p_(0, i) = foot_frame.p.x();
                 start_p_(1, i) = foot_frame.p.y();
                 start_p_(2, i) = foot_frame.p.z();

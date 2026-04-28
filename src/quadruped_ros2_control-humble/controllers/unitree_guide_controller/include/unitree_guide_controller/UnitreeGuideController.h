@@ -79,10 +79,10 @@ namespace unitree_guide_controller {
 
         // FR FL RR RL
         std::vector<double> stand_pos_ = {
-            0.0, 0.67, -1.3,
-            0.0, 0.67, -1.3,
-            0.0, 0.67, -1.3,
-            0.0, 0.67, -1.3
+            0.0, 0.9, -1.53,
+            0.0, 0.9, -1.53,
+            0.0, 0.9, -1.3,
+            0.0, 0.9, -1.3
         };
 
         std::vector<double> down_pos_ = {
