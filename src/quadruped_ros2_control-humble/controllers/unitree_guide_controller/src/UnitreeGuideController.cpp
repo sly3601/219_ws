@@ -75,6 +75,26 @@ namespace unitree_guide_controller
         ctrl_component_.wave_generator_->update();
         ctrl_component_.estimator_->update();
 
+        if (ctrl_interfaces_.body_debug_pub)
+        {
+            std_msgs::msg::Float64MultiArray msg;
+
+            Vec3 pos_body = ctrl_component_.estimator_->getPosition();
+            Vec3 vel_body = ctrl_component_.estimator_->getVelocity();
+
+            // 0-2: pos_body
+            msg.data.push_back(pos_body(0));
+            msg.data.push_back(pos_body(1));
+            msg.data.push_back(pos_body(2));
+
+            // 3-5: vel_body
+            msg.data.push_back(vel_body(0));
+            msg.data.push_back(vel_body(1));
+            msg.data.push_back(vel_body(2));
+
+            ctrl_interfaces_.body_debug_pub->publish(msg);
+        }
+
         // 2026.04.28关键修改：把状态机的更新放在最后，否则会漏掉一拍新状态
         if (mode_ == FSMMode::NORMAL)
         {
@@ -175,7 +195,8 @@ namespace unitree_guide_controller
     {
         // ========== 1. 【关键修改】最先赋值 node 和 debug_pub ==========
         ctrl_interfaces_.node = get_node(); // <-- 移到最前面！
-        ctrl_interfaces_.debug_pub = ctrl_interfaces_.node->create_publisher<std_msgs::msg::Float64MultiArray>("/trotting_debug", 10);
+        ctrl_interfaces_.body_debug_pub = ctrl_interfaces_.node->create_publisher<std_msgs::msg::Float64MultiArray>("/body_debug", 10);
+        ctrl_interfaces_.debug_pub      = ctrl_interfaces_.node->create_publisher<std_msgs::msg::Float64MultiArray>("/trotting_debug", 10);
         // clear out vectors in case of restart
         ctrl_interfaces_.clear();
 

@@ -50,6 +50,7 @@ struct CtrlInterfaces
     int frequency_{};
 
     // ========== 新增：添加发布器指针 ==========
+    std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64MultiArray>> body_debug_pub;
     std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64MultiArray>> debug_pub;
     // ========== 新增 添加 ROS2 节点智能指针 ==========
     std::shared_ptr<rclcpp_lifecycle::LifecycleNode> node; // 注意这里是 LifecycleNode，因为 Controller 通常是生命周期节点

@@ -206,18 +206,18 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
 
     // ========== 新增：发布数据 ==========
     if (ctrl_interfaces_.debug_pub) { // 检查指针是否存在
-        std_msgs::msg::Float64MultiArray msg;
-        // 0-2: pos_body_
-        msg.data.push_back(pos_body_(0));
-        msg.data.push_back(pos_body_(1));
-        msg.data.push_back(pos_body_(2));
+        // std_msgs::msg::Float64MultiArray msg;
+        // // 0-2: pos_body_
+        // msg.data.push_back(pos_body_(0));
+        // msg.data.push_back(pos_body_(1));
+        // msg.data.push_back(pos_body_(2));
 
-        // 3-5: vel_body_
-        msg.data.push_back(vel_body_(0));
-        msg.data.push_back(vel_body_(1));
-        msg.data.push_back(vel_body_(2));
+        // // 3-5: vel_body_
+        // msg.data.push_back(vel_body_(0));
+        // msg.data.push_back(vel_body_(1));
+        // msg.data.push_back(vel_body_(2));
 
-        ctrl_interfaces_.debug_pub->publish(msg);
+        // ctrl_interfaces_.debug_pub->publish(msg);
         
     }
     // -------------------------------------------------------------------------
