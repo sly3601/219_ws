@@ -92,7 +92,9 @@ void StateTrotting::enter() {
         if(troting_kalman == 2)
         {
             yaw_cmd_ = estimator_->getYaw(); // 这里非常对，把上电时初始yaw作为闭环目标
-            Rd = rotz(yaw_cmd_);
+            const double roll_des = 0.0;
+            const double pitch_des = 0.05; // 注意！pitch理想值不是0
+            Rd = rotz(yaw_cmd_) * roty(pitch_des) * rotx(roll_des);
         }
         else
         {
