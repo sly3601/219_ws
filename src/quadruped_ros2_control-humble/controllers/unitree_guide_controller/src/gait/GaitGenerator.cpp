@@ -97,9 +97,12 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 2)
                 {
                     auto feet_now = ctrl_component_.robot_model_->getFeet2BPositions();
+                    // 落地时只刷新水平落点
                     start_p_(0, i) = feet_now[i].p.x();
                     start_p_(1, i) = feet_now[i].p.y();
-                    start_p_(2, i) = feet_now[i].p.z();
+
+                    // 注意：z 不刷新，保持原来的 nominal 站立高度
+                    // start_p_(2, i) 不动
                     end_p_.col(i) = start_p_.col(i); //原地踏步 当你以后要让机器人前进时，这里要改逻辑 别忘了
                 }
                 
