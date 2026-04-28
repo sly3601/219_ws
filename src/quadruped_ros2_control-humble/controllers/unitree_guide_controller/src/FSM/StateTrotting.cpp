@@ -690,6 +690,10 @@ void StateTrotting::calcQQd() {
         pos_feet_target_frame[i].M = KDL::Rotation::Identity();
     }
     qd_goal = robot_model_->getQd(pos_feet_target_frame, vel_feet_target);
+    qd_goal(7) = 0;
+    qd_goal(8) = 0;
+    qd_goal(10) = 0;
+    qd_goal(11) = 0;
 
     // =====================================================
     // 2) 关节命令最终限幅（重点限制髋关节）
