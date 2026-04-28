@@ -722,7 +722,7 @@ void StateTrotting::calcQQd() {
     for (int i = 0; i < 12; i++) {
         q_goal_debug = q_goal; // 用于调试，发布到ROS2话题
         ctrl_interfaces_.joint_position_command_interface_[i].get().set_value(q_goal(i));
-        // ctrl_interfaces_.joint_velocity_command_interface_[i].get().set_value(qd_goal(i));
+        ctrl_interfaces_.joint_velocity_command_interface_[i].get().set_value(qd_goal(i));
     }
 }
 
