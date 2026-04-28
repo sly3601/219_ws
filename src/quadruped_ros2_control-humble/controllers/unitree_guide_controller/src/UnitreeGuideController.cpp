@@ -6,6 +6,7 @@
 
 #include <unitree_guide_controller/gait/WaveGenerator.h>
 #include "unitree_guide_controller/robot/QuadrupedRobot.h"
+#include "unitree_guide_controller/common/mathTools.h"
 
 namespace unitree_guide_controller
 {
@@ -81,6 +82,8 @@ namespace unitree_guide_controller
 
             Vec3 pos_body = ctrl_component_.estimator_->getPosition();
             Vec3 vel_body = ctrl_component_.estimator_->getVelocity();
+            RotMat rotation_body = ctrl_component_.estimator_->getRotation();
+            Vec3 rpy_body = rotMatToRPY(rotation_body);
 
             // 0-2: pos_body
             msg.data.push_back(pos_body(0));
@@ -91,6 +94,11 @@ namespace unitree_guide_controller
             msg.data.push_back(vel_body(0));
             msg.data.push_back(vel_body(1));
             msg.data.push_back(vel_body(2));
+
+            // 6-8: roll pitch yaw
+            msg.data.push_back(rpy_body(0));
+            msg.data.push_back(rpy_body(1));
+            msg.data.push_back(rpy_body(2));
 
             ctrl_interfaces_.body_debug_pub->publish(msg);
         }
