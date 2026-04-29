@@ -208,23 +208,6 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     // 计算并设置关节PID增益（支撑相/摆动相使用不同增益）
     calcGain();
 
-
-    // ========== 新增：发布数据 ==========
-    if (ctrl_interfaces_.debug_pub) { // 检查指针是否存在
-        // std_msgs::msg::Float64MultiArray msg;
-        // // 0-2: pos_body_
-        // msg.data.push_back(pos_body_(0));
-        // msg.data.push_back(pos_body_(1));
-        // msg.data.push_back(pos_body_(2));
-
-        // // 3-5: vel_body_
-        // msg.data.push_back(vel_body_(0));
-        // msg.data.push_back(vel_body_(1));
-        // msg.data.push_back(vel_body_(2));
-
-        // ctrl_interfaces_.debug_pub->publish(msg);
-        
-    }
     // -------------------------------------------------------------------------
     // 新增：准备4个足底坐标（替换为你实际的足底坐标计算结果）
     // -------------------------------------------------------------------------
@@ -432,6 +415,10 @@ void StateTrotting::calcTau() {
     Vec3 zero_w_cmd;
     zero_w_cmd.setZero();
 
+    // debug 用的变量，暂时放在这里
+    double calf_tau_raw[4] = {0.0, 0.0, 0.0, 0.0};
+    double calf_tau_cmd[4] = {0.0, 0.0, 0.0, 0.0};
+
     if(troting_kalman == 1)
     {
         // 计算身体位置误差：期望位置pcd_ - 实际位置pos_body_
@@ -565,6 +552,10 @@ void StateTrotting::calcTau() {
         for (int i = 0; i < 4; i++) {
             KDL::JntArray torque = robot_model_->getTorque(force_feet_body_.col(i), i);
             for (int j = 0; j < 3; j++) {
+                if (j == 2) // debug小腿偏置力矩
+                {
+                    calf_tau_raw[i] = torque(j);   // 小腿原始力矩
+                }
                 // ========== 新增：先缩放，再按关节类型限幅 ==========
                 double tau_cmd = tau_ff_scale * torque(j);
 
@@ -574,6 +565,7 @@ void StateTrotting::calcTau() {
                     tau_cmd = saturation(tau_cmd, Vec2(-tau_ff_limit_thigh, tau_ff_limit_thigh));
                 } else {
                     tau_cmd = saturation(tau_cmd, Vec2(-tau_ff_limit_calf, tau_ff_limit_calf));
+                    calf_tau_cmd[i] = tau_cmd;     // debug小腿最终命令力矩
                 }
 
                 ctrl_interfaces_.joint_torque_command_interface_[i * 3 + j].get().set_value(tau_cmd);
@@ -588,6 +580,48 @@ void StateTrotting::calcTau() {
         for (int i = 0; i < 12; i++) {
             ctrl_interfaces_.joint_torque_command_interface_[i].get().set_value(0.0);
         }
+    }
+
+    if (ctrl_interfaces_.debug_pub) { // 检查指针是否存在
+        std_msgs::msg::Float64MultiArray msg;
+
+        // 0: 目标高度 pcd_z
+        msg.data.push_back(pcd_(2));
+
+        // 1: 高度误差 pos_error_z
+        msg.data.push_back(pos_error_(2));
+
+        // 2: 高度速度误差 vel_error_z
+        msg.data.push_back(vel_error_(2));
+
+        // 3: z方向控制输出 dd_pcd_z
+        msg.data.push_back(dd_pcd(2));
+
+        // 4-7: 四条腿接触状态 FR FL RR RL
+        msg.data.push_back(wave_generator_->contact_(0));
+        msg.data.push_back(wave_generator_->contact_(1));
+        msg.data.push_back(wave_generator_->contact_(2));
+        msg.data.push_back(wave_generator_->contact_(3));
+
+        // 8-11: 四条腿 Fz FR FL RR RL
+        msg.data.push_back(force_feet_global(2, 0));
+        msg.data.push_back(force_feet_global(2, 1));
+        msg.data.push_back(force_feet_global(2, 2));
+        msg.data.push_back(force_feet_global(2, 3));
+
+        // 12-15: 四条腿小腿原始力矩 FR FL RR RL
+        msg.data.push_back(calf_tau_raw[0]);
+        msg.data.push_back(calf_tau_raw[1]);
+        msg.data.push_back(calf_tau_raw[2]);
+        msg.data.push_back(calf_tau_raw[3]);
+
+        // 16-19: 四条腿小腿最终命令力矩 FR FL RR RL
+        msg.data.push_back(calf_tau_cmd[0]);
+        msg.data.push_back(calf_tau_cmd[1]);
+        msg.data.push_back(calf_tau_cmd[2]);
+        msg.data.push_back(calf_tau_cmd[3]);
+
+        ctrl_interfaces_.debug_pub->publish(msg);
     }
 }
 
