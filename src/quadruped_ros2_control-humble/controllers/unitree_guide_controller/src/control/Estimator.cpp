@@ -19,7 +19,8 @@ Estimator::Estimator(CtrlInterfaces &ctrl_interfaces, CtrlComponent &ctrl_compon
     std::cout << "dt: " << dt_ << std::endl;
     large_variance_ = 100;
     for (int i(0); i < Qdig.rows(); ++i) {
-        Qdig(i) = i < 6 ? 0.0003 : 0.01;
+        // dig：大概率是作者随手写的 diag / diagonal 缩写,对角的意思
+        Qdig(i) = i < 6 ? 0.1 : 0.01; // Qdig是离散系统的过程噪声协方差矩阵，前6个元素对应位置和速度，后12个元素对应足底位置。位置和速度的过程噪声较小，而足底位置的过程噪声较大。
     }
 
     x_hat_.setZero();

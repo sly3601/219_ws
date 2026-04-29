@@ -129,7 +129,8 @@ private:
     Eigen::Matrix<double, 28, 28> R; // Measurement covariance
     Eigen::Matrix<double, 18, 18> QInit_; // Initial value of Dynamic simulation covariance
     Eigen::Matrix<double, 28, 28> RInit_; // Initial value of Measurement covariance
-    Eigen::Matrix<double, 18, 1> Qdig; // adjustable process noise covariance
+    Eigen::Matrix<double, 18, 1> Qdig; // adjustable process noise covariance 
+    // dig：大概率是作者随手写的 diag / diagonal 缩写
     Eigen::Matrix<double, 3, 3> Cu; // The covariance of system input u
 
     // Output Measurement
