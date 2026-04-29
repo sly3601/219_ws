@@ -37,9 +37,9 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 提高摆动高度：避免足端落地过浅，增强整体支撑余量（适配1.5倍腿长）
     gait_height_ = 0.05;
     // 身体位置比例增益：大幅提高z轴抑制下沉，x/y提高增强平动控制（全局优化，无后腿单独补偿）
-    Kpp = Vec3(0.5, 0.5, 0).asDiagonal();
+    Kpp = Vec3(0.5, 0.5, 2.0).asDiagonal();
     // 身体速度阻尼增益：增强z轴阻尼抗抖动，x/y提高抑制大惯性超调
-    Kdp = Vec3(0.1, 0.1, 0.0).asDiagonal();
+    Kdp = Vec3(0.1, 0.1, 0.3).asDiagonal();
     // 姿态比例增益：大幅提高（作用于roll/pitch/yaw），增强整体姿态稳定性，防止侧倒/前后趴
     kp_w_ = 3;    // 1900
         // 姿态角速度阻尼增益：重点提高roll/pitch对应轴（x/y），加快姿态收敛，避免倾斜加剧
@@ -93,8 +93,6 @@ void StateTrotting::enter() {
         {
             // 原地稳定踏步，世界系位置目标取进入时当前位置
             pcd_ = estimator_->getPosition();
-            pcd_(2) = -foot_z_avg;   // z 先保持原来语义；你后面在calcTau里并没有开z位置闭环
-
             yaw_cmd_ = estimator_->getYaw(); // 这里非常对，把上电时初始yaw作为闭环目标
             const double roll_des = 0.0;
             const double pitch_des = 0.05; // 注意！pitch理想值不是0
@@ -515,7 +513,7 @@ void StateTrotting::calcTau() {
         // 先只开 x/y，z 先别在 2 里做位置闭环
         dd_pcd(0) = saturation(dd_pcd(0), Vec2(-1.5, 1.5));
         dd_pcd(1) = saturation(dd_pcd(1), Vec2(-1.5, 1.5));
-        dd_pcd(2) = 0.0;
+        dd_pcd(2) = saturation(dd_pcd(2), Vec2(-3.0, 3.0));
 
         rot_err = rotMatToExp(Rd * P2B_RotMat);
         gyro_global = estimator_->getGyroGlobal();
