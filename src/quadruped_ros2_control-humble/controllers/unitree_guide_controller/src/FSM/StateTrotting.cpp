@@ -606,11 +606,19 @@ void StateTrotting::calcQQd() {
             vel_feet_target.col(i) = G2B_RotMat * (vel_feet_global_goal_.col(i) - vel_body_to_use);
         }
     }
-    else if(troting_kalman == 0 || troting_kalman == 2)
+    else if(troting_kalman == 0)
     {
-        // 开环下P系和B系重合：GaitGenerator 输出的直接是B系了，直接当B系用即可(变量名字还是P系的，其实在误导)，因为generate函数内部就是身体系的姿势参数，再转到P系再再转回B系那就有点可笑了。
+        // 开环0：GaitGenerator 输出本来就是B系，直接用
         pos_feet_target = pos_feet_parallel_goal_;
         vel_feet_target = vel_feet_parallel_goal_;
+    }
+    else if(troting_kalman == 2)
+    {
+        // 开环2：GaitGenerator 内部现在存的是世界系脚点，这里统一转回B系再做IK
+        for (int i = 0; i < 4; ++i) {
+            pos_feet_target.col(i) = P2B_RotMat * (pos_feet_parallel_goal_.col(i) - pos_body_);
+            vel_feet_target.col(i) = P2B_RotMat * (vel_feet_parallel_goal_.col(i) - vel_body_);
+        }
     }
 
     // 通过机器人模型逆运动学，根据足端目标位置求解关节目标位置q_goal（12个关节，4条腿×3个）

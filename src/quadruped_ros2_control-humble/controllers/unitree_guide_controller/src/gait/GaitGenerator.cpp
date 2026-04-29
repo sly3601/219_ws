@@ -40,13 +40,14 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
     Vec34 current_feet_pos;
     if (first_run_) 
     {
-        if (trotting_ptr_ && trotting_ptr_->troting_kalman == 1) 
+        if (trotting_ptr_ && trotting_ptr_->troting_kalman == 2) 
         {
             // 闭环：原来的逻辑，用 estimator 的全局足端位置
             // 初始化时，start_p_就是当前的足端位置，后续每次落地都会刷新足底起始位置
             start_p_ = estimator_->getFeetPos();
+            end_p_ = start_p_;
         }
-        else if (trotting_ptr_ && (trotting_ptr_->troting_kalman == 0 || trotting_ptr_->troting_kalman == 2))
+        else if (trotting_ptr_ && (trotting_ptr_->troting_kalman == 0))
         {
             // 开环：直接用正运动学计算当前足端位置，完全不依赖估计器
             for (int i = 0; i < 4; i++) 
@@ -96,11 +97,8 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 }
                 else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 2)
                 {
-                    auto feet_now = ctrl_component_.robot_model_->getFeet2BPositions();
-                    start_p_(0, i) = feet_now[i].p.x();
-                    start_p_(1, i) = feet_now[i].p.y();
-                    start_p_(2, i) = feet_now[i].p.z();
-                    end_p_.col(i) = start_p_.col(i); //原地踏步 当你以后要让机器人前进时，这里要改逻辑 别忘了
+                    start_p_.col(i) = estimator_->getFootPos(i);   // 世界系落脚点
+                    end_p_.col(i) = start_p_.col(i);               // //原地踏步 当你以后要让机器人前进时，这里要改逻辑 别忘了
                 }
                 
             }
