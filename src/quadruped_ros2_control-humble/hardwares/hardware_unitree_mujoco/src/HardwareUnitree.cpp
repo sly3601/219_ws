@@ -81,9 +81,9 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Hardwa
     */
      // 修改限幅2026.02.06
         // 按类型定义限位（匹配xacro的const.xacro值，同一类共用）
-        joint_type_limits_["hip"] = {-0.638, 0.748, -30.1, 30.1, -20.0, 20.0};
-        joint_type_limits_["thigh"] = {-0.623, 1.65, -30.1, 30.1, -20.0, 20.0};
-        joint_type_limits_["calf"] = {-2.322, -0.672, -20.06, 20.06, -20.0, 20.0};
+        joint_type_limits_["hip"] = {-0.638, 0.748, -30.1, 30.1, -40.0, 40.0};
+        joint_type_limits_["thigh"] = {-0.623, 1.65, -30.1, 30.1, -40.0, 40.0};
+        joint_type_limits_["calf"] = {-2.322, -0.672, -20.06, 20.06, -40.0, 40.0};
 
     // ========== imu改动 ==========
     // 获取参数

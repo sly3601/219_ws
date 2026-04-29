@@ -564,8 +564,8 @@ void StateTrotting::calcTau() {
         // 足底反力没有精确控制，而是变成偏置力矩*小于1的比例系数进行修正控制
         const double tau_ff_scale = 0.35;   // 衰减系数 先从0.25开始，后面可再调大
         const double tau_ff_limit_hip = 4.0;
-        const double tau_ff_limit_thigh = 20.0;
-        const double tau_ff_limit_calf = 20.0;
+        const double tau_ff_limit_thigh = 30.0;
+        const double tau_ff_limit_calf = 30.0;
 
         // 遍历4条腿，计算每条腿的关节力矩并赋值给控制接口
         for (int i = 0; i < 4; i++) {
