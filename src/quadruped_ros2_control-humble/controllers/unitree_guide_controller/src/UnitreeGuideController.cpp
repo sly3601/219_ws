@@ -114,40 +114,40 @@ namespace unitree_guide_controller
 
             const auto feet_2b = ctrl_component_.robot_model_->getFeet2BPositions();
 
-            // // 0-2: pos_body
-            // msg.data.push_back(pos_body(0));
-            // msg.data.push_back(pos_body(1));
-            // msg.data.push_back(pos_body(2));
+            // 0-2: pos_body
+            msg.data.push_back(pos_body(0));
+            msg.data.push_back(pos_body(1));
+            msg.data.push_back(pos_body(2));
 
-            // // 3-5: vel_body
-            // msg.data.push_back(vel_body(0));
-            // msg.data.push_back(vel_body(1));
-            // msg.data.push_back(vel_body(2));
+            // 3-5: vel_body
+            msg.data.push_back(vel_body(0));
+            msg.data.push_back(vel_body(1));
+            msg.data.push_back(vel_body(2));
 
             // // 6-8: roll pitch yaw
             // msg.data.push_back(rpy_body(0));
             // msg.data.push_back(rpy_body(1));
             // msg.data.push_back(rpy_body(2));
 
-            // 0-2: FR x y z
-            msg.data.push_back(feet_2b[0].p.x());
-            msg.data.push_back(feet_2b[0].p.y());
-            msg.data.push_back(feet_2b[0].p.z());
+            // // 0-2: FR x y z
+            // msg.data.push_back(feet_2b[0].p.x());
+            // msg.data.push_back(feet_2b[0].p.y());
+            // msg.data.push_back(feet_2b[0].p.z());
 
-            // 3-5: FL x y z
-            msg.data.push_back(feet_2b[1].p.x());
-            msg.data.push_back(feet_2b[1].p.y());
-            msg.data.push_back(feet_2b[1].p.z());
+            // // 3-5: FL x y z
+            // msg.data.push_back(feet_2b[1].p.x());
+            // msg.data.push_back(feet_2b[1].p.y());
+            // msg.data.push_back(feet_2b[1].p.z());
 
-            // 6-8: RR x y z
-            msg.data.push_back(feet_2b[2].p.x());
-            msg.data.push_back(feet_2b[2].p.y());
-            msg.data.push_back(feet_2b[2].p.z());
+            // // 6-8: RR x y z
+            // msg.data.push_back(feet_2b[2].p.x());
+            // msg.data.push_back(feet_2b[2].p.y());
+            // msg.data.push_back(feet_2b[2].p.z());
 
-            // 9-11: RL x y z
-            msg.data.push_back(feet_2b[3].p.x());
-            msg.data.push_back(feet_2b[3].p.y());
-            msg.data.push_back(feet_2b[3].p.z());
+            // // 9-11: RL x y z
+            // msg.data.push_back(feet_2b[3].p.x());
+            // msg.data.push_back(feet_2b[3].p.y());
+            // msg.data.push_back(feet_2b[3].p.z());
 
 
             ctrl_interfaces_.body_debug_pub->publish(msg);
