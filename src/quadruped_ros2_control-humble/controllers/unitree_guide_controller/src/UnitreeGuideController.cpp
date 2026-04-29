@@ -8,6 +8,8 @@
 #include "unitree_guide_controller/robot/QuadrupedRobot.h"
 #include "unitree_guide_controller/common/mathTools.h"
 
+#include <Eigen/Geometry>
+
 namespace unitree_guide_controller
 {
     using config_type = controller_interface::interface_configuration_type;
@@ -75,6 +77,31 @@ namespace unitree_guide_controller
         ctrl_component_.robot_model_->update();
         ctrl_component_.wave_generator_->update();
         ctrl_component_.estimator_->update();
+
+        if (tf_broadcaster_)
+        {
+            geometry_msgs::msg::TransformStamped tf_msg;
+
+            Vec3 pos_body = ctrl_component_.estimator_->getPosition();
+            RotMat rotation_body = ctrl_component_.estimator_->getRotation();
+            Eigen::Quaterniond q(rotation_body);
+
+            tf_msg.header.stamp = get_node()->get_clock()->now();
+            tf_msg.header.frame_id = "world";
+            tf_msg.child_frame_id = base_name_;
+
+            tf_msg.transform.translation.x = pos_body(0);
+            tf_msg.transform.translation.y = pos_body(1);
+            tf_msg.transform.translation.z = pos_body(2);
+
+            tf_msg.transform.rotation.w = q.w();
+            tf_msg.transform.rotation.x = q.x();
+            tf_msg.transform.rotation.y = q.y();
+            tf_msg.transform.rotation.z = q.z();
+
+            tf_broadcaster_->sendTransform(tf_msg);
+        }
+
 
         if (ctrl_interfaces_.body_debug_pub)
         {
@@ -205,6 +232,7 @@ namespace unitree_guide_controller
         ctrl_interfaces_.node = get_node(); // <-- 移到最前面！
         ctrl_interfaces_.body_debug_pub = ctrl_interfaces_.node->create_publisher<std_msgs::msg::Float64MultiArray>("/body_debug", 10);
         ctrl_interfaces_.debug_pub      = ctrl_interfaces_.node->create_publisher<std_msgs::msg::Float64MultiArray>("/trotting_debug", 10);
+        tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(get_node());
         // clear out vectors in case of restart
         ctrl_interfaces_.clear();
 

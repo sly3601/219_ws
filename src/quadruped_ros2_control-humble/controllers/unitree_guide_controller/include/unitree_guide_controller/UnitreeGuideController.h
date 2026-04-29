@@ -19,6 +19,9 @@
 #include "FSM/StateSwingTest.h"
 #include "FSM/StateTrotting.h"
 
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+
 namespace unitree_guide_controller {
     struct FSMStateList {
         std::shared_ptr<FSMState> invalid;
@@ -97,7 +100,7 @@ namespace unitree_guide_controller {
 
         rclcpp::Subscription<control_input_msgs::msg::Inputs>::SharedPtr control_input_subscription_;
         rclcpp::Subscription<std_msgs::msg::String>::SharedPtr robot_description_subscription_;
-
+        std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
 
 
