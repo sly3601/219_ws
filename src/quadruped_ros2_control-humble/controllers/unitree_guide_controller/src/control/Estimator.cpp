@@ -18,10 +18,18 @@ Estimator::Estimator(CtrlInterfaces &ctrl_interfaces, CtrlComponent &ctrl_compon
 
     std::cout << "dt: " << dt_ << std::endl;
     large_variance_ = 100;
-    for (int i(0); i < Qdig.rows(); ++i) {
-        // dig：大概率是作者随手写的 diag / diagonal 缩写,对角的意思
-        Qdig(i) = i < 6 ? 0.1 : 0.01; // Qdig是离散系统的过程噪声协方差矩阵，前6个元素对应位置和速度，后12个元素对应足底位置。位置和速度的过程噪声较小，而足底位置的过程噪声较大。
-    }
+    // dig：大概率是作者随手写的 diag / diagonal 缩写,对角的意思
+    // Qdig是离散系统的过程噪声协方差矩阵，前6个元素对应位置和速度，后12个元素对应足底位置。位置和速度的过程噪声较小，而足底位置的过程噪声较大。
+    Qdig.setConstant(0.01); // Vec18全部赋值为0.01，后续会根据里程计情况调整
+    // 位置
+    Qdig(0) = 0.02;   // x
+    Qdig(1) = 0.02;   // y
+    Qdig(2) = 0.01;   // z
+
+    // 速度
+    Qdig(3) = 0.20;   // vx
+    Qdig(4) = 0.20;   // vy
+    Qdig(5) = 0.05;   // vz
 
     x_hat_.setZero();
     u_.setZero();
