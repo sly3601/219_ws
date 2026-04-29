@@ -529,7 +529,26 @@ void StateTrotting::calcTau() {
         // B2P_RotMat，B系到P系的旋转矩阵
         // pos_feet_body_global，P系下的足端位置（相对于B系）
         // 输出force_feet_global，全局坐标系下的期望足底反力
-        force_feet_global = -balance_ctrl_->calF(dd_pcd, d_wbd, B2P_RotMat, pos_feet_body_global, wave_generator_->contact_);
+        // force_feet_global = -balance_ctrl_->calF(dd_pcd, d_wbd, B2P_RotMat, pos_feet_body_global, wave_generator_->contact_);
+        if (!B2P_RotMat.allFinite() || !pos_feet_body_global.allFinite()) 
+        {
+            for (int k = 0; k < 12; ++k)
+                ctrl_interfaces_.joint_torque_command_interface_[k].get().set_value(0.0);
+            return;
+        }
+        try 
+        {
+            force_feet_global = -balance_ctrl_->calF(dd_pcd, d_wbd, B2P_RotMat, pos_feet_body_global, wave_generator_->contact_); 
+        }
+        catch (...) 
+        {
+            for (int k = 0; k < 12; ++k) 
+                ctrl_interfaces_.joint_torque_command_interface_[k].get().set_value(0.0); 
+            return; 
+        }
+
+
+
 
         // ========== 摆动腿先不做力控，只给0，摆动腿仍然主要靠位置/速度轨迹 ==========
         for (int i(0); i < 4; ++i) {
