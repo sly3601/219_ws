@@ -301,6 +301,8 @@ Visualization Manager:
           Value: true
         trunk:
           Value: true
+        world:
+          Value: true
       Marker Scale: 0.30000001192092896
       Name: TF
       Show Arrows: true
@@ -355,6 +357,8 @@ Visualization Manager:
               {}
             imu_link:
               {}
+        world:
+          {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/Marker
@@ -374,7 +378,8 @@ Visualization Manager:
       Enabled: true
       Name: MarkerArray
       Namespaces:
-        {}
+        foot_markers: true
+        foot_trajectory: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -385,7 +390,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: base
+    Fixed Frame: world
     Frame Rate: 30
   Name: root
   Tools:
@@ -428,25 +433,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 2.870455741882324
+      Distance: 3.9864890575408936
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.04855674132704735
-        Y: -0.06345806270837784
-        Z: 0.0025690440088510513
+        X: -0.16529829800128937
+        Y: 0.072088323533535
+        Z: 0.41933390498161316
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.14039798080921173
+      Pitch: 0.40539833903312683
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.0154054164886475
+      Yaw: 5.440403461456299
     Saved: ~
 Window Geometry:
   Displays:
@@ -464,5 +469,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1163
-  X: 63
+  X: 70
   Y: 27
