@@ -37,9 +37,9 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 提高摆动高度：避免足端落地过浅，增强整体支撑余量（适配1.5倍腿长）
     gait_height_ = 0.05;
     // 身体位置比例增益：大幅提高z轴抑制下沉，x/y提高增强平动控制（全局优化，无后腿单独补偿）
-    Kpp = Vec3(3, 3, 3).asDiagonal();
+    Kpp = Vec3(0.05, 0.05, 0.05).asDiagonal();
     // 身体速度阻尼增益：增强z轴阻尼抗抖动，x/y提高抑制大惯性超调
-    Kdp = Vec3(0.1, 0.1, 0.1).asDiagonal();
+    Kdp = Vec3(0.01, 0.01, 0.0).asDiagonal();
     // 姿态比例增益：大幅提高（作用于roll/pitch/yaw），增强整体姿态稳定性，防止侧倒/前后趴
     kp_w_ = 3;    // 1900
         // 姿态角速度阻尼增益：重点提高roll/pitch对应轴（x/y），加快姿态收敛，避免倾斜加剧
@@ -88,9 +88,13 @@ void StateTrotting::enter() {
         // 得到四足当前实时的四个足底末端位置
         auto feet_2b = robot_model_->getFeet2BPositions();
         double foot_z_avg = (feet_2b[0].p.z() + feet_2b[1].p.z() + feet_2b[2].p.z() + feet_2b[3].p.z()) / 4.0;
-        pcd_ << 0.0, 0.0, -foot_z_avg;
+        
         if(troting_kalman == 2)
         {
+            // 原地稳定踏步，世界系位置目标取进入时当前位置
+            pcd_ = estimator_->getPosition();
+            pcd_(2) = -foot_z_avg;   // z 先保持原来语义；你后面在calcTau里并没有开z位置闭环
+
             yaw_cmd_ = estimator_->getYaw(); // 这里非常对，把上电时初始yaw作为闭环目标
             const double roll_des = 0.0;
             const double pitch_des = 0.05; // 注意！pitch理想值不是0
@@ -98,6 +102,7 @@ void StateTrotting::enter() {
         }
         else
         {
+            pcd_ << 0.0, 0.0, -foot_z_avg;
             yaw_cmd_ = 0;
             Rd.setIdentity();// 在开环中，期望姿态按B系与P系重合处理
         }
@@ -353,7 +358,7 @@ void StateTrotting::calcCmd() {
         // 全局坐标系下的yaw轴角速度指令设为滤波后的d_yaw_cmd_
         w_cmd_global_(2) = d_yaw_cmd_;
     }
-    else if(troting_kalman == 0 || troting_kalman == 2)
+    else if(troting_kalman == 0)
     {
         /* 2026.04.04 无卡尔曼的开环步态*/
         // 无卡尔曼滤波的开环troting
@@ -368,14 +373,23 @@ void StateTrotting::calcCmd() {
         pcd_(1) = 0.0; // 固定期望Y位置
         // pcd_(2) 保持原来的高度就行，不用改
 
-        if(troting_kalman == 0)
-        {
-            /* 旋转指令：依然用IMU的直接姿态，不用改 */
-            yaw_cmd_ = 0;
-            Rd.setIdentity(); // 期望旋转矩阵固定为单位矩阵（完全水平）
-        }
+        /* 旋转指令：依然用IMU的直接姿态，不用改 */
+        yaw_cmd_ = 0;
+        Rd.setIdentity(); // 期望旋转矩阵固定为单位矩阵（完全水平）
         w_cmd_parallel_.setZero(); // 目标角速度固定为0
         
+    }
+    else if(troting_kalman == 2)
+    {
+        // v2.5修改：2模式只做原地稳定踏步，不接受平移/转向遥控
+        const double roll_des  = 0.0;
+        const double pitch_des = 0.05;
+
+        vel_target_.setZero();          // 目标平移速度 = 0
+        w_cmd_parallel_.setZero();      // 目标角速度 = 0
+
+        // pcd_(0/1/2) 和 yaw_cmd_ 都保持 enter() 里初始化的目标，不在这里改
+        Rd = rotz(yaw_cmd_) * roty(pitch_des) * rotx(roll_des);
     }
 }
 
@@ -493,24 +507,29 @@ void StateTrotting::calcTau() {
     */
     else if(troting_kalman == 2)
     {
-        // ========== 新增：不做任何位置/速度闭环，只做“托住重力 + roll/pitch姿态纠正” ==========
+        // 加入 x/y 平面闭环
+        pos_error_ = pcd_ - pos_body_;
+        vel_error_ = vel_target_ - vel_body_;
 
-        dd_pcd.setZero(); // 机身质心的期望线加速度,原地踏步不需要
+        dd_pcd = Kpp * pos_error_ + Kdp * vel_error_;
+        // 先只开 x/y，z 先别在 2 里做位置闭环
+        dd_pcd(0) = saturation(dd_pcd(0), Vec2(-1.5, 1.5));
+        dd_pcd(1) = saturation(dd_pcd(1), Vec2(-1.5, 1.5));
+        dd_pcd(2) = 0.0;
 
-        // ========== 新增：只保留 roll / pitch 的姿态误差和角速度阻尼 ==========
         rot_err = rotMatToExp(Rd * P2B_RotMat);
         gyro_global = estimator_->getGyroGlobal();
 
 
         // 角度误差乘以比例增益 + 角速度乘以阻尼增益，得到期望的机身角运动控制量（力矩）
-        d_wbd = kp_w_ * rot_err + Kd_w_ * (zero_w_cmd - gyro_global);
+        d_wbd = kp_w_ * rot_err + Kd_w_ * (w_cmd_parallel_ - gyro_global);
 
         // ========== 限制 roll， pitch，yaw ==========
         d_wbd(0) = saturation(d_wbd(0), Vec2(-20, 20));
         d_wbd(1) = saturation(d_wbd(1), Vec2(-20, 20));
         d_wbd(2) = saturation(d_wbd(2), Vec2(-12, 12));
 
-        // ========== 新增：当前足端相对于身体的位置，直接用机器人模型正运动学，不依赖位置/速度估计 ==========
+        // 当前足端相对于身体的位置，直接用机器人模型正运动学，不依赖位置/速度估计
         feet_frames_body = robot_model_->getFeet2BPositions();
         for (int i = 0; i < 4; ++i) {
             pos_feet_body.col(i) = Vec3(feet_frames_body[i].p.data);
