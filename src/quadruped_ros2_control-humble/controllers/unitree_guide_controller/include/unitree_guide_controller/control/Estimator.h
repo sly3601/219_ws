@@ -50,7 +50,7 @@ public:
      * Get the estimated feet velocity in world frame
      * @return feet velocity in world frame
      */
-    Vec34 getFeetPos() {
+    Vec34 getFeetPos() {  // 返回足底在世界系下的位置
         Vec34 feet_pos;
         for (int i(0); i < 4; ++i) {
             feet_pos.col(i) = getFootPos(i);

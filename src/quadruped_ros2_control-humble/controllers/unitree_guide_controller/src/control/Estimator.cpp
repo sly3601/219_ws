@@ -155,7 +155,23 @@ void Estimator::update() {
     Q = QInit_;
     R = RInit_;
 
-    foot_poses_ = robot_model_->getFeet2BPositions(); // 运动学正解
+    Quat quat;
+    quat << ctrl_interfaces_.imu_state_interface_[0].get().get_value(),
+            ctrl_interfaces_.imu_state_interface_[1].get().get_value(),
+            ctrl_interfaces_.imu_state_interface_[2].get().get_value(),
+            ctrl_interfaces_.imu_state_interface_[3].get().get_value();
+    rotation_ = quatToRotMat(quat); // 四元数转旋转矩阵，这里得到的就是B2G_RotMat，身体系到世界系的旋转矩阵
+
+    gyro_ << ctrl_interfaces_.imu_state_interface_[4].get().get_value(),
+            ctrl_interfaces_.imu_state_interface_[5].get().get_value(),
+            ctrl_interfaces_.imu_state_interface_[6].get().get_value();
+
+    acceleration_ << ctrl_interfaces_.imu_state_interface_[7].get().get_value(),
+            ctrl_interfaces_.imu_state_interface_[8].get().get_value(),
+            ctrl_interfaces_.imu_state_interface_[9].get().get_value();
+    
+
+    foot_poses_ = robot_model_->getFeet2BPositions(); // 运动学正解,身体坐标系
     foot_vels_ = robot_model_->getFeet2BVelocities(); // 运动学正解,身体坐标系
     feet_h_.setZero();
 
@@ -181,24 +197,12 @@ void Estimator::update() {
             R(24 + i, 24 + i) =
                     (1 + (1 - trust) * large_variance_) * RInit_(24 + i, 24 + i);
         }
-        feet_pos_body_.segment(3 * i, 3) = Vec3(foot_poses_[i].p.data);
-        feet_vel_body_.segment(3 * i, 3) = Vec3(foot_vels_[i].data); // 身体坐标系
+        // 新加变换：注意feet_pos_body_不是足底在世界系下的位置！而是足底在身体系下位置在世界系中的表示。
+        // feet_pos_body_.segment(3 * i, 3) = Vec3(foot_poses_[i].p.data);
+        // feet_vel_body_.segment(3 * i, 3) = Vec3(foot_vels_[i].data);
+        feet_pos_body_.segment(3 * i, 3) = rotation_ * Vec3(foot_poses_[i].p.data);
+        feet_vel_body_.segment(3 * i, 3) = rotation_ * Vec3(foot_vels_[i].data); // 简化版：只做B->G旋转，不加omega×r，即不考虑机身旋转
     }
-
-    Quat quat;
-    quat << ctrl_interfaces_.imu_state_interface_[0].get().get_value(),
-            ctrl_interfaces_.imu_state_interface_[1].get().get_value(),
-            ctrl_interfaces_.imu_state_interface_[2].get().get_value(),
-            ctrl_interfaces_.imu_state_interface_[3].get().get_value();
-    rotation_ = quatToRotMat(quat); // 四元数转旋转矩阵，这里得到的就是B2G_RotMat，身体系到世界系的旋转矩阵
-
-    gyro_ << ctrl_interfaces_.imu_state_interface_[4].get().get_value(),
-            ctrl_interfaces_.imu_state_interface_[5].get().get_value(),
-            ctrl_interfaces_.imu_state_interface_[6].get().get_value();
-
-    acceleration_ << ctrl_interfaces_.imu_state_interface_[7].get().get_value(),
-            ctrl_interfaces_.imu_state_interface_[8].get().get_value(),
-            ctrl_interfaces_.imu_state_interface_[9].get().get_value();
 
     u_ = rotation_ * acceleration_ + g_;
     x_hat_ = A * x_hat_ + B * u_;
