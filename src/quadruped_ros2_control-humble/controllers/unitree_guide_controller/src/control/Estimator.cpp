@@ -141,9 +141,9 @@ Estimator::Estimator(CtrlInterfaces &ctrl_interfaces, CtrlComponent &ctrl_compon
     QInit_ += B * Cu * B.transpose();
 
     low_pass_filters_.resize(3);
-    low_pass_filters_[0] = std::make_shared<LowPassFilter>(dt_, 3.0);
-    low_pass_filters_[1] = std::make_shared<LowPassFilter>(dt_, 3.0);
-    low_pass_filters_[2] = std::make_shared<LowPassFilter>(dt_, 3.0);
+    low_pass_filters_[0] = std::make_shared<LowPassFilter>(dt_, 10.0);
+    low_pass_filters_[1] = std::make_shared<LowPassFilter>(dt_, 10.0);
+    low_pass_filters_[2] = std::make_shared<LowPassFilter>(dt_, 10.0);
 }
 
 double Estimator::getYaw() const {
