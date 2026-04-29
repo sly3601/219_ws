@@ -21,6 +21,7 @@ set(CONTROLLER_INCLUDE_DEPENDS
         rclcpp
         visualization_msgs
         geometry_msgs
+        tf2_ros
 )
 
 # find dependencies
