@@ -37,9 +37,9 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 提高摆动高度：避免足端落地过浅，增强整体支撑余量（适配1.5倍腿长）
     gait_height_ = 0.05;
     // 身体位置比例增益：大幅提高z轴抑制下沉，x/y提高增强平动控制（全局优化，无后腿单独补偿）
-    Kpp = Vec3(2.5, 2.5, 12.0).asDiagonal();
+    Kpp = Vec3(0.1, 0.1, 0.1).asDiagonal();
     // 身体速度阻尼增益：增强z轴阻尼抗抖动，x/y提高抑制大惯性超调
-    Kdp = Vec3(0.1, 0.1, 1.3).asDiagonal();
+    Kdp = Vec3(0.1, 0.1, 0.1).asDiagonal();
     // 姿态比例增益：大幅提高（作用于roll/pitch/yaw），增强整体姿态稳定性，防止侧倒/前后趴
     kp_w_ = 3;    // 1900
         // 姿态角速度阻尼增益：重点提高roll/pitch对应轴（x/y），加快姿态收敛，避免倾斜加剧
@@ -492,15 +492,15 @@ void StateTrotting::calcTau() {
     */
     else if(troting_kalman == 2)
     {
-        // 加入 x/y 平面闭环
+        // 加入 x/y/z 平面闭环
         pos_error_ = pcd_ - pos_body_;
         vel_error_ = vel_target_ - vel_body_;
 
         dd_pcd = Kpp * pos_error_ + Kdp * vel_error_;
-        // 先只开 x/y，z 先别在 2 里做位置闭环
-        dd_pcd(0) = saturation(dd_pcd(0), Vec2(-1.5, 1.5));
-        dd_pcd(1) = saturation(dd_pcd(1), Vec2(-1.5, 1.5));
-        dd_pcd(2) = saturation(dd_pcd(2), Vec2(-3.0, 3.0));
+
+        dd_pcd(0) = saturation(dd_pcd(0), Vec2(-0.8, 0.8));
+        dd_pcd(1) = saturation(dd_pcd(1), Vec2(-0.8, 0.8));
+        dd_pcd(2) = saturation(dd_pcd(2), Vec2(-1.5, 1.5));
 
         rot_err = rotMatToExp(Rd * P2B_RotMat);
         gyro_global = estimator_->getGyroGlobal();
@@ -510,9 +510,9 @@ void StateTrotting::calcTau() {
         d_wbd = kp_w_ * rot_err + Kd_w_ * (w_cmd_parallel_ - gyro_global);
 
         // ========== 限制 roll， pitch，yaw ==========
-        d_wbd(0) = saturation(d_wbd(0), Vec2(-20, 20));
-        d_wbd(1) = saturation(d_wbd(1), Vec2(-20, 20));
-        d_wbd(2) = saturation(d_wbd(2), Vec2(-12, 12));
+        d_wbd(0) = saturation(d_wbd(0), Vec2(-10, 10));
+        d_wbd(1) = saturation(d_wbd(1), Vec2(-10, 10));
+        d_wbd(2) = saturation(d_wbd(2), Vec2(-6, 6));
 
         // 当前足端相对于身体的位置，直接用机器人模型正运动学，不依赖位置/速度估计
         feet_frames_body = robot_model_->getFeet2BPositions();
@@ -543,10 +543,10 @@ void StateTrotting::calcTau() {
 
         // ========== 新增：MIT模式下，这里更适合作为前馈/偏置力矩，而不是直接满量目标力矩 ==========
         // 足底反力没有精确控制，而是变成偏置力矩*小于1的比例系数进行修正控制
-        const double tau_ff_scale = 1.0;   // 衰减系数 先从0.25开始，后面可再调大
+        const double tau_ff_scale = 0.35;   // 衰减系数 先从0.25开始，后面可再调大
         const double tau_ff_limit_hip = 4.0;
-        const double tau_ff_limit_thigh = 16.0;
-        const double tau_ff_limit_calf = 16.0;
+        const double tau_ff_limit_thigh = 8.0;
+        const double tau_ff_limit_calf = 8.0;
 
         // 遍历4条腿，计算每条腿的关节力矩并赋值给控制接口
         for (int i = 0; i < 4; i++) {
@@ -797,13 +797,13 @@ void StateTrotting::calcGain() const {
             if (wave_generator_->contact_(i) == 0) {
                 // ================= 摆动相（脚在空中） =================
                 // 增益中等，跟轨迹但不僵硬
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(260.0); // 从65
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(3.6);  
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(220.0); // 从65
+                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(2.8);  
             } else {
                 // ================= 支撑相（脚踩地） =================
                 // 增益拉高，抗干扰、站稳
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(260.0); // 从68
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(3.6);  
+                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(220.0); // 从68
+                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(2.8);  
             }
         }
 
