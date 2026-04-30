@@ -422,6 +422,15 @@ void StateTrotting::calcTau() {
     double raw_fz_left  = 0.0;
     double mx_qp_raw    = 0.0;
 
+    double cmd_fz_right_body = 0.0;
+    double cmd_fz_left_body  = 0.0;
+    double mx_cmd_body       = 0.0;
+
+    double hip_tau_raw_right = 0.0;   // FR+RR
+    double hip_tau_raw_left  = 0.0;   // FL+RL
+    double hip_tau_cmd_right = 0.0;
+    double hip_tau_cmd_left  = 0.0;
+
 
     double roll_err_rpy  = 0;
     double pitch_err_rpy = 0;
@@ -594,6 +603,15 @@ void StateTrotting::calcTau() {
         // 将足端力从P系转换为B系
         force_feet_body_ = P2B_RotMat * force_feet_global;
 
+        // debug经过 -calF 和 P2B 之后，命令到 body 里的总滚转力矩方向还对不对。
+        cmd_fz_right_body = force_feet_body_(2, 0) + force_feet_body_(2, 2); // FR + RR
+        cmd_fz_left_body  = force_feet_body_(2, 1) + force_feet_body_(2, 3); // FL + RL
+
+        for (int i = 0; i < 4; ++i) {
+            mx_cmd_body += pos_feet_body(1, i) * force_feet_body_(2, i)
+                        - pos_feet_body(2, i) * force_feet_body_(1, i);
+        }
+
         // ========== 新增：MIT模式下，这里更适合作为前馈/偏置力矩，而不是直接满量目标力矩 ==========
         // 足底反力没有精确控制，而是变成偏置力矩*小于1的比例系数进行修正控制
         const double tau_ff_scale = 0.35;   // 衰减系数 先从0.25开始，后面可再调大
@@ -605,6 +623,10 @@ void StateTrotting::calcTau() {
         for (int i = 0; i < 4; i++) {
             KDL::JntArray torque = robot_model_->getTorque(force_feet_body_.col(i), i);
             for (int j = 0; j < 3; j++) {
+                if (j == 0) { // hip raw/cmd
+                    if (i == 0 || i == 2) hip_tau_raw_right += torque(j);
+                    else                   hip_tau_raw_left  += torque(j);
+                }
                 if (j == 2) // debug小腿偏置力矩
                 {
                     calf_tau_raw[i] = torque(j);   // 小腿原始力矩
@@ -619,6 +641,11 @@ void StateTrotting::calcTau() {
                 } else {
                     tau_cmd = saturation(tau_cmd, Vec2(-tau_ff_limit_calf, tau_ff_limit_calf));
                     calf_tau_cmd[i] = tau_cmd;     // debug小腿最终命令力矩
+                }
+
+                if (j == 0) {
+                    if (i == 0 || i == 2) hip_tau_cmd_right += tau_cmd;
+                    else                   hip_tau_cmd_left  += tau_cmd;
                 }
 
                 ctrl_interfaces_.joint_torque_command_interface_[i * 3 + j].get().set_value(tau_cmd);
@@ -677,6 +704,15 @@ void StateTrotting::calcTau() {
         msg.data.push_back(raw_fz_right); // 20: calF原始输出右侧总Fz
         msg.data.push_back(raw_fz_left);  // 21: calF原始输出左侧总Fz
         msg.data.push_back(mx_qp_raw);    // 22: calF原始输出总Mx
+
+        msg.data.push_back(cmd_fz_right_body); // 23: 经过 -calF、转到body系、并清零摆动腿后，右侧(FR+RR)总Fz
+        msg.data.push_back(cmd_fz_left_body);  // 24: 经过 -calF、转到body系、并清零摆动腿后，左侧(FL+RL)总Fz
+        msg.data.push_back(mx_cmd_body);       // 25: 经过 -calF、转到body系、并清零摆动腿后，由当前命令足底力产生的总滚转力矩Mx（body系）
+
+        msg.data.push_back(hip_tau_raw_right); // 26: 右侧hip原始力矩和(FR+RR)，来自 getTorque()，尚未乘 tau_ff_scale/尚未限幅
+        msg.data.push_back(hip_tau_raw_left);  // 27: 左侧hip原始力矩和(FL+RL)，来自 getTorque()，尚未乘 tau_ff_scale/尚未限幅
+        msg.data.push_back(hip_tau_cmd_right); // 28: 右侧hip最终命令力矩和(FR+RR)，已经过 tau_ff_scale 和限幅
+        msg.data.push_back(hip_tau_cmd_left);  // 29: 左侧hip最终命令力矩和(FL+RL)，已经过 tau_ff_scale 和限幅
 
         ctrl_interfaces_.debug_pub->publish(msg);
     }
