@@ -37,11 +37,12 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 提高摆动高度：避免足端落地过浅，增强整体支撑余量（适配1.5倍腿长）
     gait_height_ = 0.05;
     // 身体位置比例增益：大幅提高z轴抑制下沉，x/y提高增强平动控制（全局优化，无后腿单独补偿）
-    Kpp = Vec3(0.8, 0.8, 15.1).asDiagonal();
+    Kpp = Vec3(0.8, 0.8, 45.1).asDiagonal();
     // 身体速度阻尼增益：增强z轴阻尼抗抖动，x/y提高抑制大惯性超调
     Kdp = Vec3(0.5, 0.5, 1.6).asDiagonal();
     // 姿态比例增益：大幅提高（作用于roll/pitch/yaw），增强整体姿态稳定性，防止侧倒/前后趴
-    kp_w_ = 160;    // 1900
+    kp_pitch_ = 160;    // 1900
+    kp_roll_ = 6;    // 1900
         // 姿态角速度阻尼增益：重点提高roll/pitch对应轴（x/y），加快姿态收敛，避免倾斜加剧
     Kd_w_ = Vec3(0.1, 0.1, 0.1).asDiagonal();
     // 摆动相位置增益：提高跟踪精度，确保足端精准落地，提供有效支撑
@@ -516,7 +517,7 @@ void StateTrotting::calcTau() {
 
         dd_pcd(0) = saturation(dd_pcd(0), Vec2(-0.8, 0.8));
         dd_pcd(1) = saturation(dd_pcd(1), Vec2(-0.8, 0.8));
-        dd_pcd(2) = saturation(dd_pcd(2), Vec2(-1.5, 1.5));
+        dd_pcd(2) = saturation(dd_pcd(2), Vec2(-2.5, 2.5));
 
         // rot_err = rotMatToExp(Rd * P2B_RotMat);
         // gyro_global = estimator_->getGyroGlobal();
@@ -538,10 +539,10 @@ void StateTrotting::calcTau() {
 
         gyro_global = estimator_->getGyroGlobal();
 
-        d_wbd(0) = kp_w_ * roll_err_rpy  + Kd_w_(0,0) * (0.0 - gyro_global(0));
-        // d_wbd(1) = kp_w_ * pitch_err_rpy + Kd_w_(1,1) * (0.0 - gyro_global(1));
-        d_wbd(1) = -(kp_w_ * pitch_err_rpy + Kd_w_(1,1) * (0.0 - gyro_global(1)));
-        d_wbd(2) = kp_w_ * 0.0           + Kd_w_(2,2) * (0.0 - gyro_global(2));
+        d_wbd(0) = kp_roll_ * roll_err_rpy  + Kd_w_(0,0) * (0.0 - gyro_global(0));
+        // d_wbd(1) = kp_pitch_ * pitch_err_rpy + Kd_w_(1,1) * (0.0 - gyro_global(1));
+        d_wbd(1) = -(kp_pitch_ * pitch_err_rpy + Kd_w_(1,1) * (0.0 - gyro_global(1)));
+        d_wbd(2) = kp_yaw_ * 0.0           + Kd_w_(2,2) * (0.0 - gyro_global(2));
 
 
 
@@ -702,6 +703,9 @@ void StateTrotting::calcTau() {
         msg.data.push_back(0.0);
 
         msg.data.push_back(d_wbd(0));     // 19: roll方向目标力矩项
+        msg.data.push_back(d_wbd(1));     // 20: pitch方向目标力矩项
+        msg.data.push_back(d_wbd(2));     // 21: yaw方向目标力矩项
+
         msg.data.push_back(raw_fz_right); // 20: calF原始输出右侧总Fz
         msg.data.push_back(raw_fz_left);  // 21: calF原始输出左侧总Fz
         msg.data.push_back(mx_qp_raw);    // 22: calF原始输出总Mx

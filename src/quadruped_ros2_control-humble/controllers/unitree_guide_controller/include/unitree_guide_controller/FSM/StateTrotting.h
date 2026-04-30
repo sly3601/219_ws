@@ -91,7 +91,8 @@ private:
     double gait_height_;
     Vec3 pos_error_, vel_error_;
     Mat3 Kpp, Kdp, Kd_w_;
-    double kp_w_;
+    double kp_w_; // lost
+    double kp_roll_,kp_pitch_,kp_yaw_;
     Mat3 Kp_swing_, Kd_swing_;
     Vec2 v_x_limit_, v_y_limit_, w_yaw_limit_;
 
