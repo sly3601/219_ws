@@ -539,7 +539,8 @@ void StateTrotting::calcTau() {
         gyro_global = estimator_->getGyroGlobal();
 
         d_wbd(0) = kp_w_ * roll_err_rpy  + Kd_w_(0,0) * (0.0 - gyro_global(0));
-        d_wbd(1) = kp_w_ * pitch_err_rpy + Kd_w_(1,1) * (0.0 - gyro_global(1));
+        // d_wbd(1) = kp_w_ * pitch_err_rpy + Kd_w_(1,1) * (0.0 - gyro_global(1));
+        d_wbd(1) = -(kp_w_ * pitch_err_rpy + Kd_w_(1,1) * (0.0 - gyro_global(1)));
         d_wbd(2) = kp_w_ * 0.0           + Kd_w_(2,2) * (0.0 - gyro_global(2));
 
 
