@@ -37,11 +37,11 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 提高摆动高度：避免足端落地过浅，增强整体支撑余量（适配1.5倍腿长）
     gait_height_ = 0.05;
     // 身体位置比例增益：大幅提高z轴抑制下沉，x/y提高增强平动控制（全局优化，无后腿单独补偿）
-    Kpp = Vec3(0.8, 0.8, 2.1).asDiagonal();
+    Kpp = Vec3(0.8, 0.8, 15.1).asDiagonal();
     // 身体速度阻尼增益：增强z轴阻尼抗抖动，x/y提高抑制大惯性超调
-    Kdp = Vec3(0.5, 0.5, 0.6).asDiagonal();
+    Kdp = Vec3(0.5, 0.5, 1.6).asDiagonal();
     // 姿态比例增益：大幅提高（作用于roll/pitch/yaw），增强整体姿态稳定性，防止侧倒/前后趴
-    kp_w_ = 120;    // 1900
+    kp_w_ = 160;    // 1900
         // 姿态角速度阻尼增益：重点提高roll/pitch对应轴（x/y），加快姿态收敛，避免倾斜加剧
     Kd_w_ = Vec3(0.1, 0.1, 0.1).asDiagonal();
     // 摆动相位置增益：提高跟踪精度，确保足端精准落地，提供有效支撑
@@ -453,8 +453,8 @@ void StateTrotting::calcTau() {
         dd_pcd(2) = saturation(dd_pcd(2), Vec2(-10, 10));
 
         // 调整角速度增量限制：缩小roll/pitch对应轴（x/y）范围，防止侧倒/前后趴
-        d_wbd(0) = saturation(d_wbd(0), Vec2(-20, 20));
-        d_wbd(1) = saturation(d_wbd(1), Vec2(-20, 20));
+        d_wbd(0) = saturation(d_wbd(0), Vec2(-25, 25));
+        d_wbd(1) = saturation(d_wbd(1), Vec2(-30, 30));
         d_wbd(2) = saturation(d_wbd(2), Vec2(-8, 8));
 
         // 获取当前足端相对于身体的位置（全局坐标系，4个足端，3维坐标）
@@ -545,8 +545,8 @@ void StateTrotting::calcTau() {
 
 
         // ========== 限制 roll， pitch，yaw ==========
-        d_wbd(0) = saturation(d_wbd(0), Vec2(-20, 20));
-        d_wbd(1) = saturation(d_wbd(1), Vec2(-20, 20));
+        d_wbd(0) = saturation(d_wbd(0), Vec2(-35, 35));
+        d_wbd(1) = saturation(d_wbd(1), Vec2(-35, 35));
         d_wbd(2) = saturation(d_wbd(2), Vec2(-6, 6));
 
         // 当前足端相对于身体的位置，直接用机器人模型正运动学，不依赖位置/速度估计
