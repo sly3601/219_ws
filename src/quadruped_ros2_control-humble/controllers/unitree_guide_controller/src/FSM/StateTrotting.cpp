@@ -714,6 +714,11 @@ void StateTrotting::calcTau() {
         msg.data.push_back(hip_tau_cmd_right); // 28: 右侧hip最终命令力矩和(FR+RR)，已经过 tau_ff_scale 和限幅
         msg.data.push_back(hip_tau_cmd_left);  // 29: 左侧hip最终命令力矩和(FL+RL)，已经过 tau_ff_scale 和限幅
 
+
+        msg.data.push_back(dd_pcd(0));  // 30: x方向加速度控制输出
+        msg.data.push_back(dd_pcd(1)); // 31: y方向加速度控制输出
+        msg.data.push_back(dd_pcd(2));  // 32: z方向加速度控制输出
+
         ctrl_interfaces_.debug_pub->publish(msg);
     }
 }
