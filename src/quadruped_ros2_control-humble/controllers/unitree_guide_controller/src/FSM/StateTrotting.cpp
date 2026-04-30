@@ -507,7 +507,11 @@ void StateTrotting::calcTau() {
 
 
         // 角度误差乘以比例增益 + 角速度乘以阻尼增益，得到期望的机身角运动控制量（力矩）
-        d_wbd = kp_w_ * rot_err + Kd_w_ * (w_cmd_parallel_ - gyro_global);
+        // d_wbd = kp_w_ * rot_err + Kd_w_ * (w_cmd_parallel_ - gyro_global);
+        // 证实roll的符号不对，要反转
+        d_wbd(0) = -kp_w_ * rot_err(0) + Kd_w_(0,0) * (w_cmd_parallel_(0) - gyro_global(0)); // 只翻转roll
+        d_wbd(1) =  kp_w_ * rot_err(1) + Kd_w_(1,1) * (w_cmd_parallel_(1) - gyro_global(1));
+        d_wbd(2) =  kp_w_ * rot_err(2) + Kd_w_(2,2) * (w_cmd_parallel_(2) - gyro_global(2));
 
         // ========== 限制 roll， pitch，yaw ==========
         d_wbd(0) = saturation(d_wbd(0), Vec2(-10, 10));
@@ -634,8 +638,10 @@ void StateTrotting::calcTau() {
         msg.data.push_back(calf_tau_cmd[2]);
         msg.data.push_back(calf_tau_cmd[3]);
 
-        // 16: roll_err
+        // 16: roll_err，17: pitch_err，18: yaw_err
         msg.data.push_back(rot_err(0));
+        msg.data.push_back(rot_err(1));
+        msg.data.push_back(rot_err(2));
 
         ctrl_interfaces_.debug_pub->publish(msg);
     }
