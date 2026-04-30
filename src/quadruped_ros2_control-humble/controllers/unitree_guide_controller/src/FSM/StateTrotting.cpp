@@ -616,29 +616,26 @@ void StateTrotting::calcTau() {
         // 3: z方向控制输出 dd_pcd_z
         msg.data.push_back(dd_pcd(2));
 
-        // 4-7: 四条腿接触状态 FR FL RR RL
-        msg.data.push_back(wave_generator_->contact_(0));
-        msg.data.push_back(wave_generator_->contact_(1));
-        msg.data.push_back(wave_generator_->contact_(2));
-        msg.data.push_back(wave_generator_->contact_(3));
-
-        // 8-11: 四条腿 Fz FR FL RR RL
+        // 4-7: 四条腿 Fz FR FL RR RL
         msg.data.push_back(force_feet_global(2, 0));
         msg.data.push_back(force_feet_global(2, 1));
         msg.data.push_back(force_feet_global(2, 2));
         msg.data.push_back(force_feet_global(2, 3));
 
-        // 12-15: 四条腿小腿原始力矩 FR FL RR RL
+        // 8-11: 四条腿小腿原始力矩 FR FL RR RL
         msg.data.push_back(calf_tau_raw[0]);
         msg.data.push_back(calf_tau_raw[1]);
         msg.data.push_back(calf_tau_raw[2]);
         msg.data.push_back(calf_tau_raw[3]);
 
-        // 16-19: 四条腿小腿最终命令力矩 FR FL RR RL
+        // 12-15: 四条腿小腿最终命令力矩 FR FL RR RL
         msg.data.push_back(calf_tau_cmd[0]);
         msg.data.push_back(calf_tau_cmd[1]);
         msg.data.push_back(calf_tau_cmd[2]);
         msg.data.push_back(calf_tau_cmd[3]);
+
+        // 16: roll_err
+        msg.data.push_back(rot_err(0));
 
         ctrl_interfaces_.debug_pub->publish(msg);
     }
