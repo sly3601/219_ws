@@ -125,9 +125,9 @@ namespace unitree_guide_controller
             msg.data.push_back(vel_body(2));
 
             // // 6-8: roll pitch yaw
-            // msg.data.push_back(rpy_body(0));
-            // msg.data.push_back(rpy_body(1));
-            // msg.data.push_back(rpy_body(2));
+            msg.data.push_back(rpy_body(0));
+            msg.data.push_back(rpy_body(1));
+            msg.data.push_back(rpy_body(2));
 
             // // 0-2: FR x y z
             // msg.data.push_back(feet_2b[0].p.x());
