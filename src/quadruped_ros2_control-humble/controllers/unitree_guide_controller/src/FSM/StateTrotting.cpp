@@ -418,6 +418,10 @@ void StateTrotting::calcTau() {
     // debug 用的变量，暂时放在这里
     double calf_tau_raw[4] = {0.0, 0.0, 0.0, 0.0};
     double calf_tau_cmd[4] = {0.0, 0.0, 0.0, 0.0};
+    double raw_fz_right = 0.0;
+    double raw_fz_left  = 0.0;
+    double mx_qp_raw    = 0.0;
+
 
     double roll_err_rpy  = 0;
     double pitch_err_rpy = 0;
@@ -569,6 +573,14 @@ void StateTrotting::calcTau() {
             return; 
         }
 
+        raw_fz_right = -(force_feet_global(2, 0) + force_feet_global(2, 2)); // FR + RR
+        raw_fz_left  = -(force_feet_global(2, 1) + force_feet_global(2, 3)); // FL + RL
+
+        for (int i = 0; i < 4; ++i) {
+            mx_qp_raw += pos_feet_body_global(1, i) * (-force_feet_global(2, i))
+                    - pos_feet_body_global(2, i) * (-force_feet_global(1, i));
+        }
+
 
 
 
@@ -660,6 +672,11 @@ void StateTrotting::calcTau() {
         msg.data.push_back(roll_err_rpy);
         msg.data.push_back(pitch_err_rpy);
         msg.data.push_back(0.0);
+
+        msg.data.push_back(d_wbd(0));     // 19: roll方向目标力矩项
+        msg.data.push_back(raw_fz_right); // 20: calF原始输出右侧总Fz
+        msg.data.push_back(raw_fz_left);  // 21: calF原始输出左侧总Fz
+        msg.data.push_back(mx_qp_raw);    // 22: calF原始输出总Mx
 
         ctrl_interfaces_.debug_pub->publish(msg);
     }
