@@ -41,9 +41,9 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 身体速度阻尼增益：增强z轴阻尼抗抖动，x/y提高抑制大惯性超调
     Kdp = Vec3(5.5, 5.5, 5.6).asDiagonal();
     // 姿态比例增益：大幅提高（作用于roll/pitch/yaw），增强整体姿态稳定性，防止侧倒/前后趴
-    kp_pitch_ = 290;    // 1900
+    kp_pitch_ = 350;    // 1900
     kp_roll_ = 290;    // 1900
-    kp_yaw_ = 0;     // 1900
+    kp_yaw_ = 170;     // 1900
         // 姿态角速度阻尼增益：重点提高roll/pitch对应轴（x/y），加快姿态收敛，避免倾斜加剧
     Kd_w_ = Vec3(4.1, 4.1, 4.1).asDiagonal();
     // 摆动相位置增益：提高跟踪精度，确保足端精准落地，提供有效支撑
@@ -550,7 +550,7 @@ void StateTrotting::calcTau() {
         // d_wbd(1) = kp_pitch_ * pitch_err_rpy + Kd_w_(1,1) * (0.0 - gyro_global(1));
         d_wbd(1) = -(kp_pitch_ * pitch_err_rpy + Kd_w_(1,1) * (0.0 - gyro_global(1)));
         // d_wbd(2) = kp_yaw_ * 0.0           + Kd_w_(2,2) * (0.0 - gyro_global(2));
-        d_wbd(2) = -(kp_yaw_ * yaw_err_rpy + Kd_w_(2,2) * (0.0 - gyro_global(2))); // calF中，向左为正
+        d_wbd(2) = kp_yaw_ * yaw_err_rpy + Kd_w_(2,2) * (0.0 - gyro_global(2)); // calF中，向左为正
 
 
 
@@ -624,7 +624,7 @@ void StateTrotting::calcTau() {
 
         // ========== 新增：MIT模式下，这里更适合作为前馈/偏置力矩，而不是直接满量目标力矩 ==========
         // 足底反力没有精确控制，而是变成偏置力矩*小于1的比例系数进行修正控制
-        const double tau_ff_scale = 0.65;   // 衰减系数 先从0.25开始，后面可再调大
+        const double tau_ff_scale = 0.75;   // 衰减系数 先从0.25开始，后面可再调大
         const double tau_ff_limit_hip = 4.0;
         const double tau_ff_limit_thigh = 62.0;
         const double tau_ff_limit_calf = 80.0;
@@ -708,7 +708,7 @@ void StateTrotting::calcTau() {
         // 16: roll_err，17: pitch_err，18: yaw_err
         msg.data.push_back(roll_err_rpy);
         msg.data.push_back(pitch_err_rpy);
-        msg.data.push_back(0.0);
+        msg.data.push_back(yaw_err_rpy);
 
         msg.data.push_back(d_wbd(0));     // 19: roll方向目标力矩项
         msg.data.push_back(d_wbd(1));     // 20: pitch方向目标力矩项
