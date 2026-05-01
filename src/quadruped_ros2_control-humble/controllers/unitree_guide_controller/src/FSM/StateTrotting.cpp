@@ -37,12 +37,12 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 提高摆动高度：避免足端落地过浅，增强整体支撑余量（适配1.5倍腿长）
     gait_height_ = 0.045;
     // 身体位置比例增益：大幅提高z轴抑制下沉，x/y提高增强平动控制（全局优化，无后腿单独补偿）
-    Kpp = Vec3(27.8, 27.8, 195.1).asDiagonal();
+    Kpp = Vec3(87.8, 27.8, 195.1).asDiagonal();
     // 身体速度阻尼增益：增强z轴阻尼抗抖动，x/y提高抑制大惯性超调
     Kdp = Vec3(5.5, 5.5, 5.6).asDiagonal();
     // 姿态比例增益：大幅提高（作用于roll/pitch/yaw），增强整体姿态稳定性，防止侧倒/前后趴
-    kp_pitch_ = 350;    // 1900
-    kp_roll_ = 290;    // 1900
+    kp_pitch_ = 650;    // 1900
+    kp_roll_ = 500;    // 1900
     kp_yaw_ = 170;     // 1900
         // 姿态角速度阻尼增益：重点提高roll/pitch对应轴（x/y），加快姿态收敛，避免倾斜加剧
     Kd_w_ = Vec3(4.1, 4.1, 4.1).asDiagonal();
@@ -624,7 +624,7 @@ void StateTrotting::calcTau() {
 
         // ========== 新增：MIT模式下，这里更适合作为前馈/偏置力矩，而不是直接满量目标力矩 ==========
         // 足底反力没有精确控制，而是变成偏置力矩*小于1的比例系数进行修正控制
-        const double tau_ff_scale = 0.75;   // 衰减系数 先从0.25开始，后面可再调大
+        const double tau_ff_scale = 0.73;   // 衰减系数 先从0.25开始，后面可再调大
         const double tau_ff_limit_hip = 4.0;
         const double tau_ff_limit_thigh = 62.0;
         const double tau_ff_limit_calf = 80.0;

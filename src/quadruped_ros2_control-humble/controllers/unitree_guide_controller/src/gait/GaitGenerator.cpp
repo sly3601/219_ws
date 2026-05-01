@@ -139,7 +139,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 Vec3 nominal_world =
                     estimator_->getPosition() + estimator_->getRotation() * nominal_feet_body_.col(i);
                 end_p_.col(i) = start_p_.col(i);
-                const double alpha = 0.35;  // 0~1，越小越保守
+                const double alpha = 0.45;  // 0~1，越小越保守
                 end_p_(0, i) = (1.0 - alpha) * start_p_(0, i) + alpha * nominal_world(0);
             }
             // 【闭环模式】：完全保留你原来的代码，用官方轨迹规划器
