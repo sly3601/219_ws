@@ -42,7 +42,7 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     Kdp = Vec3(0.5, 0.5, 1.6).asDiagonal();
     // 姿态比例增益：大幅提高（作用于roll/pitch/yaw），增强整体姿态稳定性，防止侧倒/前后趴
     kp_pitch_ = 270;    // 1900
-    kp_roll_ = 82;    // 1900
+    kp_roll_ = 102;    // 1900
         // 姿态角速度阻尼增益：重点提高roll/pitch对应轴（x/y），加快姿态收敛，避免倾斜加剧
     Kd_w_ = Vec3(0.1, 0.1, 0.1).asDiagonal();
     // 摆动相位置增益：提高跟踪精度，确保足端精准落地，提供有效支撑
@@ -451,7 +451,7 @@ void StateTrotting::calcTau() {
         // 调整加速度限制：缩小x/y范围减少前后左右失衡，放宽z轴增强垂直支撑力
         dd_pcd(0) = saturation(dd_pcd(0), Vec2(-1.5, 1.5));
         dd_pcd(1) = saturation(dd_pcd(1), Vec2(-1.5, 1.5));
-        dd_pcd(2) = saturation(dd_pcd(2), Vec2(-10, 10));
+        dd_pcd(2) = saturation(dd_pcd(2), Vec2(-20, 20));
 
         // 调整角速度增量限制：缩小roll/pitch对应轴（x/y）范围，防止侧倒/前后趴
         d_wbd(0) = saturation(d_wbd(0), Vec2(-25, 25));
@@ -517,7 +517,7 @@ void StateTrotting::calcTau() {
 
         dd_pcd(0) = saturation(dd_pcd(0), Vec2(-0.8, 0.8));
         dd_pcd(1) = saturation(dd_pcd(1), Vec2(-0.8, 0.8));
-        dd_pcd(2) = saturation(dd_pcd(2), Vec2(-3.5, 3.5));
+        dd_pcd(2) = saturation(dd_pcd(2), Vec2(-8.5, 8.5));
 
         // rot_err = rotMatToExp(Rd * P2B_RotMat);
         // gyro_global = estimator_->getGyroGlobal();
@@ -616,7 +616,7 @@ void StateTrotting::calcTau() {
 
         // ========== 新增：MIT模式下，这里更适合作为前馈/偏置力矩，而不是直接满量目标力矩 ==========
         // 足底反力没有精确控制，而是变成偏置力矩*小于1的比例系数进行修正控制
-        const double tau_ff_scale = 0.50;   // 衰减系数 先从0.25开始，后面可再调大
+        const double tau_ff_scale = 0.59;   // 衰减系数 先从0.25开始，后面可再调大
         const double tau_ff_limit_hip = 4.0;
         const double tau_ff_limit_thigh = 32.0;
         const double tau_ff_limit_calf = 45.0;
