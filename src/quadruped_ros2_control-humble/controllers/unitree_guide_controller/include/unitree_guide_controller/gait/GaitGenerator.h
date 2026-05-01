@@ -83,6 +83,8 @@ private:
     StateTrotting* trotting_ptr_; // 【新增】保存 StateTrotting 的指针
     CtrlComponent& ctrl_component_; // 新增：引用控制组件，获取robot_model_
 
+    Vec34 nominal_feet_body_; // 新增：足底在身体坐标系下的名义位置（站立时位置）
+
 };
 
 

@@ -11,6 +11,8 @@
 // 【新增】包含 StateTrotting 头文件
 #include "unitree_guide_controller/FSM/StateTrotting.h"
 
+#include <kdl/jntarray.hpp>
+
 // GaitGenerator::GaitGenerator(CtrlComponent &ctrl_component)
 //     : wave_generator_(ctrl_component.wave_generator_),
 //       estimator_(ctrl_component.estimator_),
@@ -46,6 +48,9 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             // 初始化时，start_p_就是当前的足端位置，后续每次落地都会刷新足底起始位置
             start_p_ = estimator_->getFeetPos();
             end_p_ = start_p_;
+            // 同时记录“当时那一刻”的 B 系名义足底位置
+            // 以后摆动终点就往这个名义位置回
+            nominal_feet_body_ = estimator_->getFeetPos2Body();
         }
         else if (trotting_ptr_ && (trotting_ptr_->troting_kalman == 0))
         {
@@ -98,7 +103,6 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 2)
                 {
                     start_p_.col(i) = estimator_->getFootPos(i);   // 世界系落脚点
-                    end_p_.col(i) = start_p_.col(i);               // //原地踏步 当你以后要让机器人前进时，这里要改逻辑 别忘了
                 }
                 
             }
@@ -113,7 +117,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             // 核心修复：开环/闭环 分两套逻辑计算「迈步终点」
             // ==============================================
             // 【开环模式】：纯身体坐标系，不用估计器，不用calcFootPos
-            if (trotting_ptr_ && (trotting_ptr_->troting_kalman == 0 || trotting_ptr_->troting_kalman == 2))
+            if (trotting_ptr_ && (trotting_ptr_->troting_kalman == 0))
             {
                 // 步长：每次迈步向前移动5厘米（可调节）
                 double step_length = 0;
@@ -126,6 +130,16 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 // ==============================================
                 end_p_.col(i) = start_p_.col(i);
                 // end_p_(0, i) = start_p_.col(i)[0] + dir * step_length;
+            }
+            else if (trotting_ptr_ && (trotting_ptr_->troting_kalman == 2))
+            {
+                // mode 2：摆动终点不再等于 start_p_
+                // 而是回到 first_run 时记录的 B 系名义足底位置
+
+                Vec3 nominal_world =
+                    estimator_->getPosition() + estimator_->getRotation() * nominal_feet_body_.col(i);
+
+                end_p_.col(i) = nominal_world;
             }
             // 【闭环模式】：完全保留你原来的代码，用官方轨迹规划器
             else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 1)
