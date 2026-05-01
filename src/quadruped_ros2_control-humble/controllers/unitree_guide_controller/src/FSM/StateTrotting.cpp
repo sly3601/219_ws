@@ -41,8 +41,8 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 身体速度阻尼增益：增强z轴阻尼抗抖动，x/y提高抑制大惯性超调
     Kdp = Vec3(5.5, 5.5, 5.6).asDiagonal();
     // 姿态比例增益：大幅提高（作用于roll/pitch/yaw），增强整体姿态稳定性，防止侧倒/前后趴
-    kp_pitch_ = 360;    // 1900
-    kp_roll_ = 352;    // 1900
+    kp_pitch_ = 290;    // 1900
+    kp_roll_ = 290;    // 1900
     kp_yaw_ = 0;     // 1900
         // 姿态角速度阻尼增益：重点提高roll/pitch对应轴（x/y），加快姿态收敛，避免倾斜加剧
     Kd_w_ = Vec3(4.1, 4.1, 4.1).asDiagonal();
@@ -546,9 +546,9 @@ void StateTrotting::calcTau() {
 
         gyro_global = estimator_->getGyroGlobal();
 
-        d_wbd(0) = kp_roll_ * roll_err_rpy  + Kd_w_(0,0) * (0.0 - gyro_global(0));
+        d_wbd(0) = -(kp_roll_ * roll_err_rpy  + Kd_w_(0,0) * (0.0 - gyro_global(0)));
         // d_wbd(1) = kp_pitch_ * pitch_err_rpy + Kd_w_(1,1) * (0.0 - gyro_global(1));
-        d_wbd(1) = kp_pitch_ * pitch_err_rpy + Kd_w_(1,1) * (0.0 - gyro_global(1));
+        d_wbd(1) = -(kp_pitch_ * pitch_err_rpy + Kd_w_(1,1) * (0.0 - gyro_global(1)));
         d_wbd(2) = kp_yaw_ * 0.0           + Kd_w_(2,2) * (0.0 - gyro_global(2));
         // d_wbd(2) = kp_yaw_ * yaw_err_rpy + Kd_w_(2,2) * (0.0 - gyro_global(2)); // calF中，向左为正
 
