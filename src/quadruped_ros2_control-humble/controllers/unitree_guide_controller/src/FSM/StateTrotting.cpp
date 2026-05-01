@@ -548,7 +548,7 @@ void StateTrotting::calcTau() {
 
         d_wbd(0) = kp_roll_ * roll_err_rpy  + Kd_w_(0,0) * (0.0 - gyro_global(0));
         // d_wbd(1) = kp_pitch_ * pitch_err_rpy + Kd_w_(1,1) * (0.0 - gyro_global(1));
-        d_wbd(1) = kp_pitch_ * pitch_err_rpy + Kd_w_(1,1) * (0.0 - gyro_global(1));
+        d_wbd(1) = -(kp_pitch_ * pitch_err_rpy + Kd_w_(1,1) * (0.0 - gyro_global(1)));
         d_wbd(2) = kp_yaw_ * 0.0           + Kd_w_(2,2) * (0.0 - gyro_global(2));
         // d_wbd(2) = kp_yaw_ * yaw_err_rpy + Kd_w_(2,2) * (0.0 - gyro_global(2)); // calF中，向左为正
 
