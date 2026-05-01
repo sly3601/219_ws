@@ -540,6 +540,9 @@ void StateTrotting::calcTau() {
         pitch_err_rpy = pitch_des - rpy_body(1);
         // 注意：这里直接用减法，如果遇到 +180 度跳变到 -180 度的情况，需要额外做角度归一化
         yaw_err_rpy = yaw_cmd_ - rpy_body(2);
+        // 【核心代码】角度归一化：把误差限制在 -π 到 π 之间
+        while (yaw_err_rpy > M_PI)  yaw_err_rpy -= 2.0 * M_PI;
+        while (yaw_err_rpy < -M_PI) yaw_err_rpy += 2.0 * M_PI;
 
         gyro_global = estimator_->getGyroGlobal();
 
