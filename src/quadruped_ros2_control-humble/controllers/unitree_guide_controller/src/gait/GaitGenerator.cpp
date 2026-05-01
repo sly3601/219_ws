@@ -133,14 +133,22 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             }
             else if (trotting_ptr_ && (trotting_ptr_->troting_kalman == 2))
             {
-                // mode 2：摆动终点不再等于 start_p_
-                // 而是回到 first_run 时记录的 B 系名义足底位置
+                // 关键：先把当前真实起点从外部系转回 B 系，
+                // 只在 B 系里修 x，再变回外部系。
+                const Vec3 pos_ext = estimator_->getPosition();
+                const RotMat B2P = estimator_->getRotation();
+                const RotMat P2B = B2P.transpose();
 
-                Vec3 nominal_world =
-                    estimator_->getPosition() + estimator_->getRotation() * nominal_feet_body_.col(i);
-                end_p_.col(i) = start_p_.col(i);
-                const double alpha = 0.45;  // 0~1，越小越保守
-                end_p_(0, i) = (1.0 - alpha) * start_p_(0, i) + alpha * nominal_world(0);
+                // 当前摆动起点（真实落脚点）转到 B 系
+                Vec3 start_body = P2B * (start_p_.col(i) - pos_ext);
+
+                // 在 B 系里构造摆动终点：只修 x，y/z 保持当前起点
+                Vec3 end_body = start_body;
+                const double alpha = 0.15;   // 先小一点，0.10~0.20 比较稳
+                end_body(0) = (1.0 - alpha) * start_body(0) + alpha * nominal_feet_body_(0, i);
+
+                // 再从 B 系变回当前 generate() 使用的外部系
+                end_p_.col(i) = pos_ext + B2P * end_body;
             }
             // 【闭环模式】：完全保留你原来的代码，用官方轨迹规划器
             else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 1)
