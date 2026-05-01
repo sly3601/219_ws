@@ -144,7 +144,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
 
                 // 在 B 系里构造摆动终点：只修 x，y/z 保持当前起点
                 Vec3 end_body = start_body;
-                const double alpha = 0.15;   // 先小一点，0.10~0.20 比较稳
+                const double alpha = 0.0;   // 先小一点，0.10~0.20 比较稳
                 end_body(0) = (1.0 - alpha) * start_body(0) + alpha * nominal_feet_body_(0, i);
 
                 // 再从 B 系变回当前 generate() 使用的外部系
