@@ -583,6 +583,7 @@ void StateTrotting::calcTau() {
         }
         try 
         {
+            // calF函数内部计算出来的是G系下的地面对机身的反作用力，我们需要的是足端对地面的力，所以加负号取反
             force_feet_global = -balance_ctrl_->calF(dd_pcd, d_wbd, B2P_RotMat, pos_feet_body_global, wave_generator_->contact_); 
         }
         catch (...) 
@@ -684,54 +685,59 @@ void StateTrotting::calcTau() {
         // 2: 高度速度误差 vel_error_z
         msg.data.push_back(vel_error_(2));
 
-        // 3: z方向控制输出 dd_pcd_z
+        // 3-5: xyz方向期望控制输出机身加速度 dd_pcd
+        msg.data.push_back(dd_pcd(0));
+        msg.data.push_back(dd_pcd(1));
         msg.data.push_back(dd_pcd(2));
 
-        // 4-7: 四条腿 Fz FR FL RR RL
+        // 6-9: 四条腿 Fz FR FL RR RL
         msg.data.push_back(force_feet_global(2, 0));
         msg.data.push_back(force_feet_global(2, 1));
         msg.data.push_back(force_feet_global(2, 2));
         msg.data.push_back(force_feet_global(2, 3));
 
-        // 8-11: 四条腿小腿原始力矩 FR FL RR RL
+        // 10-13: 四条腿小腿原始力矩 FR FL RR RL
         msg.data.push_back(calf_tau_raw[0]);
         msg.data.push_back(calf_tau_raw[1]);
         msg.data.push_back(calf_tau_raw[2]);
         msg.data.push_back(calf_tau_raw[3]);
 
-        // 12-15: 四条腿小腿最终命令力矩 FR FL RR RL
+        // 14-17: 四条腿小腿最终命令力矩 FR FL RR RL
         msg.data.push_back(calf_tau_cmd[0]);
         msg.data.push_back(calf_tau_cmd[1]);
         msg.data.push_back(calf_tau_cmd[2]);
         msg.data.push_back(calf_tau_cmd[3]);
 
-        // 16: roll_err，17: pitch_err，18: yaw_err
+        // 18: roll_err，19: pitch_err，20: yaw_err
         msg.data.push_back(roll_err_rpy);
         msg.data.push_back(pitch_err_rpy);
         msg.data.push_back(yaw_err_rpy);
 
-        msg.data.push_back(d_wbd(0));     // 19: roll方向目标力矩项
-        msg.data.push_back(d_wbd(1));     // 20: pitch方向目标力矩项
-        msg.data.push_back(d_wbd(2));     // 21: yaw方向目标力矩项
+        msg.data.push_back(d_wbd(0));     // 21: roll方向目标力矩项
+        msg.data.push_back(d_wbd(1));     // 22: pitch方向目标力矩项
+        msg.data.push_back(d_wbd(2));     // 23: yaw方向目标力矩项
 
-        msg.data.push_back(raw_fz_right); // 20: calF原始输出右侧总Fz
-        msg.data.push_back(raw_fz_left);  // 21: calF原始输出左侧总Fz
-        msg.data.push_back(mx_qp_raw);    // 22: calF原始输出总Mx
+        msg.data.push_back(raw_fz_right); // 24: calF原始输出右侧总Fz
+        msg.data.push_back(raw_fz_left);  // 25: calF原始输出左侧总Fz
+        msg.data.push_back(mx_qp_raw);    // 26: calF原始输出总Mx
 
-        msg.data.push_back(cmd_fz_right_body); // 23: 经过 -calF、转到body系、并清零摆动腿后，右侧(FR+RR)总Fz
-        msg.data.push_back(cmd_fz_left_body);  // 24: 经过 -calF、转到body系、并清零摆动腿后，左侧(FL+RL)总Fz
-        msg.data.push_back(mx_cmd_body);       // 25: 经过 -calF、转到body系、并清零摆动腿后，由当前命令足底力产生的总滚转力矩Mx（body系）
+        msg.data.push_back(cmd_fz_right_body); // 27: 经过 -calF、转到body系、并清零摆动腿后，右侧(FR+RR)总Fz
+        msg.data.push_back(cmd_fz_left_body);  // 28: 经过 -calF、转到body系、并清零摆动腿后，左侧(FL+RL)总Fz
+        msg.data.push_back(mx_cmd_body);       // 29: 经过 -calF、转到body系、并清零摆动腿后，由当前命令足底力产生的总滚转力矩Mx（body系）
 
-        msg.data.push_back(hip_tau_raw_right); // 26: 右侧hip原始力矩和(FR+RR)，来自 getTorque()，尚未乘 tau_ff_scale/尚未限幅
-        msg.data.push_back(hip_tau_raw_left);  // 27: 左侧hip原始力矩和(FL+RL)，来自 getTorque()，尚未乘 tau_ff_scale/尚未限幅
-        msg.data.push_back(hip_tau_cmd_right); // 28: 右侧hip最终命令力矩和(FR+RR)，已经过 tau_ff_scale 和限幅
-        msg.data.push_back(hip_tau_cmd_left);  // 29: 左侧hip最终命令力矩和(FL+RL)，已经过 tau_ff_scale 和限幅
+        msg.data.push_back(hip_tau_raw_right); // 30: 右侧hip原始力矩和(FR+RR)，来自 getTorque()，尚未乘 tau_ff_scale/尚未限幅
+        msg.data.push_back(hip_tau_raw_left);  // 31: 左侧hip原始力矩和(FL+RL)，来自 getTorque()，尚未乘 tau_ff_scale/尚未限幅
+        msg.data.push_back(hip_tau_cmd_right); // 32: 右侧hip最终命令力矩和(FR+RR)，已经过 tau_ff_scale 和限幅
+        msg.data.push_back(hip_tau_cmd_left);  // 33: 左侧hip最终命令力矩和(FL+RL)，已经过 tau_ff_scale 和限幅
 
 
-        msg.data.push_back(dd_pcd(0));  // 30: x方向加速度控制输出
-        msg.data.push_back(dd_pcd(1)); // 31: y方向加速度控制输出
-        msg.data.push_back(dd_pcd(2));  // 32: z方向加速度控制输出
+        msg.data.push_back(dd_pcd(0));  // 34: x方向加速度控制输出
+        msg.data.push_back(dd_pcd(1)); // 35: y方向加速度控制输出
+        msg.data.push_back(dd_pcd(2));  // 36: z方向加速度控制输出
 
+        msg.data.push_back(gyro_global(0));  // 37: x方向加速度控制输出
+        msg.data.push_back(gyro_global(1)); // 38: y方向加速度控制输出
+        msg.data.push_back(gyro_global(2));  // 39: z方向加速度控制输出
         ctrl_interfaces_.debug_pub->publish(msg);
     }
 }

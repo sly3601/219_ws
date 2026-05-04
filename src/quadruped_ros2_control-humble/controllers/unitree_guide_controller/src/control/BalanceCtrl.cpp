@@ -45,7 +45,7 @@ BalanceCtrl::BalanceCtrl(const std::shared_ptr<QuadrupedRobot> &robot) {
 Vec34 BalanceCtrl::calF(const Vec3 &ddPcd, const Vec3 &dWbd, const RotMat &rot_matrix,
                         const Vec34 &feet_pos_2_body, const VecInt4 &contact) {
     calMatrixA(feet_pos_2_body, rot_matrix);
-    calVectorBd(ddPcd, dWbd, rot_matrix);
+    calVectorBd(ddPcd, dWbd, rot_matrix);// 正确，传入G系下期望加速度，G系下期望角加速度,B2P旋转矩阵
     calConstraints(contact);
 
     G_ = A_.transpose() * S_ * A_ + alpha_ * W_ + beta_ * U_;
@@ -65,8 +65,8 @@ void BalanceCtrl::calMatrixA(const Vec34 &feet_pos_2_body, const RotMat &rotM) {
 }
 
 void BalanceCtrl::calVectorBd(const Vec3 &ddPcd, const Vec3 &dWbd, const RotMat &rotM) {
-    bd_.head(3) = mass_ * (ddPcd - g_);
-    bd_.tail(3) = rotM * Ib_ * rotM.transpose() * dWbd;
+    bd_.head(3) = mass_ * (ddPcd - g_); //正确
+    bd_.tail(3) = rotM * Ib_ * rotM.transpose() * dWbd; // 正确，从右往左算，dWbd是G系下的期望角加速度
 }
 
 void BalanceCtrl::calConstraints(const VecInt4 &contact) {
