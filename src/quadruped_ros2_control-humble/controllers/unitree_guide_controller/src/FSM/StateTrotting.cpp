@@ -39,13 +39,13 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 身体位置比例增益：大幅提高z轴抑制下沉，x/y提高增强平动控制（全局优化，无后腿单独补偿）
     Kpp = Vec3(18, 18, 300.1).asDiagonal();
     // 身体速度阻尼增益：增强z轴阻尼抗抖动，x/y提高抑制大惯性超调
-    Kdp = Vec3(1, 1, 5.0).asDiagonal();
+    Kdp = Vec3(2.2, 2.2, 5.0).asDiagonal();
     // 姿态比例增益：大幅提高（作用于roll/pitch/yaw），增强整体姿态稳定性，防止侧倒/前后趴
     kp_pitch_ = 420;    // 1900
     kp_roll_ = 370;    // 1900
     kp_yaw_ = 0.1;     // 1900
         // 姿态角速度阻尼增益：重点提高roll/pitch对应轴（x/y），加快姿态收敛，避免倾斜加剧
-    Kd_w_ = Vec3(4.1, 5.1, 2.1).asDiagonal();
+    Kd_w_ = Vec3(4.1, 5.1, 3.1).asDiagonal();
     // 摆动相位置增益：提高跟踪精度，确保足端精准落地，提供有效支撑
     Kp_swing_ = Vec3(3, 3, 3).asDiagonal();
     // 摆动相速度阻尼：提高避免摆动过快，减少落地冲击导致的支撑失效
