@@ -619,7 +619,7 @@ void StateTrotting::calcTau() {
         // ========== 新增：MIT模式下，这里更适合作为前馈/偏置力矩，而不是直接满量目标力矩 ==========
         // 足底反力没有精确控制，而是变成偏置力矩*小于1的比例系数进行修正控制
         const double tau_ff_scale = 0.73;   // 衰减系数 先从0.25开始，后面可再调大
-        const double tau_ff_limit_hip = 4.0;
+        const double tau_ff_limit_hip = 0.0;
         const double tau_ff_limit_thigh = 82.0;
         const double tau_ff_limit_calf = 100.0;
 
@@ -883,10 +883,14 @@ void StateTrotting::calcQQd() {
         const int thigh_idx = leg_idx * 3 + 1;
         const int calf_idx  = leg_idx * 3 + 2;
 
-        // 位置限幅
-        q_goal(hip_idx)  = saturation(q_goal(hip_idx),   Vec2(hip_min,   hip_max));
-        // 髋关节速度也顺手限一下，防止突然抽动
-        qd_goal(hip_idx) = saturation(qd_goal(hip_idx), Vec2(-2.0, 2.0));
+        // // 位置限幅
+        // q_goal(hip_idx)  = saturation(q_goal(hip_idx),   Vec2(hip_min,   hip_max));
+        // // 髋关节速度也顺手限一下，防止突然抽动
+        // qd_goal(hip_idx) = saturation(qd_goal(hip_idx), Vec2(-2.0, 2.0));
+
+        // 髋关节强制锁在0，不再允许IK给hip非零目标
+        q_goal(hip_idx)  = 0.0;
+        qd_goal(hip_idx) = 0.0;
     }
 
     // 将关节目标位置和速度赋值给控制接口
@@ -920,7 +924,7 @@ void StateTrotting::calcGain() const {
         // 【单独设置髋关节】
         int hip_idx = i * 3 + 0;
         ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(700.0); // 70
-        ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(3.9);
+        ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(7.9);
     }
 }
 
