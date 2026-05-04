@@ -531,27 +531,20 @@ void StateTrotting::calcTau() {
         // d_wbd(1) =  kp_w_ * rot_err(1) + Kd_w_(1,1) * (w_cmd_parallel_(1) - gyro_global(1));
         // d_wbd(2) =  kp_w_ * rot_err(2) + Kd_w_(2,2) * (w_cmd_parallel_(2) - gyro_global(2));
 
-        Vec3 rpy_body = rotMatToRPY(estimator_->getRotation());
 
-        double roll_des  = 0.0;
-        double pitch_des = 0.05;
-
-        roll_err_rpy  = roll_des  - rpy_body(0);
-        pitch_err_rpy = pitch_des - rpy_body(1);
-        // 注意：这里直接用减法，如果遇到 +180 度跳变到 -180 度的情况，需要额外做角度归一化
-        yaw_err_rpy = yaw_cmd_ - rpy_body(2);
-        // 【核心代码】角度归一化：把误差限制在 -π 到 π 之间
-        while (yaw_err_rpy > M_PI)  yaw_err_rpy -= 2.0 * M_PI;
-        while (yaw_err_rpy < -M_PI) yaw_err_rpy += 2.0 * M_PI;
-
+        // 1) 用完整旋转矩阵计算姿态误差，不再手写 roll_des - roll / pitch_des - pitch
+        rot_err = rotMatToExp(Rd * P2B_RotMat);
+        // 2) 角速度仍然使用 estimator 给出的全局角速度
         gyro_global = estimator_->getGyroGlobal();
-
-        d_wbd(0) = -(kp_roll_ * roll_err_rpy  + Kd_w_(0,0) * (0.0 - gyro_global(0)));
-        // d_wbd(1) = kp_pitch_ * pitch_err_rpy + Kd_w_(1,1) * (0.0 - gyro_global(1));
-        d_wbd(1) = -(kp_pitch_ * pitch_err_rpy + Kd_w_(1,1) * (0.0 - gyro_global(1)));
-        // d_wbd(2) = kp_yaw_ * 0.0           + Kd_w_(2,2) * (0.0 - gyro_global(2));
-        d_wbd(2) = kp_yaw_ * yaw_err_rpy + Kd_w_(2,2) * (0.0 - gyro_global(2)); // calF中，向左为正
-
+        // 3) debug 变量沿用原来的名字，但现在含义变成 rotMatToExp 的三轴误差
+        roll_err_rpy  = rot_err(0);
+        pitch_err_rpy = rot_err(1);
+        yaw_err_rpy   = rot_err(2);
+        // 4) 三轴分开的 kp / kd
+        // 注意：这里不要再给 roll / pitch 外面额外加负号
+        d_wbd(0) = kp_roll_  * rot_err(0) + Kd_w_(0,0) * (0.0 - gyro_global(0));
+        d_wbd(1) = kp_pitch_ * rot_err(1) + Kd_w_(1,1) * (0.0 - gyro_global(1));
+        d_wbd(2) = kp_yaw_   * rot_err(2) + Kd_w_(2,2) * (0.0 - gyro_global(2));
 
 
         // ========== 限制 roll， pitch，yaw ==========
