@@ -37,9 +37,9 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 提高摆动高度：避免足端落地过浅，增强整体支撑余量（适配1.5倍腿长）
     gait_height_ = 0.01;
     // 身体位置比例增益：大幅提高z轴抑制下沉，x/y提高增强平动控制（全局优化，无后腿单独补偿）
-    Kpp = Vec3(0, 0, 300.1).asDiagonal();
+    Kpp = Vec3(5, 5, 300.1).asDiagonal();
     // 身体速度阻尼增益：增强z轴阻尼抗抖动，x/y提高抑制大惯性超调
-    Kdp = Vec3(0, 0, 5.0).asDiagonal();
+    Kdp = Vec3(1, 1, 5.0).asDiagonal();
     // 姿态比例增益：大幅提高（作用于roll/pitch/yaw），增强整体姿态稳定性，防止侧倒/前后趴
     kp_pitch_ = 400;    // 1900
     kp_roll_ = 350;    // 1900
