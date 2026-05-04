@@ -181,8 +181,8 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
 
 
                 // 最终 x 落点相对当前摆动起点限幅
-                target_x = saturation(target_x, Vec2(start_p_(0, i) - 0.035,
-                                                    start_p_(0, i) + 0.035));
+                target_x = saturation(target_x, Vec2(start_p_(0, i) - 0.005,
+                                                    start_p_(0, i) + 0.005));
 
                 end_p_.col(i) = start_p_.col(i);
                 end_p_(0, i) = target_x;
