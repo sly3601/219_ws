@@ -10,7 +10,8 @@
 #include <unitree_guide_controller/gait/WaveGenerator.h>
 // 【新增】包含 StateTrotting 头文件
 #include "unitree_guide_controller/FSM/StateTrotting.h"
-
+#include <unitree_guide_controller/common/mathTools.h>
+#include <cmath>
 #include <kdl/jntarray.hpp>
 
 // GaitGenerator::GaitGenerator(CtrlComponent &ctrl_component)
@@ -133,22 +134,77 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             }
             else if (trotting_ptr_ && (trotting_ptr_->troting_kalman == 2))
             {
-                // 关键：先把当前真实起点从外部系转回 B 系，
-                // 只在 B 系里修 x，再变回外部系。
-                const Vec3 pos_ext = estimator_->getPosition();
-                const RotMat B2P = estimator_->getRotation();
-                const RotMat P2B = B2P.transpose();
+                Vec3 body_vel_global = estimator_->getVelocity();
+                Vec3 next_step;
+                next_step.setZero();
 
-                // 当前摆动起点（真实落脚点）转到 B 系
-                Vec3 start_body = P2B * (start_p_.col(i) - pos_ext);
+                const double t_stance = wave_generator_->get_t_stance();
+                const double t_swing  = wave_generator_->get_t_swing();
 
-                // 在 B 系里构造摆动终点：只修 x，y/z 保持当前起点
-                Vec3 end_body = start_body;
-                const double alpha = 0.0;   // 先小一点，0.10~0.20 比较稳
-                end_body(0) = (1.0 - alpha) * start_body(0) + alpha * nominal_feet_body_(0, i);
+                const double k_x = 0.005;
+                // 原作者 x 方向落脚点预测项：
+                // 1) 剩余摆动时间机身位移
+                // 2) 半个支撑相机身位移
+                // 3) x 方向速度误差修正
+                next_step(0) = body_vel_global(0) * (1.0 - wave_generator_->phase_(i)) * t_swing
+                            + body_vel_global(0) * t_stance / 2.0
+                            + k_x * (body_vel_global(0) - vxy_goal_(0));
 
-                // 再从 B 系变回当前 generate() 使用的外部系
-                end_p_.col(i) = pos_ext + B2P * end_body;
+                // 给速度预测项限幅，防止一步修太猛
+                next_step(0) = saturation(next_step(0), Vec2(-0.025, 0.025));
+                const double yaw = estimator_->getYaw();
+                const double d_yaw = estimator_->getDYaw();
+
+                const double k_yaw = 0.005;
+                double next_yaw = d_yaw * (1.0 - wave_generator_->phase_(i)) * t_swing
+                    + d_yaw * t_stance / 2.0
+                    + k_yaw * (d_yaw_goal_ - d_yaw);
+
+                // yaw 预测也限一下，防止 cos/sin 的目标点跳太远
+                next_yaw = saturation(next_yaw, Vec2(-0.1, 0.1));
+                
+
+                const double feet_radius =
+                sqrt(pow(nominal_feet_body_(0, i), 2) + pow(nominal_feet_body_(1, i), 2));
+
+                const double feet_init_angle =
+                atan2(nominal_feet_body_(1, i), nominal_feet_body_(0, i));
+
+                next_step(0) +=
+                        feet_radius * cos(yaw + feet_init_angle + next_yaw);
+
+                Vec3 foot_pos = estimator_->getPosition() + next_step;
+
+                // 只更新 x
+                double target_x = foot_pos(0);
+
+
+
+                // 最终 x 落点相对当前摆动起点限幅
+                target_x = saturation(target_x, Vec2(start_p_(0, i) - 0.035,
+                                                    start_p_(0, i) + 0.035));
+
+                end_p_.col(i) = start_p_.col(i);
+                end_p_(0, i) = target_x;
+
+
+
+                // // 关键：先把当前真实起点从外部系转回 B 系，
+                // // 只在 B 系里修 x，再变回外部系。
+                // const Vec3 pos_ext = estimator_->getPosition();
+                // const RotMat B2P = estimator_->getRotation();
+                // const RotMat P2B = B2P.transpose();
+
+                // // 当前摆动起点（真实落脚点）转到 B 系
+                // Vec3 start_body = P2B * (start_p_.col(i) - pos_ext);
+
+                // // 在 B 系里构造摆动终点：只修 x，y/z 保持当前起点
+                // Vec3 end_body = start_body;
+                // const double alpha = 0.005;   // 先小一点，0.10~0.20 比较稳
+                // end_body(0) = (1.0 - alpha) * start_body(0) + alpha * nominal_feet_body_(0, i);
+
+                // // 再从 B 系变回当前 generate() 使用的外部系
+                // end_p_.col(i) = pos_ext + B2P * end_body;
             }
             // 【闭环模式】：完全保留你原来的代码，用官方轨迹规划器
             else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 1)
