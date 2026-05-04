@@ -919,7 +919,7 @@ void StateTrotting::calcGain() const {
 
         // 【单独设置髋关节】
         int hip_idx = i * 3 + 0;
-        ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(300.0); // 70
+        ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(700.0); // 70
         ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(3.9);
     }
 }
