@@ -47,7 +47,7 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
         // 姿态角速度阻尼增益：重点提高roll/pitch对应轴（x/y），加快姿态收敛，避免倾斜加剧
     Kd_w_ = Vec3(4.1, 5.1, 3.1).asDiagonal();
     // 摆动相位置增益：提高跟踪精度，确保足端精准落地，提供有效支撑
-    Kp_swing_ = Vec3(3, 3, 3).asDiagonal();
+    Kp_swing_ = Vec3(0.3, 0.3, 0.3).asDiagonal();
     // 摆动相速度阻尼：提高避免摆动过快，减少落地冲击导致的支撑失效
     Kd_swing_ = Vec3(0.1, 0.1, 0.1).asDiagonal();
 
@@ -601,8 +601,8 @@ void StateTrotting::calcTau() {
         // 当前四个足端在全局系下的实际速度
         vel_feet_global = estimator_->getFeetVel();
 
-        const double swing_force_limit_xy = 15.0;
-        const double swing_force_limit_z  = 20.0;
+        const double swing_force_limit_xy = 5.0;
+        const double swing_force_limit_z  = 10.0;
 
         for (int i = 0; i < 4; ++i)
         {
