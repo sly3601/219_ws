@@ -81,7 +81,7 @@ void FootMarkerPublisher::initMarkers()
     marker_array_.markers.push_back(line_marker);
   }
 }
-pos_feet_parallel_goal_
+
 void FootMarkerPublisher::update(const std::array<geometry_msgs::msg::Point, 4> & foot_positions)
 {
   // 先检查markers是否初始化
