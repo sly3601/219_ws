@@ -61,7 +61,7 @@ void FootMarkerPublisher::initMarkers()
   // ========== 2. 新增：4条历史轨迹线Marker (ID 10-13) ==========
   for (size_t i = 0; i < 4; ++i) {
     visualization_msgs::msg::Marker line_marker;
-    line_marker.header.frame_id = "base";
+    line_marker.header.frame_id = "world";
     line_marker.ns = "foot_trajectory";
     line_marker.id = static_cast<int32_t>(10 + i);
     line_marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
@@ -81,7 +81,7 @@ void FootMarkerPublisher::initMarkers()
     marker_array_.markers.push_back(line_marker);
   }
 }
-
+pos_feet_parallel_goal_
 void FootMarkerPublisher::update(const std::array<geometry_msgs::msg::Point, 4> & foot_positions)
 {
   // 先检查markers是否初始化
