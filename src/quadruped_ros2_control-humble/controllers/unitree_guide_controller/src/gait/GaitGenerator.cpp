@@ -142,6 +142,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 const double t_swing  = wave_generator_->get_t_swing();
 
                 const double k_x = 0.005;
+                const double k_y = 0.005;
                 // 原作者 x 方向落脚点预测项：
                 // 1) 剩余摆动时间机身位移
                 // 2) 半个支撑相机身位移
@@ -150,8 +151,13 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                             + body_vel_global(0) * t_stance / 2.0
                             + k_x * (body_vel_global(0) - vxy_goal_(0));
 
+                next_step(1) = body_vel_global(1) * (1.0 - wave_generator_->phase_(i)) * t_swing
+                            + body_vel_global(1) * t_stance / 2.0
+                            + k_y * (body_vel_global(1) - vxy_goal_(1));
+
                 // 给速度预测项限幅，防止一步修太猛
                 next_step(0) = saturation(next_step(0), Vec2(-0.025, 0.025));
+                next_step(1) = saturation(next_step(1), Vec2(-0.025, 0.025)); 
                 const double yaw = estimator_->getYaw();
                 const double d_yaw = estimator_->getDYaw();
 
@@ -172,20 +178,25 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
 
                 next_step(0) +=
                         feet_radius * cos(yaw + feet_init_angle + next_yaw);
+                next_step(1) +=
+                        feet_radius * sin(yaw + feet_init_angle + next_yaw);
 
                 Vec3 foot_pos = estimator_->getPosition() + next_step;
 
-                // 只更新 x
+                // 更新 x y 方向的落脚点预测值
                 double target_x = foot_pos(0);
-
+                double target_y = foot_pos(1);
 
 
                 // 最终 x 落点相对当前摆动起点限幅
-                target_x = saturation(target_x, Vec2(start_p_(0, i) - 0.035,
-                                                    start_p_(0, i) + 0.035));
+                target_x = saturation(target_x, Vec2(start_p_(0, i) - 0.020,
+                                                    start_p_(0, i) + 0.020));
+                target_y = saturation(target_y, Vec2(start_p_(1, i) - 0.020,
+                                    start_p_(1, i) + 0.020));
 
                 end_p_.col(i) = start_p_.col(i);
                 end_p_(0, i) = target_x;
+                end_p_(1, i) = target_y;
 
 
 

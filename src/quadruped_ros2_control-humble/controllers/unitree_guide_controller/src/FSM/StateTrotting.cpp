@@ -887,7 +887,7 @@ void StateTrotting::calcQQd() {
 
     // ---------- 髋关节（第0关节）小范围限制 ----------
     const double hip_center = 0.0;    // 希望髋关节稳定在0附近
-    const double hip_range  = 0.15;   // 先用 ±0.15 rad（约 ±8.6°）
+    const double hip_range  = 0.08;   // 先用 ±0.08 rad（约 ±4.6°）
 
     const double hip_min = hip_center - hip_range;
     const double hip_max = hip_center + hip_range;
@@ -902,13 +902,10 @@ void StateTrotting::calcQQd() {
         const int calf_idx  = leg_idx * 3 + 2;
 
         // // 位置限幅
-        // q_goal(hip_idx)  = saturation(q_goal(hip_idx),   Vec2(hip_min,   hip_max));
-        // // 髋关节速度也顺手限一下，防止突然抽动
-        // qd_goal(hip_idx) = saturation(qd_goal(hip_idx), Vec2(-2.0, 2.0));
+        q_goal(hip_idx)  = saturation(q_goal(hip_idx),   Vec2(hip_min,   hip_max));
+        // 髋关节速度也顺手限一下，防止突然抽动
+        qd_goal(hip_idx) = saturation(qd_goal(hip_idx), Vec2(-1.0, 1.0));
 
-        // 髋关节强制锁在0，不再允许IK给hip非零目标
-        q_goal(hip_idx)  = 0.0;
-        qd_goal(hip_idx) = 0.0;
     }
 
     // 将关节目标位置和速度赋值给控制接口
@@ -941,8 +938,18 @@ void StateTrotting::calcGain() const {
 
         // 【单独设置髋关节】
         int hip_idx = i * 3 + 0;
-        ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(700.0); // 70
-        ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(7.9);
+        if (wave_generator_->contact_(i) == 0) 
+        {
+            // 摆动相：hip负责帮助足端横向回正，但不能太硬
+            ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(220.0);
+            ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(3.0);
+        } 
+        else 
+        {
+            // 支撑相：稍硬一点，提供侧向支撑，但仍低于原来的700
+            ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(300.0);
+            ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(5.0);
+        }
     }
 }
 
