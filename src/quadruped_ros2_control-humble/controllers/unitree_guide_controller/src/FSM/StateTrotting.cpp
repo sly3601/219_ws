@@ -90,6 +90,7 @@ void StateTrotting::enter() {
         // 得到四足当前实时的四个足底末端位置
         auto feet_2b = robot_model_->getFeet2BPositions();
         double foot_z_avg = (feet_2b[0].p.z() + feet_2b[1].p.z() + feet_2b[2].p.z() + feet_2b[3].p.z()) / 4.0;
+        v_cmd_body_.setZero();
         
         if(troting_kalman == 2)
         {

@@ -106,3 +106,5 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
   * 至此，V2系列完结，流程全部跑通。
  ## V3系列
 **V3系列开发中**
+* 2026.05.05 v3.00
+  * 现在的情况是所有的闭环都正常，但整体都不稳，找不到明显的突破点
