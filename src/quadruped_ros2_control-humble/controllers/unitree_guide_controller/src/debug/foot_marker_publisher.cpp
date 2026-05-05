@@ -25,7 +25,7 @@ void FootMarkerPublisher::initMarkers()
     visualization_msgs::msg::Marker marker;
     
     // 1. 基础配置
-    marker.header.frame_id = "base"; // 【关键】足底坐标的参考系（根据你的工程修改）
+    marker.header.frame_id = "world"; // 【关键】足底坐标的参考系（根据你的工程修改）
     marker.ns = "foot_markers";           // 命名空间，避免与其他Marker冲突
     marker.id = static_cast<int32_t>(i);  // 唯一ID：0-FL, 1-FR, 2-RL, 3-RR
     marker.type = visualization_msgs::msg::Marker::SPHERE; // 用球体表示足底
