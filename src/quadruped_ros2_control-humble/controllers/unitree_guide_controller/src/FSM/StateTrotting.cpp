@@ -35,7 +35,7 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 初始化成员变量：步态生成器（从控制组件中初始化，用于生成足端目标轨迹）
     gait_generator_(ctrl_component, this){
     // 提高摆动高度：避免足端落地过浅，增强整体支撑余量（适配1.5倍腿长）
-    gait_height_ = 0.00;
+    gait_height_ = 0.04;
     // 身体位置比例增益：大幅提高z轴抑制下沉，x/y提高增强平动控制（全局优化，无后腿单独补偿）
     Kpp = Vec3(18, 18, 300.1).asDiagonal();
     // 身体速度阻尼增益：增强z轴阻尼抗抖动，x/y提高抑制大惯性超调
@@ -170,7 +170,7 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     {
         // 给步态生成器设置输入：G系下的目标平面速度（x/y），P系下的目标yaw角速度，足端抬起高度
         gait_generator_.setGait(vel_target_.segment(0, 2), w_cmd_parallel_(2), gait_height_);
-        // 生成四足的足端目标位置（pos_feet_parallel_goal_）和目标速度（vel_feet_parallel_goal_，B系，没错变量名带parallel但是是B系）
+        // 生成四足的足端目标位置（pos_feet_parallel_goal_）和目标速度（vel_feet_parallel_goal_，是G系下的，变量名是错的待改正。
         gait_generator_.generate(pos_feet_parallel_goal_, vel_feet_parallel_goal_);
     }
 
@@ -216,18 +216,18 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     // -------------------------------------------------------------------------
 
     std::array<geometry_msgs::msg::Point, 4> foot_positions;
-    foot_positions[0].x = pos_feet_global_goal_(0,0);  
-    foot_positions[0].y = pos_feet_global_goal_(1,0); 
-    foot_positions[0].z = pos_feet_global_goal_(2,0); // FR
-    foot_positions[1].x = pos_feet_global_goal_(0,1);  
-    foot_positions[1].y = pos_feet_global_goal_(1,1); 
-    foot_positions[1].z = pos_feet_global_goal_(2,1); // FL
-    foot_positions[2].x = pos_feet_global_goal_(0,2); 
-    foot_positions[2].y = pos_feet_global_goal_(1,2); 
-    foot_positions[2].z = pos_feet_global_goal_(2,2); // RR
-    foot_positions[3].x = pos_feet_global_goal_(0,3); 
-    foot_positions[3].y = pos_feet_global_goal_(1,3); 
-    foot_positions[3].z = pos_feet_global_goal_(2,3); // RL
+    foot_positions[0].x = pos_feet_parallel_goal_(0,0);  
+    foot_positions[0].y = pos_feet_parallel_goal_(1,0); 
+    foot_positions[0].z = pos_feet_parallel_goal_(2,0); // FR
+    foot_positions[1].x = pos_feet_parallel_goal_(0,1);  
+    foot_positions[1].y = pos_feet_parallel_goal_(1,1); 
+    foot_positions[1].z = pos_feet_parallel_goal_(2,1); // FL
+    foot_positions[2].x = pos_feet_parallel_goal_(0,2); 
+    foot_positions[2].y = pos_feet_parallel_goal_(1,2); 
+    foot_positions[2].z = pos_feet_parallel_goal_(2,2); // RR
+    foot_positions[3].x = pos_feet_parallel_goal_(0,3); 
+    foot_positions[3].y = pos_feet_parallel_goal_(1,3); 
+    foot_positions[3].z = pos_feet_parallel_goal_(2,3); // RL
     // 新增：更新并发布足底Marker1
     // 新增：降低发布频率到50Hz (500Hz / 10 = 50Hz)
     publish_counter_++;
@@ -595,15 +595,32 @@ void StateTrotting::calcTau() {
                     - pos_feet_body_global(2, i) * (-force_feet_global(1, i));
         }
 
+        // 当前四个足端在全局系下的实际位置
+        pos_feet_global = estimator_->getFeetPos();
 
+        // 当前四个足端在全局系下的实际速度
+        vel_feet_global = estimator_->getFeetVel();
 
+        const double swing_force_limit_xy = 15.0;
+        const double swing_force_limit_z  = 20.0;
 
-        // ========== 摆动腿先不做力控，只给0，摆动腿仍然主要靠位置/速度轨迹 ==========
-        for (int i(0); i < 4; ++i) {
-            if (wave_generator_->contact_(i) == 0) {
-                force_feet_global.col(i).setZero();
+        for (int i = 0; i < 4; ++i)
+        {
+            // contact == 0 表示摆动腿
+            if (wave_generator_->contact_(i) == 0)
+            {
+                Vec3 swing_force =
+                    Kp_swing_ * (pos_feet_parallel_goal_.col(i) - pos_feet_global.col(i)) +
+                    Kd_swing_ * (vel_feet_parallel_goal_.col(i) - vel_feet_global.col(i));
+
+                swing_force(0) = saturation(swing_force(0), Vec2(-swing_force_limit_xy, swing_force_limit_xy));
+                swing_force(1) = saturation(swing_force(1), Vec2(-swing_force_limit_xy, swing_force_limit_xy));
+                swing_force(2) = saturation(swing_force(2), Vec2(-swing_force_limit_z,  swing_force_limit_z));
+
+                force_feet_global.col(i) = swing_force;
             }
         }
+
 
         // 将足端力从P系转换为B系
         force_feet_body_ = P2B_RotMat * force_feet_global;
@@ -776,7 +793,7 @@ void StateTrotting::calcQQd() {
     }
     else if(troting_kalman == 2)
     {
-        // 开环2：GaitGenerator 内部现在存的是世界系脚点，这里统一转回B系再做IK
+        // GaitGenerator 内部现在存的是世界系脚点，这里统一转回B系再做IK
         for (int i = 0; i < 4; ++i) {
             pos_feet_target.col(i) = P2B_RotMat * (pos_feet_parallel_goal_.col(i) - pos_body_);
             vel_feet_target.col(i) = P2B_RotMat * (vel_feet_parallel_goal_.col(i) - vel_body_);
