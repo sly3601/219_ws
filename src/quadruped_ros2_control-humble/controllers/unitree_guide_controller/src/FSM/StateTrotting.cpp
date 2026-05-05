@@ -35,7 +35,7 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 初始化成员变量：步态生成器（从控制组件中初始化，用于生成足端目标轨迹）
     gait_generator_(ctrl_component, this){
     // 提高摆动高度：避免足端落地过浅，增强整体支撑余量（适配1.5倍腿长）
-    gait_height_ = 0.04;
+    gait_height_ = 0.00;
     // 身体位置比例增益：大幅提高z轴抑制下沉，x/y提高增强平动控制（全局优化，无后腿单独补偿）
     Kpp = Vec3(18, 18, 300.1).asDiagonal();
     // 身体速度阻尼增益：增强z轴阻尼抗抖动，x/y提高抑制大惯性超调
