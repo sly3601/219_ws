@@ -637,7 +637,7 @@ void StateTrotting::calcTau() {
         // ========== 新增：MIT模式下，这里更适合作为前馈/偏置力矩，而不是直接满量目标力矩 ==========
         // 足底反力没有精确控制，而是变成偏置力矩*小于1的比例系数进行修正控制
         const double tau_ff_scale = 0.93;   // 衰减系数 先从0.25开始，后面可再调大
-        const double tau_ff_limit_hip = 0.0;
+        const double tau_ff_limit_hip = 10.0;
         const double tau_ff_limit_thigh = 82.0;
         const double tau_ff_limit_calf = 100.0;
 
