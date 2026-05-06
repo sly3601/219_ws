@@ -51,7 +51,28 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             end_p_ = start_p_;
             // 同时记录“当时那一刻”的 B 系名义足底位置
             // 以后摆动终点就往这个名义位置回
-            nominal_feet_body_ = estimator_->getFeetPos2Body();
+            static const double nominal_q[4][3] = {
+                {0.0, 0.9, -1.53},  // FR
+                {0.0, 0.9, -1.53},  // FL
+                {0.0, 0.9, -1.30},  // RR
+                {0.0, 0.9, -1.30}   // RL
+            };
+
+            for (int leg = 0; leg < 4; ++leg)
+            {
+                KDL::JntArray q_nominal(3);
+                q_nominal(0) = nominal_q[leg][0];
+                q_nominal(1) = nominal_q[leg][1];
+                q_nominal(2) = nominal_q[leg][2];
+
+                KDL::Frame foot_nominal =
+                    ctrl_component_.robot_model_->calcPEe2B_four_feet(leg, q_nominal);
+
+                nominal_feet_body_(0, leg) = foot_nominal.p.x();
+                nominal_feet_body_(1, leg) = foot_nominal.p.y();
+                nominal_feet_body_(2, leg) = foot_nominal.p.z();
+            }
+            // nominal_feet_body_ = estimator_->getFeetPos2Body();
         }
         else if (trotting_ptr_ && (trotting_ptr_->troting_kalman == 0))
         {
