@@ -177,8 +177,8 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                             + k_y * (body_vel_global(1) - vxy_goal_(1));
 
                 // 给速度预测项限幅，防止一步修太猛
-                next_step(0) = saturation(next_step(0), Vec2(-0.025, 0.025));
-                next_step(1) = saturation(next_step(1), Vec2(-0.025, 0.025)); 
+                next_step(0) = saturation(next_step(0), Vec2(-0.035, 0.035));
+                next_step(1) = saturation(next_step(1), Vec2(-0.035, 0.035)); 
                 const double yaw = estimator_->getYaw();
                 const double d_yaw = estimator_->getDYaw();
 
