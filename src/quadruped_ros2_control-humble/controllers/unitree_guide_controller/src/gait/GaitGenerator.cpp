@@ -207,13 +207,14 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 // 更新 x y 方向的落脚点预测值
                 double target_x = foot_pos(0);
                 double target_y = foot_pos(1);
-
+                
+                const double step_limit_xy = 0.04; // 步长限幅，防止迈步目标跳太远
 
                 // 最终 x 落点相对当前摆动起点限幅
-                target_x = saturation(target_x, Vec2(start_p_(0, i) - 0.020,
-                                                    start_p_(0, i) + 0.020));
-                target_y = saturation(target_y, Vec2(start_p_(1, i) - 0.020,
-                                    start_p_(1, i) + 0.020));
+                target_x = saturation(target_x, Vec2(start_p_(0, i) - step_limit_xy,
+                                                    start_p_(0, i) + step_limit_xy));
+                target_y = saturation(target_y, Vec2(start_p_(1, i) - step_limit_xy,
+                                                    start_p_(1, i) + step_limit_xy));
 
                 end_p_.col(i) = start_p_.col(i);
                 end_p_(0, i) = target_x;
