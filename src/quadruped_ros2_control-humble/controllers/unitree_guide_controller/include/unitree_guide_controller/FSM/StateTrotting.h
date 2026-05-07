@@ -80,8 +80,6 @@ private:
     Vec3 w_cmd_global_;
     // G系下目标足底位置和速度
     Vec34 pos_feet_global_goal_, vel_feet_global_goal_;
-    // P系下目标期望角速度
-    Vec3 w_cmd_parallel_;
     // G系下目标足底位置和速度
     Vec34 pos_feet_goal_G, vel_feet_goal_G;
     double hip_q_range; // 髋关节范围限制

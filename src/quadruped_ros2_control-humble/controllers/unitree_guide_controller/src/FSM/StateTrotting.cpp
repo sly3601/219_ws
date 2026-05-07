@@ -88,7 +88,6 @@ void StateTrotting::enter() {
     const double pitch_des = 0.05;                      // 机身期望pitch角初始化
     Rd = rotz(yaw_cmd_) * roty(pitch_des) * rotx(roll_des);
     w_cmd_global_.setZero();                            //机身期望角速度初始化
-    w_cmd_parallel_.setZero();                          //机身期望角速度初始化  
        
     first_run = true; // 标记为第一次进入trotting状态
     wave_generator_->status_ = WaveStatus::STANCE_ALL;  // 初始化过渡状态：全支撑
@@ -114,13 +113,13 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     /**
      * @brief 步态生成器代码段（核心）
      * @param vel_target_               输入：期望的机身xyz速度（G系）
-     * @param w_cmd_parallel_           输入：期望的机身yaw角速度（G系）
+     * @param w_cmd_global_           输入：期望的机身yaw角速度（G系）
      * @param gait_height_              输入：足底摆动高度
      * 
-     * @param pos_feet_parallel_goal_   输出：期望的足底位置（G系）
-     * @param vel_feet_parallel_goal_   输出：期望的足底速度（G系）
+     * @param pos_feet_goal_G   输出：期望的足底位置（G系）
+     * @param vel_feet_goal_G   输出：期望的足底速度（G系）
      */
-    gait_generator_.setGait(vel_target_.segment(0, 2), w_cmd_parallel_(2), gait_height_);
+    gait_generator_.setGait(vel_target_.segment(0, 2), w_cmd_global_(2), gait_height_);
     gait_generator_.generate(pos_feet_goal_G, vel_feet_goal_G);
     
     calcTau();                                      // 动力学计算总函数（核心）
