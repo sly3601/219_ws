@@ -82,8 +82,10 @@ private:
     Vec34 pos_feet_global_goal_, vel_feet_global_goal_;
     // P系下目标期望角速度
     Vec3 w_cmd_parallel_;
-    // P系下目标足底位置和速度
-    Vec34 pos_feet_parallel_goal_, vel_feet_parallel_goal_;
+    // G系下目标足底位置和速度
+    Vec34 pos_feet_goal_G, vel_feet_goal_G;
+    double hip_q_range; // 髋关节范围限制
+    double hip_qd_range; // 髋关节速度限制
 
     RotMat Rd;  // 期望的躯体姿态的B2G旋转矩阵
 
@@ -95,6 +97,14 @@ private:
     double kp_roll_,kp_pitch_,kp_yaw_;
     Mat3 Kp_swing_, Kd_swing_;
     Vec2 v_x_limit_, v_y_limit_, w_yaw_limit_;
+    double tau_ff_scale; 
+    double tau_ff_limit_hip;
+    double tau_ff_limit_thigh;
+    double tau_ff_limit_calf;
+    Vec3 dd_pcb_saturation;
+    Vec3 d_wbd_saturation;
+    Vec3 swing_force_limit;
+    double Kp_motor_stance, Kd_motor_stance, Kp_motor_swing, Kd_motor_swing; // 电机增益参数
 
     // debug 参数
     Vec12 q_goal_debug;
@@ -103,6 +113,9 @@ private:
 
     // 新增：发布频率控制计数器
     int publish_counter_ = 0;
+
+
+    bool first_run = true; // 新增：是否第一次进入trotting状态的标志
 };
 
 
