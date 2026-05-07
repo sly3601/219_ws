@@ -488,12 +488,12 @@ void StateTrotting::calcGain() const {
         if (wave_generator_->contact_(i) == 0) 
         {
             ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(Kp_motor_swing);
-            ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(3.0);
+            ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(3.8);
         } 
         else 
         {
             ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(Kp_motor_stance);
-            ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(5.0);
+            ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(4.5);
         }
     }
 }
