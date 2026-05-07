@@ -38,13 +38,13 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     Kp_motor_swing = 220;       // 摆动相电机位置增益
     Kd_motor_swing = 3.8;         // 摆动相电机速度增益
 
-    gait_height_ = 0.04;                            // 足底摆动高度
-    Kpp = Vec3(22, 22, 300.1).asDiagonal();         // 身体位置比例增益
-    Kdp = Vec3(2.2, 2.2, 5.0).asDiagonal();         // 身体速度阻尼增益
+    gait_height_ = 0.07;                            // 足底摆动高度
+    Kpp = Vec3(36, 36, 300.1).asDiagonal();         // 身体位置比例增益
+    Kdp = Vec3(5.2, 5.2, 5.0).asDiagonal();         // 身体速度阻尼增益
 
     // roll/pitch/yaw 姿态比例增益
     kp_pitch_ = 450;
-    kp_roll_ = 420;
+    kp_roll_ = 450;
     kp_yaw_ = 16.2;
     Kd_w_ = Vec3(4.1, 5.1, 3.1).asDiagonal();       // 姿态角速度阻尼增益
 
