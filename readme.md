@@ -114,3 +114,4 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
   * 今天是里程碑，四足第一次走得非常好。
 * 2026.05.07 v3.01
   * 几乎完全优化了当前troting代码并重新测试无误，代码可供大家学习使用
+  * 增大了许久未动的机身位置PD控制的D项，效果出奇地好，进一步调参应该参考pd调节理论，待整理
