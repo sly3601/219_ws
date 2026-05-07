@@ -8,6 +8,12 @@
 #include <unitree_guide_controller/control/Estimator.h>
 #include <unitree_guide_controller/gait/WaveGenerator.h>
 
+/* 
+P系：定向本体系
+B系：机身坐标系
+G系：全局坐标系
+*/
+
 /**
  * @brief Trotting状态类构造函数
  * @param ctrl_interfaces 控制接口（包含指令输入、关节控制接口等）
@@ -28,9 +34,9 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     hip_qd_range = 1.0;                                // 髋关节速度限制（±1.0 rad/s）
 
     Kp_motor_stance = 300;     // 支撑相电机位置增益
-    Kd_motor_stance = 0.1;     // 支撑相电机速度增益
+    Kd_motor_stance = 4.5;     // 支撑相电机速度增益
     Kp_motor_swing = 220;       // 摆动相电机位置增益
-    Kd_motor_swing = 0.1;         // 摆动相电机速度增益
+    Kd_motor_swing = 3.8;         // 摆动相电机速度增益
 
     gait_height_ = 0.04;                            // 足底摆动高度
     Kpp = Vec3(22, 22, 300.1).asDiagonal();         // 身体位置比例增益
@@ -215,7 +221,7 @@ void StateTrotting::getUserCmd() { // 该函数P/B/G坐标系混乱 还没改
  * @brief 计算全局坐标系下的期望控制指令（位置、速度、姿态）
  */
 void StateTrotting::calcCmd() {
-    // troting_kalman =1的逻辑即将移植出来，然后删除troting_kalman这个变量
+    // 这个函数还没有改完，troting_kalman =1的逻辑即将移植出来，然后删除troting_kalman这个变量
     if(troting_kalman == 1)
     {
         /* 平移指令：身体坐标系转全局坐标系 */
@@ -254,7 +260,7 @@ void StateTrotting::calcCmd() {
 
     else if(troting_kalman == 2)
     {
-        vel_target_.setZero();          // 目标平移速度 = 0
+        vel_target_.setZero();          // 目标平移速度 = 0，还未引入除了原地踏步以外的运动指令
     }
 }
 
@@ -400,9 +406,9 @@ void StateTrotting::calcTau() {
         msg.data.push_back(dd_pcd(0));
         msg.data.push_back(dd_pcd(1));
         msg.data.push_back(dd_pcd(2));
-        msg.data.push_back(d_wbd(0));     // 4: roll方向目标力矩项
-        msg.data.push_back(d_wbd(1));     // 5: pitch方向目标力矩项
-        msg.data.push_back(d_wbd(2));     // 6: yaw方向目标力矩项
+        msg.data.push_back(d_wbd(0));     // 4: roll方向目标角加速度项
+        msg.data.push_back(d_wbd(1));     // 5: pitch方向目标角加速度项
+        msg.data.push_back(d_wbd(2));     // 6: yaw方向目标角加速度项
 
         ctrl_interfaces_.debug_pub->publish(msg);
     }
@@ -417,7 +423,7 @@ void StateTrotting::calcQQd() {
     Vec12 qd_goal;
     q_goal.setZero();
     qd_goal.setZero();
-    
+
     Vec34 pos_feet_target_B, vel_feet_target_B;
 
     // 将足端目标位置和速度从G系转换为B系
@@ -475,11 +481,11 @@ void StateTrotting::calcGain() const {
             if (wave_generator_->contact_(i) == 0) {
                 // ================= 摆动相 =================
                 ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(Kp_motor_swing);
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(3.8);  
+                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(Kd_motor_swing);  
             } else {
                 // ================= 支撑相 =================
                 ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(Kp_motor_stance);
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(4.5);  
+                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(Kd_motor_stance);  
             }
         }
 
@@ -488,12 +494,12 @@ void StateTrotting::calcGain() const {
         if (wave_generator_->contact_(i) == 0) 
         {
             ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(Kp_motor_swing);
-            ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(3.8);
+            ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(Kd_motor_swing);
         } 
         else 
         {
             ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(Kp_motor_stance);
-            ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(4.5);
+            ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(Kd_motor_stance);
         }
     }
 }
