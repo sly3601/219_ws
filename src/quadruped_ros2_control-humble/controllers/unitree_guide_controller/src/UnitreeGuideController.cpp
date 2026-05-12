@@ -129,6 +129,15 @@ namespace unitree_guide_controller
             msg.data.push_back(rpy_body(1));
             msg.data.push_back(rpy_body(2));
 
+            // 三轴加速度
+            const double ax = ctrl_interfaces_.imu_state_interface_[7].get().get_value();
+            const double ay = ctrl_interfaces_.imu_state_interface_[8].get().get_value();
+            const double az = ctrl_interfaces_.imu_state_interface_[9].get().get_value();
+
+            msg.data.push_back(ax);
+            msg.data.push_back(ay);
+            msg.data.push_back(az);
+
             // // 0-2: FR x y z
             // msg.data.push_back(feet_2b[0].p.x());
             // msg.data.push_back(feet_2b[0].p.y());
