@@ -6,6 +6,8 @@
 #define STATETROTTING_H
 #include <unitree_guide_controller/control/BalanceCtrl.h>
 #include <unitree_guide_controller/gait/GaitGenerator.h>
+#include <unitree_guide_controller/control/ConvexMpcSolver.h>
+
 #include "controller_common/FSM/FSMState.h"
 // marker array可视化插件
 #include "unitree_guide_controller/debug/foot_marker_publisher.hpp"
@@ -27,7 +29,13 @@ public:
 
 
     // 调试参数
-    int troting_kalman; // 使用卡尔曼滤波位姿闭环（1），纯开环（0），仅roll/pitch闭环（2）
+    int troting_kalman; // 【已弃用】使用卡尔曼滤波位姿闭环（1），纯开环（0），仅roll/pitch闭环（2）
+    
+    enum class ForceSolverMode : uint8_t {
+        QP  = 0,   // 走原来的 BalanceCtrl QP
+        MPC = 1    // 走 Convex MPC
+    };
+    ForceSolverMode force_solver_mode_ = ForceSolverMode::QP;
 
 private:
     void getUserCmd();
@@ -59,6 +67,7 @@ private:
     std::shared_ptr<QuadrupedRobot> &robot_model_;
     std::shared_ptr<BalanceCtrl> &balance_ctrl_;
     std::shared_ptr<WaveGenerator> &wave_generator_;
+    std::shared_ptr<ConvexMpcSolver> &convex_mpc_;
 
     GaitGenerator gait_generator_;
 

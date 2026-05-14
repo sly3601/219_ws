@@ -65,7 +65,25 @@ pass the copy to the function.
 
 #include "Array.hh"
 #include <eigen3/Eigen/Dense>
-
+// ====== 宏污染消毒（强烈建议默认开启）======
+// Array.hh 里定义了诸如：#define inverse lu_inverse（会污染 Eigen 的 .inverse()）:contentReference[oaicite:1]{index=1}
+// 这里默认把这些宏立刻取消，避免泄漏到用户代码。
+// 如果你未来确实需要这些旧宏（基本不需要），可以在编译选项里定义：-DQUADPROGPP_KEEP_LEGACY_MACROS
+#ifndef QUADPROGPP_KEEP_LEGACY_MACROS
+  #ifdef inverse
+    #undef inverse
+  #endif
+  #ifdef solve
+    #undef solve
+  #endif
+  #ifdef determinant
+    #undef determinant
+  #endif
+  #ifdef transpose
+    #undef transpose
+  #endif
+#endif
+// ====== 宏污染消毒结束 ======
 namespace quadprogpp {
 
 double solve_quadprog(Matrix<double>& G, Vector<double>& g0,

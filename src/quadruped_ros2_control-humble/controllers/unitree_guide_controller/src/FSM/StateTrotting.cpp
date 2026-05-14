@@ -25,10 +25,12 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     estimator_(ctrl_component.estimator_),
     robot_model_(ctrl_component.robot_model_),
     balance_ctrl_(ctrl_component.balance_ctrl_),
+    convex_mpc_(ctrl_component.convex_mpc_),
     wave_generator_(ctrl_component.wave_generator_),
     gait_generator_(ctrl_component, this){
 
-    troting_kalman = 2;                             //总模式开关
+    troting_kalman = 2;                             //总模式开关【已弃用】
+    force_solver_mode_ = ForceSolverMode::QP;       //总模式开关
 
     hip_q_range = 0.16;                               // 髋关节限制范围（±0.16 rad，约 ±9.2°）
     hip_qd_range = 1.0;                                // 髋关节速度限制（±1.0 rad/s）
@@ -342,23 +344,26 @@ void StateTrotting::calcTau() {
     }
     try 
     {
-        // calF函数内部计算出来的是P系下的地面对机身的反作用力，我们需要的是足端对地面的力，所以加负号取反
-        force_feet_P = -balance_ctrl_->calF(dd_pcd, d_wbd, B2P_RotMat, pos_feet_P, wave_generator_->contact_); 
-
-        // force_feet_P =
-        //     convex_mpc_->solveFromDogWrench(
-        //         dd_pcd,
-        //         d_wbd,
-        //         B2P_RotMat,
-        //         pos_feet_P,
-        //         wave_generator_->contact_,
-        //         pos_body_,
-        //         vel_body_,
-        //         B2P_RotMat,                 // R_GB（你P当G就行）
-        //         gyro_global,
-        //         Rd,
-        //         vel_target_
-        //     );
+        if (force_solver_mode_ == ForceSolverMode::QP) {
+            // calF函数内部计算出来的是P系下的地面对机身的反作用力，我们需要的是足端对地面的力，所以加负号取反
+            force_feet_P = -balance_ctrl_->calF(dd_pcd, d_wbd, B2P_RotMat, pos_feet_P, wave_generator_->contact_);
+        } 
+        else if (force_solver_mode_ == ForceSolverMode::MPC) {
+            // Convex MPC 里动力学方程默认用的是“地面对机身的接触力”，所以下游做 J^T f 时同样需要取负号得到“足端对地的力”
+            force_feet_P = -convex_mpc_->solveFromDogWrench(
+                dd_pcd,
+                d_wbd,
+                B2P_RotMat,
+                pos_feet_P,
+                wave_generator_->contact_,
+                pos_body_,
+                vel_body_,
+                B2P_RotMat,   // R_GB（你这里 P 当 G 用）
+                gyro_global,
+                Rd,
+                vel_target_
+            );
+        }
 
     }
     catch (...) 
