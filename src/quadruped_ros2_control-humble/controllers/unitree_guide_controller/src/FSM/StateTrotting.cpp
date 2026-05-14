@@ -346,7 +346,7 @@ void StateTrotting::calcTau() {
         force_feet_P = -balance_ctrl_->calF(dd_pcd, d_wbd, B2P_RotMat, pos_feet_P, wave_generator_->contact_); 
 
         // force_feet_P =
-        //     convex_mpc_->solveFromUnitreeWrench(
+        //     convex_mpc_->solveFromDogWrench(
         //         dd_pcd,
         //         d_wbd,
         //         B2P_RotMat,

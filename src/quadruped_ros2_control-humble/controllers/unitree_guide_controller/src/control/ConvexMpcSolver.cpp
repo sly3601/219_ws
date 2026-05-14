@@ -42,7 +42,7 @@ ConvexMpcOutputOcs2 ConvexMpcSolver::solveMpc(const ConvexMpcInputOcs2& in) {
   return out;
 }
 
-Vec34 ConvexMpcSolver::solveFromUnitreeWrench(
+Vec34 ConvexMpcSolver::solveFromDogWrench(
     const Vec3& dd_pcd_G,
     const Vec3& d_wbd_G,
     const RotMat& B2P_RotMat,

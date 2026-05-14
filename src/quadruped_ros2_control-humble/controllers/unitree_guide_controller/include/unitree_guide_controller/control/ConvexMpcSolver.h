@@ -51,7 +51,7 @@ public:
   // 改名：避免 solve 宏污染
   ConvexMpcOutputOcs2 solveMpc(const ConvexMpcInputOcs2& in);
 
-  Vec34 solveFromUnitreeWrench(
+  Vec34 solveFromDogWrench(
       const Vec3& dd_pcd_G,
       const Vec3& d_wbd_G,
       const RotMat& B2P_RotMat,
