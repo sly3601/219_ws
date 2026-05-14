@@ -123,4 +123,4 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
   * 今天出现了完全一样的参数，但是下午和晚上两次运行却不同的情况。究其原因：确定是imu的yaw轴零漂，经过gpt的定性推导，yaw轴零漂会导致QP分配出现错误的Fy，现象完全对上了。所以下一步要在里程计下手了。
   * 后来发现是imu上电初始化期间是不允许运动的，必须静止。这也算是学艺不精，踩坑了，并且imu用久了或者初次买来需要磁力计校准。
 * 2026.05.14 v3.1
-  * 重大更新：初次移植加入一整套OSC2库，和高仿的 基础convex MPC的代码，更新了colcon build的语句。
+  * 重大更新：初次移植加入一整套OSC2库，和高仿的 基础convex MPC的代码，更新了colcon build的语句。在libraries目录里加了全套的ocs2_ros2的第三方库
