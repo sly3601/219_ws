@@ -1,5 +1,10 @@
 # 1. 代码运行方式
 1. 编译
+v3.1之后：
+```
+colcon build   --packages-up-to ocs2_core unitree_guide_controller go1_description keyboard_input hardware_unitree_mujoco   --symlink-install   --event-handlers console_direct+   --continue-on-error   --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${HOME}/219_ws/install
+```
+v3.1之前：
 ```
 colcon build --packages-up-to unitree_guide_controller go1_description keyboard_input hardware_unitree_mujoco --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --event-handlers console_direct+ --continue-on-error --cmake-args -DCMAKE_INSTALL_PREFIX=${HOME}/219_ws/install
 ```
@@ -116,3 +121,6 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
   * 几乎完全优化了当前troting代码并重新测试无误，代码可供大家学习使用
   * 增大了许久未动的机身位置PD控制的D项，效果出奇地好，进一步调参应该参考pd调节理论，待整理
   * 今天出现了完全一样的参数，但是下午和晚上两次运行却不同的情况。究其原因：确定是imu的yaw轴零漂，经过gpt的定性推导，yaw轴零漂会导致QP分配出现错误的Fy，现象完全对上了。所以下一步要在里程计下手了。
+  * 后来发现是imu上电初始化期间是不允许运动的，必须静止。这也算是学艺不精，踩坑了，并且imu用久了或者初次买来需要磁力计校准。
+* 2026.05.14 v3.1
+  * 重大更新：初次移植加入一整套OSC2库，和高仿的 基础convex MPC的代码，更新了colcon build的语句。

@@ -344,6 +344,22 @@ void StateTrotting::calcTau() {
     {
         // calF函数内部计算出来的是P系下的地面对机身的反作用力，我们需要的是足端对地面的力，所以加负号取反
         force_feet_P = -balance_ctrl_->calF(dd_pcd, d_wbd, B2P_RotMat, pos_feet_P, wave_generator_->contact_); 
+
+        // force_feet_P =
+        //     convex_mpc_->solveFromUnitreeWrench(
+        //         dd_pcd,
+        //         d_wbd,
+        //         B2P_RotMat,
+        //         pos_feet_P,
+        //         wave_generator_->contact_,
+        //         pos_body_,
+        //         vel_body_,
+        //         B2P_RotMat,                 // R_GB（你P当G就行）
+        //         gyro_global,
+        //         Rd,
+        //         vel_target_
+        //     );
+
     }
     catch (...) 
     {

@@ -21,6 +21,8 @@
     <depend>geometry_msgs</depend>
     <depend>tf2_ros</depend>
 
+    <depend>ocs2_core</depend>
+
     <exec_depend>controller_manager</exec_depend>
     <exec_depend>joint_state_broadcaster</exec_depend>
 

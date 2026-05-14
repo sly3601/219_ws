@@ -29,6 +29,8 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(ocs2_core REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system filesystem log log_setup)
 
 foreach (Dependency IN ITEMS ${CONTROLLER_INCLUDE_DEPENDS})
     find_package(${Dependency} REQUIRED)
@@ -50,6 +52,7 @@ add_library(${PROJECT_NAME} SHARED
         src/control/Estimator.cpp
         src/control/LowPassFilter.cpp
         src/control/BalanceCtrl.cpp
+        src/control/ConvexMpcSolver.cpp
 
         src/quadProgpp/Array.cc
         src/quadProgpp/QuadProg++.cc
@@ -70,6 +73,7 @@ target_include_directories(${PROJECT_NAME}
 ament_target_dependencies(
         ${PROJECT_NAME} PUBLIC
         ${CONTROLLER_INCLUDE_DEPENDS}
+        ocs2_core
 )
 
 pluginlib_export_plugin_description_file(controller_interface unitree_guide_controller.xml)
