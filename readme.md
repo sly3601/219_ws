@@ -125,3 +125,4 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
   * 后来发现是imu上电初始化期间是不允许运动的，必须静止。这也算是学艺不精，踩坑了，并且imu用久了或者初次买来需要磁力计校准。
 * 2026.05.14 v3.1
   * 重大更新：初次移植加入一整套OSC2库，和高仿的 基础convex MPC的代码，更新了colcon build的语句。在libraries目录里加了全套的ocs2_ros2的第三方库
+  * 弃用了原来的QP++的求解库，它已经不适合高速QP求解了，改用ocs2_ros2库自带并且性能足够优秀的HPIPM库。
