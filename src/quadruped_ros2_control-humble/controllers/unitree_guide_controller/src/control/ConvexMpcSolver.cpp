@@ -5,6 +5,7 @@
 
 #include <cmath>
 #include <limits>
+#include <vector>
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -18,20 +19,90 @@ static inline Eigen::Matrix3d skew3(const Eigen::Vector3d& v) {
   return S;
 }
 
+// 3x3矩阵求逆工具：避免 QuadProg++ 的 inverse 宏污染 Eigen::Matrix::inverse()
+static inline Eigen::Matrix3d inverse3x3Safe(const Eigen::Matrix3d& M) {
+  const double a00 = M(0,0), a01 = M(0,1), a02 = M(0,2);
+  const double a10 = M(1,0), a11 = M(1,1), a12 = M(1,2);
+  const double a20 = M(2,0), a21 = M(2,1), a22 = M(2,2);
+
+  const double c00 =  (a11 * a22 - a12 * a21);
+  const double c01 = -(a10 * a22 - a12 * a20);
+  const double c02 =  (a10 * a21 - a11 * a20);
+
+  const double c10 = -(a01 * a22 - a02 * a21);
+  const double c11 =  (a00 * a22 - a02 * a20);
+  const double c12 = -(a00 * a21 - a01 * a20);
+
+  const double c20 =  (a01 * a12 - a02 * a11);
+  const double c21 = -(a00 * a12 - a02 * a10);
+  const double c22 =  (a00 * a11 - a01 * a10);
+
+  const double det = a00 * c00 + a01 * c01 + a02 * c02;
+
+  if (std::abs(det) < 1e-12 || !std::isfinite(det)) {
+    return Eigen::Matrix3d::Identity();
+  }
+
+  Eigen::Matrix3d adj;
+  adj << c00, c10, c20,
+         c01, c11, c21,
+         c02, c12, c22;
+
+  return adj / det;
+}
+
 // QuadProg++ 求解：
-// min 1/2 x^T G x + g0^T x
+// min 1/2 x^T G x + x^T g0
 // s.t. CE^T x + ce0 = 0
 //      CI^T x + ci0 >= 0
-static bool solveDenseQpQuadProgpp(const Eigen::MatrixXd& G,
-                                  const Eigen::VectorXd& g0,
-                                  const Eigen::MatrixXd& Aeq,
-                                  const Eigen::VectorXd& beq,
-                                  const Eigen::MatrixXd& Aineq,
-                                  const Eigen::VectorXd& bineq,
-                                  Eigen::VectorXd& xOpt) {
-  const long n = (long)G.rows();
-  const long m = (long)Aeq.rows();
-  const long p = (long)Aineq.rows();
+static bool solveDenseQpQuadProgpp(const Eigen::MatrixXd& H,
+                                  const Eigen::VectorXd& g,
+                                  const Eigen::MatrixXd& C,
+                                  const Eigen::VectorXd& c_lower,
+                                  const Eigen::VectorXd& c_upper,
+                                  Eigen::VectorXd& U_opt) {
+  const long n = (long)H.rows();
+  const long nC = (long)C.rows();
+
+  constexpr double kInf = 1e19;
+  constexpr double kEqTol = 1e-10;
+
+  std::vector<Eigen::RowVectorXd> Aeq_rows;
+  std::vector<double> beq_values;
+  std::vector<Eigen::RowVectorXd> Aineq_rows;
+  std::vector<double> bineq_values;
+
+  Aeq_rows.reserve(nC);
+  beq_values.reserve(nC);
+  Aineq_rows.reserve(2 * nC);
+  bineq_values.reserve(2 * nC);
+
+  for (long row = 0; row < nC; ++row) {
+    const bool has_lower = std::isfinite(c_lower(row)) && c_lower(row) > -kInf;
+    const bool has_upper = std::isfinite(c_upper(row)) && c_upper(row) <  kInf;
+
+    if (has_lower && has_upper && std::abs(c_upper(row) - c_lower(row)) < kEqTol) {
+      // C_i U = c_i
+      Aeq_rows.push_back(C.row(row));
+      beq_values.push_back(c_lower(row));
+      continue;
+    }
+
+    if (has_upper) {
+      // C_i U <= c_upper_i
+      Aineq_rows.push_back(C.row(row));
+      bineq_values.push_back(c_upper(row));
+    }
+
+    if (has_lower) {
+      // C_i U >= c_lower_i  ->  -C_i U <= -c_lower_i
+      Aineq_rows.push_back(-C.row(row));
+      bineq_values.push_back(-c_lower(row));
+    }
+  }
+
+  const long m = (long)Aeq_rows.size();
+  const long p = (long)Aineq_rows.size();
 
   quadprogpp::Matrix<double> QG, QCE, QCI;
   quadprogpp::Vector<double> Qg0, Qce0, Qci0, Qx;
@@ -47,34 +118,35 @@ static bool solveDenseQpQuadProgpp(const Eigen::MatrixXd& G,
   // G
   for (long i = 0; i < n; ++i) {
     for (long j = 0; j < n; ++j) {
-      QG[i][j] = G(i, j);
+      QG[i][j] = H(i, j);
     }
   }
+
   // g0
   for (long i = 0; i < n; ++i) {
-    Qg0[i] = g0(i);
+    Qg0[i] = g(i);
   }
 
-  // Aeq z = beq  ->  CE^T x + ce0 = 0
+  // Aeq U = beq  ->  CE^T x + ce0 = 0
   // CE = Aeq^T, ce0 = -beq
   for (long i = 0; i < n; ++i) {
     for (long j = 0; j < m; ++j) {
-      QCE[i][j] = Aeq(j, i);
+      QCE[i][j] = Aeq_rows[j](i);
     }
   }
   for (long j = 0; j < m; ++j) {
-    Qce0[j] = -beq(j);
+    Qce0[j] = -beq_values[j];
   }
 
-  // Aineq z <= bineq  ->  (-Aineq) z + bineq >= 0
+  // Aineq U <= bineq  ->  (-Aineq) U + bineq >= 0
   // CI = (-Aineq)^T, ci0 = bineq
   for (long i = 0; i < n; ++i) {
     for (long j = 0; j < p; ++j) {
-      QCI[i][j] = -Aineq(j, i);
+      QCI[i][j] = -Aineq_rows[j](i);
     }
   }
   for (long j = 0; j < p; ++j) {
-    Qci0[j] = bineq(j);
+    Qci0[j] = bineq_values[j];
   }
 
   const double res = solve_quadprog(QG, Qg0, QCE, Qce0, QCI, Qci0, Qx);
@@ -82,11 +154,12 @@ static bool solveDenseQpQuadProgpp(const Eigen::MatrixXd& G,
     return false;
   }
 
-  xOpt.resize(n);
+  U_opt.resize(n);
   for (long i = 0; i < n; ++i) {
-    xOpt(i) = Qx[i];
+    U_opt(i) = Qx[i];
   }
-  return xOpt.allFinite();
+
+  return U_opt.allFinite();
 }
 
 ConvexMpcSolver::ConvexMpcSolver(const ConvexMpcSettings& settings)
@@ -163,112 +236,117 @@ ConvexMpcOutputOcs2 ConvexMpcSolver::solveMpc(const ConvexMpcInputOcs2& in) {
   // v_{k+1} = v_k + dt*(g + sum(f)/m)
   // rpy_{k+1} = rpy_k + dt*w_k
   // w_{k+1} = w_k + dt*Iw_inv*sum(r_i x f_i)
-  Eigen::Matrix<double,12,12> A = Eigen::Matrix<double,12,12>::Identity();
-  A.block<3,3>(0,3) = Eigen::Matrix3d::Identity() * dt;
-  A.block<3,3>(6,9) = Eigen::Matrix3d::Identity() * dt;
+  Eigen::Matrix<double,12,12> A_k = Eigen::Matrix<double,12,12>::Identity();
+  A_k.block<3,3>(0,3) = Eigen::Matrix3d::Identity() * dt;
+  A_k.block<3,3>(6,9) = Eigen::Matrix3d::Identity() * dt;
 
-  Eigen::Matrix<double,12,1> c = Eigen::Matrix<double,12,1>::Zero();
-  c.segment<3>(3) = dt * settings_.g;
+  Eigen::Matrix<double,12,1> d_k_const = Eigen::Matrix<double,12,1>::Zero();
+  d_k_const.segment<3>(3) = dt * settings_.g;
 
   // 每步 B_k（12x12）
-  std::vector<Eigen::Matrix<double,12,12>> Bk(N, Eigen::Matrix<double,12,12>::Zero());
+  std::vector<Eigen::Matrix<double,12,12>> B_k(N, Eigen::Matrix<double,12,12>::Zero());
   const Eigen::Matrix3d Iw_inv = in.Iw_inv;  // 世界系惯量逆（由 solveFromDogWrench 计算）
 
   for (int k = 0; k < N; ++k) {
     // v update: dt/m * f
     for (int leg = 0; leg < 4; ++leg) {
-      Bk[k].block<3,3>(3, 3*leg) = (dt / settings_.mass) * Eigen::Matrix3d::Identity();
+      B_k[k].block<3,3>(3, 3*leg) = (dt / settings_.mass) * Eigen::Matrix3d::Identity();
     }
 
     // w update: dt * Iw_inv * (r x f)
     for (int leg = 0; leg < 4; ++leg) {
       const Eigen::Vector3d& r = in.rFeet[k][leg];
-      Bk[k].block<3,3>(9, 3*leg) = dt * Iw_inv * skew3(r);
+      B_k[k].block<3,3>(9, 3*leg) = dt * Iw_inv * skew3(r);
     }
   }
 
-  // ====== 预测矩阵：x_k = Phi_k x0 + S_k z + d_k ======
-  // z = [u0..u_{N-1}] ∈ R^{12N}
+  // ====== 预测矩阵：X = A_qp x0 + B_qp U + d_qp ======
+  // U = [u0..u_{N-1}] ∈ R^{12N}
   const int nX = 12;
   const int nU = 12;
-  const int nZ = nU * N;
+  const int nU_stack = nU * N;
+  const int nX_stack = nX * N;
 
-  std::vector<Eigen::Matrix<double,12,12>> Phi(N+1);
-  std::vector<Eigen::MatrixXd> Sk(N+1);
-  std::vector<Eigen::Matrix<double,12,1>> dk(N+1);
+  Eigen::MatrixXd A_qp = Eigen::MatrixXd::Zero(nX_stack, nX);
+  Eigen::MatrixXd B_qp = Eigen::MatrixXd::Zero(nX_stack, nU_stack);
+  Eigen::VectorXd d_qp = Eigen::VectorXd::Zero(nX_stack);
+  Eigen::VectorXd D = Eigen::VectorXd::Zero(nX_stack);
+
+  std::vector<Eigen::Matrix<double,12,12>> Phi(N + 1);
+  std::vector<Eigen::MatrixXd> B_qp_row(N + 1);
+  std::vector<Eigen::Matrix<double,12,1>> d_pred(N + 1);
 
   Phi[0].setIdentity();
-  Sk[0] = Eigen::MatrixXd::Zero(nX, nZ);
-  dk[0].setZero();
+  B_qp_row[0] = Eigen::MatrixXd::Zero(nX, nU_stack);
+  d_pred[0].setZero();
 
   for (int k = 0; k < N; ++k) {
-    Phi[k+1] = A * Phi[k];
-    Sk[k+1] = A * Sk[k];
-    Sk[k+1].block(0, k*nU, nX, nU) += Bk[k];
-    dk[k+1] = A * dk[k] + c;
+    Phi[k + 1] = A_k * Phi[k];
+
+    B_qp_row[k + 1] = A_k * B_qp_row[k];
+    B_qp_row[k + 1].block(0, k * nU, nX, nU) += B_k[k];
+
+    d_pred[k + 1] = A_k * d_pred[k] + d_k_const;
+
+    A_qp.block(k * nX, 0, nX, nX) = Phi[k + 1];
+    B_qp.block(k * nX, 0, nX, nU_stack) = B_qp_row[k + 1];
+    d_qp.segment(k * nX, nX) = d_pred[k + 1];
+
+    D.segment(k * nX, nX) = in.xRef[k + 1];
   }
 
-  // ====== 构造 QP：min 0.5 z^T G z + g^T z ======
-  Eigen::MatrixXd G = Eigen::MatrixXd::Zero(nZ, nZ);
-  Eigen::VectorXd g = Eigen::VectorXd::Zero(nZ);
+  // ====== 构造 QP：min 0.5 U^T H U + U^T g ======
+  Eigen::MatrixXd Q_qp = Eigen::MatrixXd::Zero(nX_stack, nX_stack);
+  Eigen::MatrixXd R_qp = Eigen::MatrixXd::Zero(nU_stack, nU_stack);
 
-  // (1) 状态跟踪代价：sum_{k=1..N} (x_k-xRef_k)^T Q (x_k-xRef_k)
-  for (int k = 1; k <= N; ++k) {
-    Eigen::Matrix<double,12,1> e = Phi[k] * in.x0 + dk[k] - in.xRef[k];
-
-    // cost = (S z + e)^T Q (S z + e)
-    // => G += 2 S^T Q S
-    // => g += 2 S^T Q e
-    G.noalias() += 2.0 * Sk[k].transpose() * settings_.Q * Sk[k];
-    g.noalias() += 2.0 * Sk[k].transpose() * (settings_.Q * e);
-  }
-
-  // (2) 力正则：sum u_k^T R u_k
   for (int k = 0; k < N; ++k) {
-    G.block(k*nU, k*nU, nU, nU).noalias() += 2.0 * settings_.R;
+    Q_qp.block(k * nX, k * nX, nX, nX) = settings_.Q;
+    R_qp.block(k * nU, k * nU, nU, nU) = settings_.R;
   }
+
+  const Eigen::VectorXd E = A_qp * in.x0 + d_qp - D;
+
+  Eigen::MatrixXd H = 2.0 * (B_qp.transpose() * Q_qp * B_qp + R_qp);
+  Eigen::VectorXd g = 2.0 * B_qp.transpose() * Q_qp * E;
 
   // (3) 力变化率：sum (u_k-u_{k-1})^T S (u_k-u_{k-1})
   // k>=1 的差分
   for (int k = 1; k < N; ++k) {
     // (u_k-u_{k-1})^T S (u_k-u_{k-1})
     // expand -> add blocks
-    G.block(k*nU, k*nU, nU, nU).noalias()           += 2.0 * settings_.S;
-    G.block((k-1)*nU, (k-1)*nU, nU, nU).noalias()   += 2.0 * settings_.S;
-    G.block(k*nU, (k-1)*nU, nU, nU).noalias()       += -2.0 * settings_.S;
-    G.block((k-1)*nU, k*nU, nU, nU).noalias()       += -2.0 * settings_.S;
+    H.block(k*nU, k*nU, nU, nU).noalias()           += 2.0 * settings_.S;
+    H.block((k-1)*nU, (k-1)*nU, nU, nU).noalias()   += 2.0 * settings_.S;
+    H.block(k*nU, (k-1)*nU, nU, nU).noalias()       += -2.0 * settings_.S;
+    H.block((k-1)*nU, k*nU, nU, nU).noalias()       += -2.0 * settings_.S;
   }
+
   // k=0 与 last_u0_ 的差分
-  // (u0-last)^T S (u0-last) => add 2S to G00, add -2S*last to g0
-  G.block(0, 0, nU, nU).noalias() += 2.0 * settings_.S;
+  // (u0-last)^T S (u0-last) => add 2S to H00, add -2S*last to g0
+  H.block(0, 0, nU, nU).noalias() += 2.0 * settings_.S;
   g.segment(0, nU).noalias()      += -2.0 * settings_.S * last_u0_;
 
   // Hessian regularization
-  G.diagonal().array() += settings_.regularization;
+  H.diagonal().array() += settings_.regularization;
 
   // ====== 约束：contact schedule 必须预测 ======
   // swing leg: f=0 (eq)
   // stance leg: friction pyramid + fz bounds (ineq)
-  int nEq = 0;
-  int nIneq = 0;
+  int nC = 0;
   for (int k = 0; k < N; ++k) {
     for (int leg = 0; leg < 4; ++leg) {
       if (in.contact[k][leg] == 0) {
-        nEq += 3;
+        nC += 3;
       } else {
-        nIneq += 6;
+        nC += 5;
       }
     }
   }
 
-  Eigen::MatrixXd Aeq = Eigen::MatrixXd::Zero(nEq, nZ);
-  Eigen::VectorXd beq = Eigen::VectorXd::Zero(nEq);
+  Eigen::MatrixXd C = Eigen::MatrixXd::Zero(nC, nU_stack);
+  Eigen::VectorXd c_lower = Eigen::VectorXd::Constant(nC, -1e20);
+  Eigen::VectorXd c_upper = Eigen::VectorXd::Constant(nC,  1e20);
 
-  Eigen::MatrixXd Aineq = Eigen::MatrixXd::Zero(nIneq, nZ);
-  Eigen::VectorXd bineq = Eigen::VectorXd::Zero(nIneq);
-
-  int eqRow = 0;
-  int ineqRow = 0;
+  int cRow = 0;
 
   for (int k = 0; k < N; ++k) {
     for (int leg = 0; leg < 4; ++leg) {
@@ -276,55 +354,63 @@ ConvexMpcOutputOcs2 ConvexMpcSolver::solveMpc(const ConvexMpcInputOcs2& in) {
 
       if (in.contact[k][leg] == 0) {
         // swing: fx=fy=fz=0
-        Aeq(eqRow+0, col+0) = 1.0;
-        Aeq(eqRow+1, col+1) = 1.0;
-        Aeq(eqRow+2, col+2) = 1.0;
-        // beq=0
-        eqRow += 3;
+        C(cRow + 0, col + 0) = 1.0;
+        C(cRow + 1, col + 1) = 1.0;
+        C(cRow + 2, col + 2) = 1.0;
+
+        c_lower(cRow + 0) = 0.0;
+        c_lower(cRow + 1) = 0.0;
+        c_lower(cRow + 2) = 0.0;
+
+        c_upper(cRow + 0) = 0.0;
+        c_upper(cRow + 1) = 0.0;
+        c_upper(cRow + 2) = 0.0;
+
+        cRow += 3;
       } else {
         // stance friction pyramid
-        // fx - mu fz <= 0
-        Aineq(ineqRow, col+0) =  1.0;
-        Aineq(ineqRow, col+2) = -settings_.mu;
-        bineq(ineqRow) = 0.0;
-        ineqRow++;
+        // -fx + mu fz >= 0
+        C(cRow, col+0) = -1.0;
+        C(cRow, col+2) =  settings_.mu;
+        c_lower(cRow) = 0.0;
+        c_upper(cRow) = 1e20;
+        cRow++;
 
-        // -fx - mu fz <= 0
-        Aineq(ineqRow, col+0) = -1.0;
-        Aineq(ineqRow, col+2) = -settings_.mu;
-        bineq(ineqRow) = 0.0;
-        ineqRow++;
+        // -fy + mu fz >= 0
+        C(cRow, col+1) = -1.0;
+        C(cRow, col+2) =  settings_.mu;
+        c_lower(cRow) = 0.0;
+        c_upper(cRow) = 1e20;
+        cRow++;
 
-        // fy - mu fz <= 0
-        Aineq(ineqRow, col+1) =  1.0;
-        Aineq(ineqRow, col+2) = -settings_.mu;
-        bineq(ineqRow) = 0.0;
-        ineqRow++;
+        // fx + mu fz >= 0
+        C(cRow, col+0) =  1.0;
+        C(cRow, col+2) =  settings_.mu;
+        c_lower(cRow) = 0.0;
+        c_upper(cRow) = 1e20;
+        cRow++;
 
-        // -fy - mu fz <= 0
-        Aineq(ineqRow, col+1) = -1.0;
-        Aineq(ineqRow, col+2) = -settings_.mu;
-        bineq(ineqRow) = 0.0;
-        ineqRow++;
+        // fy + mu fz >= 0
+        C(cRow, col+1) =  1.0;
+        C(cRow, col+2) =  settings_.mu;
+        c_lower(cRow) = 0.0;
+        c_upper(cRow) = 1e20;
+        cRow++;
 
-        // fz >= fzMin  -> -fz <= -fzMin
-        Aineq(ineqRow, col+2) = -1.0;
-        bineq(ineqRow) = -settings_.fzMin;
-        ineqRow++;
-
-        // fz <= fzMax
-        Aineq(ineqRow, col+2) =  1.0;
-        bineq(ineqRow) =  settings_.fzMax;
-        ineqRow++;
+        // fzMin <= fz <= fzMax
+        C(cRow, col+2) = 1.0;
+        c_lower(cRow) = settings_.fzMin;
+        c_upper(cRow) = settings_.fzMax;
+        cRow++;
       }
     }
   }
 
   // ====== 解 QP ======
-  Eigen::VectorXd zOpt;
-  zOpt.setZero(nZ);
+  Eigen::VectorXd U_opt;
+  U_opt.setZero(nU_stack);
 
-  const bool ok = solveDenseQpQuadProgpp(G, g, Aeq, beq, Aineq, bineq, zOpt);
+  const bool ok = solveDenseQpQuadProgpp(H, g, C, c_lower, c_upper, U_opt);
   if (!ok) {
     // QP失败：可选回退上一帧
     if (settings_.enableFallbackToLast) {
@@ -337,7 +423,7 @@ ConvexMpcOutputOcs2 ConvexMpcSolver::solveMpc(const ConvexMpcInputOcs2& in) {
   }
 
   // 取第0步 u0
-  out.u0 = zOpt.segment(0, nU);
+  out.u0 = U_opt.segment(0, nU);
   out.success = out.u0.allFinite();
 
   // 更新 warm start
@@ -425,7 +511,7 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   // inertia transform：Iw = R * Ib * R^T
   in.R_GB = Eigen::Matrix3d(R_GB);
   const Eigen::Matrix3d Iw = in.R_GB * settings_.Ib * in.R_GB.transpose();
-  in.Iw_inv = Iw.inverse();
+  in.Iw_inv = inverse3x3Safe(Iw);
 
   const Eigen::Vector3d r_body_to_com_world = in.R_GB * settings_.pcb_B;
 
