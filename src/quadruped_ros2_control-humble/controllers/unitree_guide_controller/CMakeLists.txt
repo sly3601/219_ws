@@ -24,6 +24,7 @@ set(CONTROLLER_INCLUDE_DEPENDS
         tf2_ros
 
         hpipm_catkin
+        blasfeo_catkin
 )
 
 # find dependencies
@@ -33,6 +34,8 @@ find_package(visualization_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(ocs2_core REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system filesystem log log_setup)
+find_package(blasfeo REQUIRED)
+find_package(hpipm REQUIRED)
 
 foreach (Dependency IN ITEMS ${CONTROLLER_INCLUDE_DEPENDS})
     find_package(${Dependency} REQUIRED)
@@ -70,12 +73,18 @@ target_include_directories(${PROJECT_NAME}
         PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>"
+        ${BLASFEO_INCLUDE_DIR}
         PRIVATE
         src)
 ament_target_dependencies(
         ${PROJECT_NAME} PUBLIC
         ${CONTROLLER_INCLUDE_DEPENDS}
         ocs2_core
+)
+target_link_libraries(${PROJECT_NAME}
+        PUBLIC
+        hpipm
+        blasfeo
 )
 
 pluginlib_export_plugin_description_file(controller_interface unitree_guide_controller.xml)

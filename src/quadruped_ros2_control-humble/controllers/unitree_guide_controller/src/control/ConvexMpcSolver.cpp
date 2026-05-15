@@ -189,19 +189,31 @@ struct ConvexMpcSolver::HpipmWorkspace {
   }
 
   void applySettings(const ConvexMpcSettings& settings) {
-    d_ocp_qp_ipm_arg_set_default(hpipm_mode::SPEED, &arg);
+      d_ocp_qp_ipm_arg_set_default(hpipm_mode::SPEED, &arg);
 
-    d_ocp_qp_ipm_arg_set_iter_max(&settings.hpipm_iter_max, &arg);
-    d_ocp_qp_ipm_arg_set_alpha_min(&settings.hpipm_alpha_min, &arg);
-    d_ocp_qp_ipm_arg_set_mu0(&settings.hpipm_mu0, &arg);
-    d_ocp_qp_ipm_arg_set_tol_stat(&settings.hpipm_tol_stat, &arg);
-    d_ocp_qp_ipm_arg_set_tol_eq(&settings.hpipm_tol_eq, &arg);
-    d_ocp_qp_ipm_arg_set_tol_ineq(&settings.hpipm_tol_ineq, &arg);
-    d_ocp_qp_ipm_arg_set_tol_comp(&settings.hpipm_tol_comp, &arg);
-    d_ocp_qp_ipm_arg_set_reg_prim(&settings.hpipm_reg_prim, &arg);
-    d_ocp_qp_ipm_arg_set_warm_start(&settings.hpipm_warm_start, &arg);
-    d_ocp_qp_ipm_arg_set_pred_corr(&settings.hpipm_pred_corr, &arg);
-    d_ocp_qp_ipm_arg_set_ric_alg(&settings.hpipm_ric_alg, &arg);
+      int iter_max = settings.hpipm_iter_max;
+      double alpha_min = settings.hpipm_alpha_min;
+      double mu0 = settings.hpipm_mu0;
+      double tol_stat = settings.hpipm_tol_stat;
+      double tol_eq = settings.hpipm_tol_eq;
+      double tol_ineq = settings.hpipm_tol_ineq;
+      double tol_comp = settings.hpipm_tol_comp;
+      double reg_prim = settings.hpipm_reg_prim;
+      int warm_start = settings.hpipm_warm_start;
+      int pred_corr = settings.hpipm_pred_corr;
+      int ric_alg = settings.hpipm_ric_alg;
+
+      d_ocp_qp_ipm_arg_set_iter_max(&iter_max, &arg);
+      d_ocp_qp_ipm_arg_set_alpha_min(&alpha_min, &arg);
+      d_ocp_qp_ipm_arg_set_mu0(&mu0, &arg);
+      d_ocp_qp_ipm_arg_set_tol_stat(&tol_stat, &arg);
+      d_ocp_qp_ipm_arg_set_tol_eq(&tol_eq, &arg);
+      d_ocp_qp_ipm_arg_set_tol_ineq(&tol_ineq, &arg);
+      d_ocp_qp_ipm_arg_set_tol_comp(&tol_comp, &arg);
+      d_ocp_qp_ipm_arg_set_reg_prim(&reg_prim, &arg);
+      d_ocp_qp_ipm_arg_set_warm_start(&warm_start, &arg);
+      d_ocp_qp_ipm_arg_set_pred_corr(&pred_corr, &arg);
+      d_ocp_qp_ipm_arg_set_ric_alg(&ric_alg, &arg);
   }
 };
 
