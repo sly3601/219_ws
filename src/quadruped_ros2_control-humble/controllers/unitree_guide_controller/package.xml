@@ -22,6 +22,8 @@
     <depend>tf2_ros</depend>
 
     <depend>ocs2_core</depend>
+    <depend>hpipm_catkin</depend>
+    <depend>blasfeo_catkin</depend>
 
     <exec_depend>controller_manager</exec_depend>
     <exec_depend>joint_state_broadcaster</exec_depend>

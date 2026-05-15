@@ -3,7 +3,9 @@
 #include <ocs2_core/Types.h>          // ocs2::scalar_t, vector_t, matrix_t
 #include <Eigen/Core>
 #include <Eigen/Dense>
+
 #include <array>
+#include <memory>
 #include <vector>
 
 #include <unitree_guide_controller/common/mathTypes.h>  // Vec3 Vec34 RotMat VecInt4 等
@@ -50,11 +52,25 @@ struct ConvexMpcSettings {
   // force-rate cost (u_k - u_{k-1})
   Eigen::Matrix<double, 12, 12> S = Eigen::Matrix<double,12,12>::Zero();
 
-  double regularization = 1e-6;
+  double regularization = 1e-8;
 
   // solver safety
-  bool enableFallbackToLast = true;   // QP失败时是否回退上一帧 last_u0_
+  bool enableFallbackToLast = true;    // QP失败时是否回退上一帧 last_u0_
   bool enableContactPrediction = true; // 若你未来传入外部 schedule，可关掉
+
+  // ====== HPIPM settings ======
+  int hpipm_iter_max = 30;
+  double hpipm_alpha_min = 1e-12;
+  double hpipm_mu0 = 1e1;
+  double hpipm_tol_stat = 1e-6;
+  double hpipm_tol_eq = 1e-8;
+  double hpipm_tol_ineq = 1e-8;
+  double hpipm_tol_comp = 1e-8;
+  double hpipm_reg_prim = 1e-12;
+  int hpipm_warm_start = 0;
+  int hpipm_pred_corr = 1;
+  int hpipm_ric_alg = 0;       // 0: square-root Riccati; 和 OCS2 默认一致
+  bool hpipm_verbose = false;
 };
 
 // 纯 OCS2 风格输入（你可以先用最小集合）
@@ -73,11 +89,15 @@ struct ConvexMpcInputOcs2 {
 struct ConvexMpcOutputOcs2 {
   ocs2::vector_t u0; // 12x1: [f_FR, f_FL, f_RR, f_RL]
   bool success = false;
+
+  int hpipm_status = -1;
+  int hpipm_iter = -1;
 };
 
 class ConvexMpcSolver {
 public:
   explicit ConvexMpcSolver(const ConvexMpcSettings& settings);
+  ~ConvexMpcSolver();
 
   // 允许在运行时改 MPC 参数
   void setSettings(const ConvexMpcSettings& settings);
@@ -103,9 +123,16 @@ public:
   );
 
 private:
+  struct HpipmWorkspace;
+
   ConvexMpcSettings settings_;
   ocs2::vector_t last_u0_;  // warm start / debug
+  bool has_last_solution_ = false;
+
+  std::unique_ptr<HpipmWorkspace> hpipm_;
 
   // 内部工具：根据当前contact推断trot相位（无 phase 输入时的最小可用方案）
   static double inferBasePhaseFromContact(const VecInt4& contact_now);
+
+  Vec34 makeFallbackForces(const VecInt4& contact_now) const;
 };

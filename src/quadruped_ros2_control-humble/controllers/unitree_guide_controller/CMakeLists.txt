@@ -22,6 +22,8 @@ set(CONTROLLER_INCLUDE_DEPENDS
         visualization_msgs
         geometry_msgs
         tf2_ros
+
+        hpipm_catkin
 )
 
 # find dependencies
