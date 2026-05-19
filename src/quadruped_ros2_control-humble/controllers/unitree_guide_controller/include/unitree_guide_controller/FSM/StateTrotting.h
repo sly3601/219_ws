@@ -123,6 +123,18 @@ private:
 
 
     bool first_run = true; // 新增：是否第一次进入trotting状态的标志
+
+    // MPC足底接触点记忆：记录每条腿最近一次进入支撑相时的足底世界坐标
+    Vec34 mpc_foot_hold_G_;
+
+    // MPC接触状态记忆：用于判断 swing -> stance 的落地瞬间
+    // 上一个控制周期第 i 条腿的接触状态
+    VecInt4 mpc_contact_last_;
+
+    // MPC足底接触点是否已经初始化
+    // 第一次进入 trotting 后，先初始化一次所有腿的足底点
+    bool mpc_foot_hold_initialized_ = false;
+
 };
 
 

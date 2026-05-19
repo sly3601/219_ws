@@ -95,6 +95,10 @@ void StateTrotting::enter() {
     wave_generator_->status_ = WaveStatus::STANCE_ALL;  // 初始化过渡状态：全支撑
     ctrl_interfaces_.control_inputs_.command = 0;       // 将控制输入指令重置为0（避免残留指令影响）
     gait_generator_.restart();                          // 重启步态生成器
+
+    mpc_foot_hold_G_.setZero();
+    mpc_contact_last_.setZero();
+    mpc_foot_hold_initialized_ = false;
 }
 
 /**
@@ -326,6 +330,45 @@ void StateTrotting::calcTau() {
     }
     
     pos_feet_P = B2P_RotMat * pos_feet_B;       // 得到P系下的足端位置
+    pos_feet_G = estimator_->getFeetPos();      // 当前四个足端在G系下的实际位置
+    vel_feet_G = estimator_->getFeetVel();      // 当前四个足端在G系下的实际速度
+    
+    if (!B2P_RotMat.allFinite() || 
+    !pos_feet_P.allFinite() || 
+    !pos_feet_G.allFinite() || 
+    !vel_feet_G.allFinite()) 
+    {
+        for (int k = 0; k < 12; ++k)
+            ctrl_interfaces_.joint_torque_command_interface_[k].get().set_value(0.0);
+        return;
+    }
+
+
+    // 以下都是为了MPC作准备：
+    // 初始化 MPC 接触点记忆
+    // 第一次进入 trotting 后，直接用当前实际足端 G 系位置初始化
+    if (!mpc_foot_hold_initialized_) {
+        mpc_foot_hold_G_ = pos_feet_G;
+        mpc_contact_last_ = wave_generator_->contact_;
+        mpc_foot_hold_initialized_ = true;
+    }
+
+    // 只在 swing -> stance 的落地瞬间更新该腿的支撑点
+    for (int leg = 0; leg < 4; ++leg) {
+        const bool touchdown =
+            (mpc_contact_last_(leg) == 0 && wave_generator_->contact_(leg) == 1);
+
+        if (touchdown) {
+            mpc_foot_hold_G_.col(leg) = pos_feet_G.col(leg);
+        }
+    }
+
+    // 记录上一周期接触状态
+    mpc_contact_last_ = wave_generator_->contact_;
+    // MPC步态准备结束
+
+
+
 
     /**
      * @brief QP优化足底力分配（核心）
@@ -336,12 +379,6 @@ void StateTrotting::calcTau() {
      * @param wave_generator_->contact_ 输入：当前步态周期内的足端接触状态（0或1）
      * @param force_feet_P              输出：QP优化得到的P系下的足底反力
      */
-    if (!B2P_RotMat.allFinite() || !pos_feet_P.allFinite()) 
-    {
-        for (int k = 0; k < 12; ++k)
-            ctrl_interfaces_.joint_torque_command_interface_[k].get().set_value(0.0);
-        return;
-    }
     try 
     {
         if (force_solver_mode_ == ForceSolverMode::QP) {
@@ -349,16 +386,21 @@ void StateTrotting::calcTau() {
             force_feet_P = -balance_ctrl_->calF(dd_pcd, d_wbd, B2P_RotMat, pos_feet_P, wave_generator_->contact_);
         } 
         else if (force_solver_mode_ == ForceSolverMode::MPC) {
+            const double gait_period = wave_generator_->get_t();
+            const double stance_ratio = wave_generator_->get_t_stance() / wave_generator_->get_t();
+
             // Convex MPC 里动力学方程默认用的是“地面对机身的接触力”，所以下游做 J^T f 时同样需要取负号得到“足端对地的力”
             force_feet_P = -convex_mpc_->solveFromDogWrench(
                 dd_pcd,
-                d_wbd,
-                B2P_RotMat,
-                pos_feet_P,
+                mpc_foot_hold_G_,
                 wave_generator_->contact_,
+                wave_generator_->phase_,
+                dt_,
+                gait_period,
+                stance_ratio,
                 pos_body_,
                 vel_body_,
-                B2P_RotMat,   // R_GB（你这里 P 当 G 用）
+                B2P_RotMat,
                 gyro_global,
                 Rd,
                 vel_target_
@@ -372,9 +414,6 @@ void StateTrotting::calcTau() {
             ctrl_interfaces_.joint_torque_command_interface_[k].get().set_value(0.0); 
         return; 
     }
-
-    pos_feet_G = estimator_->getFeetPos();      // 当前四个足端在G系下的实际位置
-    vel_feet_G = estimator_->getFeetVel();      // 当前四个足端在G系下的实际速度
 
     // 摆动腿跟随闭环PD控制
     for (int i = 0; i < 4; ++i)
