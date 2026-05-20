@@ -53,11 +53,21 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     Kp_swing_ = Vec3(0.3, 0.3, 0.3).asDiagonal();   // 摆动相位置增益
     Kd_swing_ = Vec3(0.1, 0.1, 0.1).asDiagonal();   // 摆动相速度阻尼
 
-    // QP优化相关参数
-    tau_ff_scale = 1.0;                             // QP力分配衰减系数
-    tau_ff_limit_hip = 34.0;                        // QP力分配前馈力矩限制：髋关节
-    tau_ff_limit_thigh = 82.0;                      // QP力分配前馈力矩限制：大腿关节
-    tau_ff_limit_calf = 100.0;                      // QP力分配前馈力矩限制：小腿关节
+    // QP/MPC优化相关参数
+    if (force_solver_mode_ == ForceSolverMode::QP) 
+    {
+        tau_ff_scale = 1.0;                             // QP力分配衰减系数
+        tau_ff_limit_hip = 34.0;                        // QP力分配前馈力矩限制：髋关节
+        tau_ff_limit_thigh = 82.0;                      // QP力分配前馈力矩限制：大腿关节
+        tau_ff_limit_calf = 100.0;                      // QP力分配前馈力矩限制：小腿关节
+    }
+    else if (force_solver_mode_ == ForceSolverMode::MPC)
+    {
+        tau_ff_scale = 0.0;                             // MPC力分配衰减系数
+        tau_ff_limit_hip = 30.0;                        // MPC力分配前馈力矩限制：髋关节
+        tau_ff_limit_thigh = 30.0;                      // MPC力分配前馈力矩限制：大腿关节
+        tau_ff_limit_calf = 30.0;                       // MPC力分配前馈力矩限制：小腿关节
+    }
 
     // 摆动腿闭环相关参数
     swing_force_limit = Vec3(5.0, 5.0, 10.0);       // 摆动腿期望足底力限制：x/y/z方向（N）
