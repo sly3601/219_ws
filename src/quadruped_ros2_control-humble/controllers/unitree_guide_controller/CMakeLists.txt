@@ -81,7 +81,18 @@ ament_target_dependencies(
         ${CONTROLLER_INCLUDE_DEPENDS}
         ocs2_core
 )
+
+
+# --disable-new-dtags:
+#   让 INSTALL_RPATH 更倾向写成传统 RPATH，而不是 RUNPATH。
+#   RPATH 对 hpipm -> blasfeo 这种间接依赖更稳。
+#
+# --no-as-needed:
+#   防止链接器因为当前库没有直接调用 blasfeo 符号，就把 libblasfeo.so 依赖裁掉。
 target_link_libraries(${PROJECT_NAME}
+        PRIVATE
+        "-Wl,--disable-new-dtags"
+        "-Wl,--no-as-needed"
         PUBLIC
         hpipm
         blasfeo
@@ -96,6 +107,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
         SKIP_INSTALL_RPATH FALSE
         INSTALL_RPATH "$ORIGIN;$ORIGIN/..;$ORIGIN/../../../hpipm_catkin/lib;$ORIGIN/../../../blasfeo_catkin/lib"
 )
+
+
 
 
 pluginlib_export_plugin_description_file(controller_interface unitree_guide_controller.xml)
