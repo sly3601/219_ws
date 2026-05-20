@@ -87,6 +87,17 @@ target_link_libraries(${PROJECT_NAME}
         blasfeo
 )
 
+# 让 ROS2 pluginlib 加载 libunitree_guide_controller.so 时，
+# 能从同一个 workspace 的 install 目录里找到 hpipm / blasfeo 动态库。
+# 不依赖用户手动 export LD_LIBRARY_PATH 或 sudo ldconfig。
+set_target_properties(${PROJECT_NAME} PROPERTIES
+        BUILD_WITH_INSTALL_RPATH FALSE
+        SKIP_BUILD_RPATH FALSE
+        SKIP_INSTALL_RPATH FALSE
+        INSTALL_RPATH "$ORIGIN;$ORIGIN/..;$ORIGIN/../../../hpipm_catkin/lib;$ORIGIN/../../../blasfeo_catkin/lib"
+)
+
+
 pluginlib_export_plugin_description_file(controller_interface unitree_guide_controller.xml)
 
 install(
