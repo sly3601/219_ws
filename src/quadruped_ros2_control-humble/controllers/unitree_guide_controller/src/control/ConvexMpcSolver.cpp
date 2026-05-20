@@ -50,14 +50,19 @@ static inline double wrap01(const double x) {
  *   normal_t = stanceRatio + phase * (1 - stanceRatio)
  *
  * normal_t 才是完整步态周期内的归一化相位 [0,1)。
+ * 
+ * 这个函数的作用就是：
+ * 把 WaveGenerator 给出的“支撑相/摆动相内部进度”转换成完整步态周期里的统一相位 normal_t ∈ [0,1)，
+ * 方便后面预测 horizon 内每条腿未来是支撑还是摆动。
  */
 static inline double legModePhaseToCyclePhase(
-    const double mode_phase,
-    const int contact,
-    const double stance_ratio) {
+    const double mode_phase,      // mode_phase 是 WaveGenerator 的 phase_，表示当前支撑相/摆动相内部进度
+    const int contact,            // contact 是当前接触状态，1 支撑，0 摆动
+    const double stance_ratio) {  // stance_ratio 是一个步态周期内支撑相的占比，例如 0.6 表示支撑相占 60%，摆动相占 40%
   const double ph = clamp01(mode_phase);
   const double st = clamp01(stance_ratio);
 
+  // 一个完整周期里先支撑、后摆动
   if (contact == 1) {
     return ph * st;
   }
@@ -66,6 +71,7 @@ static inline double legModePhaseToCyclePhase(
 }
 
 /*
+ * 本函数用于计算本次 MPC 实际应该用多少个预测步 N
  * 根据“半个步态周期”限制，计算实际 HPIPM horizon steps。
  *
  * 参考论文中使用固定接触点近似。
@@ -78,11 +84,11 @@ static inline int computeEffectiveHorizon(
     const double dt,
     const double gait_period,
     const bool enforce_half_gait_horizon) {
-  if (max_N <= 0 || dt <= 0.0 || !std::isfinite(dt)) {
+  if (max_N <= 0 || dt <= 0.0 || !std::isfinite(dt)) {  // 安全限制
     return 0;
   }
 
-  if (!enforce_half_gait_horizon) {
+  if (!enforce_half_gait_horizon) { // 如果不用半步态周期限制，也就是不用论文方法，直接返回 max_N
     return max_N;
   }
 
@@ -90,7 +96,7 @@ static inline int computeEffectiveHorizon(
     return 0;
   }
 
-  const int N = static_cast<int>(std::floor(0.5 * gait_period / dt));
+  const int N = static_cast<int>(std::floor(0.5 * gait_period / dt)); // 计算半个步态周期内能有多少个控制周期，也就是预测步数 N
 
   if (N < 1) {
     return 0;
@@ -141,6 +147,8 @@ private:
 };
 
 struct ConvexMpcSolver::HpipmWorkspace {
+  // 这是缓存当前 HPIPM 的问题规模。
+  // 如果本次 MPC 的规模和上次一样，就不重新分配 HPIPM 内存，只更新求解器参数
   int cached_N = -1;
   int cached_nx = -1;
   int cached_nu = -1;
@@ -194,7 +202,7 @@ struct ConvexMpcSolver::HpipmWorkspace {
   d_ocp_qp_ipm_ws workspace;
 
   void resizeIfNeeded(const ConvexMpcSettings& settings, int N, int nx_stage, int nu_stage, int ng_stage) {
-    if (initialized &&
+    if (initialized &&  // 缓存优化，如果数组大小不变，则不重新申请内存
         cached_N == N &&
         cached_nx == nx_stage &&
         cached_nu == nu_stage &&
@@ -327,18 +335,18 @@ ConvexMpcSolver::ConvexMpcSolver(const ConvexMpcSettings& settings)
   if (settings_.Q.isZero(0)) {
     ConvexMpcSettings tmp = settings_;
 
-    tmp.Q.diagonal() << 200, 200, 20,
-                        50,  50,  200,
-                        2,   2,   2,
-                        5,   5,   10,
-                        0.0;
+    tmp.Q.diagonal() << 200, 200, 20, // 3轴角度，姿态的权重
+                        50,  50,  200,// 3轴位置，机身位置的权重
+                        2,   2,   2,  // 3轴角速度，姿态变化的权重
+                        5,   5,   10, // 3轴速度，机身速度的权重
+                        0.0;          // 重力
 
-    tmp.R.diagonal() << 1, 1, 1,
+    tmp.R.diagonal() << 1, 1, 1,  // 力大小限制惩罚权重
                         1, 1, 1,
                         1, 1, 1,
                         1, 1, 1;
 
-    tmp.S.diagonal() << 0.05, 0.05, 0.05,
+    tmp.S.diagonal() << 0.05, 0.05, 0.05, // 力变化平滑限制惩罚权重
                         0.05, 0.05, 0.05,
                         0.05, 0.05, 0.05,
                         0.05, 0.05, 0.05;
@@ -846,13 +854,10 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   //
   // 论文状态顺序：
   // x = [Theta(3), p_com(3), omega(3), v_com(3), g_z(1)]
-  //
-  // 注意：
-  // 这里不再使用旧的 [p, v, rpy, w] 顺序。
 
   const Vec3 theta_now = rotMatToRPY(R_GB);
-  const Vec3 p_com_G = p_body_G + R_GB * settings_.pcb_B;
-  const Vec3 v_com_G = v_body_G + gyro_G.cross(R_GB * settings_.pcb_B);
+  const Vec3 p_com_G = p_body_G + R_GB * settings_.pcb_B; // 将标准中心位置加上质心位置偏移
+  const Vec3 v_com_G = v_body_G + gyro_G.cross(R_GB * settings_.pcb_B); // cross()是 Eigen 的叉乘函数，也是质心位置补偿
 
   in.x0.setZero();
   in.x0.segment<3>(0) = theta_now;
@@ -889,8 +894,7 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
 
   // ====== contact schedule (N) ======
   //
-  // 严格使用当前每条腿的 phase_now 和 contact_now 预测未来接触状态。
-  // 不再使用 inferBasePhaseFromContact() 这种根据当前 contact 反推相位的粗略方法。
+  // 使用当前每条腿的 phase_now 和 contact_now 预测未来接触状态。
   //
   // WaveGenerator 的 phase_now 是当前支撑相/摆动相内部进度：
   // contact=1: normal_phase = phase_now * stance_ratio
@@ -898,6 +902,7 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
 
   in.contact.resize(in.N);
 
+  // normal_phase_now是一个完整步态周期内的相位，范围[0,1)，先支撑再摆动
   Vec4 normal_phase_now;
   normal_phase_now.setZero();
 
@@ -906,17 +911,21 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
         legModePhaseToCyclePhase(
             phase_now(leg),
             contact_now(leg),
-            stance_ratio
+            stance_ratio  // stance_ratio是1个步态周期内支撑相的占比
         );
   }
-
+  /*  
+  * 根据normal_phase_now，
+  * 预测 MPC horizon 内每一个未来时刻 k，四条腿分别是支撑还是摆动，
+  * 并写入 in.contact[k]
+  */
   for (int k = 0; k < in.N; ++k) {
     const double t_k = static_cast<double>(k) * in.dt;
 
     std::array<int, 4> ck;
     for (int leg = 0; leg < 4; ++leg) {
       const double normal_k =
-          wrap01(normal_phase_now(leg) + t_k / gait_period);
+          wrap01(normal_phase_now(leg) + t_k / gait_period);  // 相位 wrap 到 [0,1)
 
       ck[leg] = (normal_k < stance_ratio) ? 1 : 0;
     }
@@ -940,11 +949,11 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
 
   in.rFeet.resize(in.N);
 
-  const Mat3 Iw = R_GB * settings_.Ib * R_GB.transpose();
-  const Eigen::LDLT<Mat3> ldlt(Iw);
+  const Mat3 Iw = R_GB * settings_.Ib * R_GB.transpose(); // 计算G系下的惯性矩阵
+  const Eigen::LDLT<Mat3> ldlt(Iw); // LDLT 是一种矩阵分解方法
 
   if (ldlt.info() == Eigen::Success) {
-    in.Iw_inv = ldlt.solve(Mat3::Identity());
+    in.Iw_inv = ldlt.solve(Mat3::Identity()); // 求逆矩阵
   } else {
     return makeFallbackForces(contact_now);
   }
@@ -953,6 +962,7 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
     return makeFallbackForces(contact_now);
   }
 
+  // 构造 MPC 预测时域内每一步的 足端力臂 rFeet
   for (int k = 0; k < in.N; ++k) {
     std::array<Vec3, 4> rk;
 
