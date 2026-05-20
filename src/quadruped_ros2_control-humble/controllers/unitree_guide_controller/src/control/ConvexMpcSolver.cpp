@@ -780,6 +780,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
 Vec34 ConvexMpcSolver::solveFromDogWrench(
     const Vec3& dd_pcd_G,        // 期望质心/机身线加速度，G 系表达。用于生成参考位置轨迹 p_ref = p_now + v_ref*t + 0.5*a_ref*t^2。
     const Vec34& foot_hold_G,    // 四条腿最近一次落地/进入支撑时记录的足底固定接触点，G 系表达。每一列对应一条腿的足底世界坐标。
+    const Vec34& foot_end_G,     // 在摆动腿时，预期足底支撑落点
     const VecInt4& contact_now,  // 当前四条腿接触状态。1 表示支撑腿，0 表示摆动腿。顺序为 FR, FL, RR, RL。
     const Vec4& phase_now,       // 当前四条腿在各自支撑相/摆动相内部的归一化进度，范围 [0,1]。注意不是完整步态周期相位。
     const double control_dt,     // 当前主控制周期，单位秒。来自 ros2_control 的 period.seconds()，用于离散化动力学。
@@ -820,6 +821,7 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
 
   if (!dd_pcd_G.allFinite() ||
       !foot_hold_G.allFinite() ||
+      !foot_end_G.allFinite() ||
       !phase_now.allFinite() ||
       !p_body_G.allFinite() ||
       !v_body_G.allFinite() ||
@@ -969,7 +971,11 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
     const Vec3 p_com_ref_G = in.xRef[k].segment<3>(3);
 
     for (int leg = 0; leg < 4; ++leg) {
-      rk[leg] = foot_hold_G.col(leg) - p_com_ref_G;
+      if (contact_now(leg) == 1) {
+        rk[leg] = foot_hold_G.col(leg) - p_com_ref_G;
+      } else {
+        rk[leg] = foot_end_G.col(leg) - p_com_ref_G;
+      }
     }
 
     in.rFeet[k] = rk;

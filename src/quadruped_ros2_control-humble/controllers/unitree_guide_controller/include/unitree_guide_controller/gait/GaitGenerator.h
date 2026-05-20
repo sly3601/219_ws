@@ -30,6 +30,8 @@ public:
 
     void restart();
 
+    [[nodiscard]] const Vec34& getEndFeetPos() const { return end_p_; } // 获得预期落足点的位置
+
 private:
     Vec3 getFootPos(int i);
 

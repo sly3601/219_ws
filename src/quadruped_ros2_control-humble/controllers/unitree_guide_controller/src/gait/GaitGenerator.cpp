@@ -24,9 +24,9 @@ GaitGenerator::GaitGenerator(CtrlComponent &ctrl_component, StateTrotting* trott
     : wave_generator_(ctrl_component.wave_generator_),
       estimator_(ctrl_component.estimator_),
       feet_end_calc_(ctrl_component),
-      ctrl_component_(ctrl_component),  // 【新增】必须初始化！
-      trotting_ptr_(trotting_ptr), // 【新增】初始化指针
-      first_run_(true) {
+      first_run_(true),
+      trotting_ptr_(trotting_ptr), 
+      ctrl_component_(ctrl_component){
 }
 
 
@@ -40,7 +40,6 @@ void GaitGenerator::setGait(Vec2 vxy_goal_global, const double d_yaw_goal, const
 
 /* 核心：步态生成函数 */
 void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
-    Vec34 current_feet_pos;
     if (first_run_) 
     {
         if (trotting_ptr_ && trotting_ptr_->troting_kalman == 2) 

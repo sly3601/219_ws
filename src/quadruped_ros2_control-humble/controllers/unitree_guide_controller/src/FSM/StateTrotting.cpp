@@ -393,6 +393,7 @@ void StateTrotting::calcTau() {
             force_feet_P = -convex_mpc_->solveFromDogWrench(
                 dd_pcd,
                 mpc_foot_hold_G_,
+                gait_generator_.getEndFeetPos(),
                 wave_generator_->contact_,
                 wave_generator_->phase_,
                 dt_,

@@ -314,10 +314,11 @@ public:
   void reset();
 
   ConvexMpcOutput solveMpc(const ConvexMpcInput& in);
-
-  Vec34 solveFromDogWrench(
+  
+    Vec34 solveFromDogWrench(
       const Vec3& dd_pcd_G,         // 机身期望加速度（世界系）
       const Vec34& foot_hold_G,     // 每条腿最近一次落地/支撑时记录的 G 系足底接触点
+      const Vec34& foot_end_G,      // 当前周期摆动腿最终落脚点（G系）
       const VecInt4& contact_now,   // 当前 4 足接触状态，1 支撑，0 摆动
       const Vec4& phase_now,        // 当前 4 足支撑/摆动相内部进度 [0,1]
       double control_dt,            // 主控制周期
