@@ -391,11 +391,13 @@ void StateTrotting::calcTau() {
      */
     try 
     {
-        if (force_solver_mode_ == ForceSolverMode::QP) {
+        if (force_solver_mode_ == ForceSolverMode::QP) 
+        {
             // calF函数内部计算出来的是P系下的地面对机身的反作用力，我们需要的是足端对地面的力，所以加负号取反
             force_feet_P = -balance_ctrl_->calF(dd_pcd, d_wbd, B2P_RotMat, pos_feet_P, wave_generator_->contact_);
         } 
-        else if (force_solver_mode_ == ForceSolverMode::MPC) {
+        else if (force_solver_mode_ == ForceSolverMode::MPC) 
+        {
             const double gait_period = wave_generator_->get_t();
             const double stance_ratio = wave_generator_->get_t_stance() / wave_generator_->get_t();
 

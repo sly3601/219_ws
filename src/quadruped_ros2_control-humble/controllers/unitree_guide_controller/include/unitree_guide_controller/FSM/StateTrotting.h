@@ -35,7 +35,7 @@ public:
         QP  = 0,   // 走原来的 BalanceCtrl QP
         MPC = 1    // 走 Convex MPC
     };
-    ForceSolverMode force_solver_mode_ = ForceSolverMode::QP;
+    ForceSolverMode force_solver_mode_ = ForceSolverMode::MPC;
 
 private:
     void getUserCmd();

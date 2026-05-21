@@ -201,13 +201,13 @@ struct ConvexMpcSolver::HpipmWorkspace {
   MemoryBlock ipmMem;
   d_ocp_qp_ipm_ws workspace;
 
-  void resizeIfNeeded(const ConvexMpcSettings& settings, int N, int nx_stage, int nu_stage, int ng_stage) {
+  void resizeIfNeeded(int N, int nx_stage, int nu_stage, int ng_stage) {
     if (initialized &&  // 缓存优化，如果数组大小不变，则不重新申请内存
         cached_N == N &&
         cached_nx == nx_stage &&
         cached_nu == nu_stage &&
         cached_ng == ng_stage) {
-      applySettings(settings);
+      applySettings();
       return;
     }
 
@@ -283,7 +283,7 @@ struct ConvexMpcSolver::HpipmWorkspace {
     ipmArgMem.reserve(ipm_arg_size);
     d_ocp_qp_ipm_arg_create(&dim, &arg, ipmArgMem.get());
 
-    applySettings(settings);
+    applySettings();
 
     const int ipm_size = d_ocp_qp_ipm_ws_memsize(&dim, &arg);
     ipmMem.reserve(ipm_size);
@@ -292,20 +292,22 @@ struct ConvexMpcSolver::HpipmWorkspace {
     initialized = true;
   }
 
-  void applySettings(const ConvexMpcSettings& settings) {
+  void applySettings() {
     d_ocp_qp_ipm_arg_set_default(hpipm_mode::SPEED, &arg);
 
-    int iter_max = settings.hpipm_iter_max;
-    double alpha_min = settings.hpipm_alpha_min;
-    double mu0 = settings.hpipm_mu0;
-    double tol_stat = settings.hpipm_tol_stat;
-    double tol_eq = settings.hpipm_tol_eq;
-    double tol_ineq = settings.hpipm_tol_ineq;
-    double tol_comp = settings.hpipm_tol_comp;
-    double reg_prim = settings.hpipm_reg_prim;
-    int warm_start = settings.hpipm_warm_start;
-    int pred_corr = settings.hpipm_pred_corr;
-    int ric_alg = settings.hpipm_ric_alg;
+    int iter_max = 30;          // hpipm_iter_max = HPIPM 最大迭代次数
+    double alpha_min = 1e-12;   // hpipm_alpha_min = HPIPM 线搜索最小步长
+    double mu0 = 1e1;           // hpipm_mu0 = 初始 barrier parameter，内点法初始障碍参数
+
+    double tol_stat = 1e-6;     // hpipm_tol_stat = stationarity tolerance，驻点残差容忍度
+    double tol_eq = 1e-6;       // hpipm_tol_eq = equality constraint tolerance，等式约束残差容忍度
+    double tol_ineq = 1e-6;     // hpipm_tol_ineq = inequality constraint tolerance，不等式约束残差容忍度
+    double tol_comp = 1e-6;     // hpipm_tol_comp = complementarity tolerance，互补条件残差容忍度
+
+    double reg_prim = 1e-10;    // hpipm_reg_prim = primal regularization，原始变量正则化，用于改善数值稳定性
+    int warm_start = 0;         // hpipm_warm_start = 是否启用 HPIPM 内部热启动，0 表示不启用
+    int pred_corr = 1;          // hpipm_pred_corr = predictor-corrector 开关，pred = predictor，预测步；corr = corrector，校正步，1 表示启用
+    int ric_alg = 0;            // hpipm_ric_alg = Riccati algorithm，Riccati 递推算法类型，ric = Riccati，0 表示 square-root Riccati
 
     d_ocp_qp_ipm_arg_set_iter_max(&iter_max, &arg);
     d_ocp_qp_ipm_arg_set_alpha_min(&alpha_min, &arg);
@@ -321,38 +323,51 @@ struct ConvexMpcSolver::HpipmWorkspace {
   }
 };
 
-ConvexMpcSolver::ConvexMpcSolver(const ConvexMpcSettings& settings)
+ConvexMpcSolver::ConvexMpcSolver()
   : nx_stage(13),     // 每个状态维度：Theta(3), p_com(3), omega(3), v_com(3), g_z(1)
     nu_stage(12),     // 每个输入维度：4 条腿的足底力，每条腿 3 维
     rows_per_leg(7),  // 每条腿的约束行数：摩擦锥 5 行 + 摆动腿强制 fx=0, fy=0 的 2 行
     ng_stage(28),     // 每步一般线性约束行数：4 条腿 * 每条腿 7 行约束
     INF(1e19),        // 无穷大，用于约束上下界
-    settings_(settings),
     hpipm_(new HpipmWorkspace()) {
-  // 默认给一套可运行权重。
   // 状态顺序：
   // x = [Theta(3), p_com(3), omega(3), v_com(3), g_z(1)]
-  if (settings_.Q.isZero(0)) {
-    ConvexMpcSettings tmp = settings_;
 
-    tmp.Q.diagonal() << 200, 200, 20, // 3轴角度，姿态的权重
-                        50,  50,  200,// 3轴位置，机身位置的权重
-                        2,   2,   2,  // 3轴角速度，姿态变化的权重
-                        5,   5,   10, // 3轴速度，机身速度的权重
-                        0.0;          // 重力
+  N = 25;                         // N = 最大预测步数，不是最终一定使用的预测步数，实际时域不能超过半个步态周期
+  mass = 40.5;                    // 机器人质量，单位 kg
+  Ib = Mat3::Identity();          // 机身的转动惯量矩阵，单位 kg*m^2，B 系表达
+  pcb_B = Vec3::Zero();           // pcb_B 表示“从机身原点 body 到质心 COM 的偏移向量”，在 B 系下表达。COM = body + R * pcb_B
+  g = Vec3(0.0, 0.0, -9.81);      // 重力加速度向量
 
-    tmp.R.diagonal() << 1, 1, 1,  // 力大小限制惩罚权重
-                        1, 1, 1,
-                        1, 1, 1,
-                        1, 1, 1;
+  mu = 0.4;                       // 摩擦系数
+  fzMin = 0.0;
+  fzMax = 350.0;
 
-    tmp.S.diagonal() << 0.05, 0.05, 0.05, // 力变化平滑限制惩罚权重
-                        0.05, 0.05, 0.05,
-                        0.05, 0.05, 0.05,
-                        0.05, 0.05, 0.05;
+  enforceHalfGaitHorizon = true;  // 论文：预测时域不能超过半个步态周期
 
-    settings_ = tmp;
-  }
+  // regularization = 数值正则化系数。
+  // 加到 QP Hessian 对角线上，避免矩阵病态或半正定导致求解器不稳定。
+  regularization = 1e-8;
+  enableFallbackToLast = true;    // enableFallbackToLast = 求解失败时是否回退到上一帧成功求解的足底力。
+
+  Q.setZero();
+  R.setZero();
+  S.setZero();
+  Q.diagonal() << 200, 200, 20, // 3轴角度，姿态的权重
+                      50,  50,  200,// 3轴位置，机身位置的权重
+                      2,   2,   2,  // 3轴角速度，姿态变化的权重
+                      5,   5,   10, // 3轴速度，机身速度的权重
+                      0.0;          // 重力
+
+  R.diagonal() << 1, 1, 1,  // 力大小限制惩罚权重
+                      1, 1, 1,
+                      1, 1, 1,
+                      1, 1, 1;
+
+  S.diagonal() << 0.05, 0.05, 0.05, // 力变化平滑限制惩罚权重
+                      0.05, 0.05, 0.05,
+                      0.05, 0.05, 0.05,
+                      0.05, 0.05, 0.05;
 
   rebuildFixedMatrices();
 }
@@ -362,30 +377,30 @@ ConvexMpcSolver::~ConvexMpcSolver() = default;
 void ConvexMpcSolver::rebuildFixedMatrices() {
 
   /*
-  settings_.R / settings_.S 是你定义的权重。
+  R / S 是你定义的权重。
   R_cost_ / R_cost_rate_ 是根据权重预先算好的矩阵。
   hpipm_->RR[k] / hpipm_->rr[k] 是最后传给 HPIPM 的接口。
   */
   Q_cost_ = MatX::Zero(nx_stage, nx_stage);
-  Q_cost_.noalias() = 2.0 * settings_.Q;
-  Q_cost_.diagonal().array() += settings_.regularization;
+  Q_cost_.noalias() = 2.0 * Q;
+  Q_cost_.diagonal().array() += regularization;
 
   R_cost_ = MatX::Zero(nu_stage, nu_stage);
-  R_cost_.noalias() = 2.0 * settings_.R;
-  R_cost_.diagonal().array() += settings_.regularization;
+  R_cost_.noalias() = 2.0 * R;
+  R_cost_.diagonal().array() += regularization;
 
 
-  // settings_.R：惩罚足底力本身太大
-  // settings_.S：惩罚当前足底力相对上一帧变化太大
+  // R：惩罚足底力本身太大
+  // S：惩罚当前足底力相对上一帧变化太大
   R_cost_rate_ = MatX::Zero(nu_stage, nu_stage);
-  R_cost_rate_.noalias() = 2.0 * (settings_.R + settings_.S); // 这里是计算之后的中间过程项，为了符合HPIPM的格式生态
-  R_cost_rate_.diagonal().array() += settings_.regularization;
+  R_cost_rate_.noalias() = 2.0 * (R + S); // 这里是计算之后的中间过程项，为了符合HPIPM的格式生态
+  R_cost_rate_.diagonal().array() += regularization;
 
   r_cost_zero_ = VecX::Zero(nu_stage);
   r_cost_rate_ = VecX::Zero(nu_stage);
 
   // 单条腿的固定输入约束矩阵。
-  // 这个矩阵只依赖 settings_.mu，不依赖 k，也不依赖 contact。
+  // 这个矩阵只依赖 mu，不依赖 k，也不依赖 contact。
   //
   // 前 5 行严格对应论文式(7)：
   // [ -1  0  mu ]
@@ -397,10 +412,10 @@ void ConvexMpcSolver::rebuildFixedMatrices() {
   // 后 2 行只用于摆动腿时强制 fx=0, fy=0。
   MatX leg_force_constraint = MatX::Zero(rows_per_leg, 3);
   leg_force_constraint <<
-      -1.0,  0.0, settings_.mu,
-       0.0, -1.0, settings_.mu,
-       1.0,  0.0, settings_.mu,
-       0.0,  1.0, settings_.mu,
+      -1.0,  0.0, mu,
+       0.0, -1.0, mu,
+       1.0,  0.0, mu,
+       0.0,  1.0, mu,
        0.0,  0.0,          1.0,
        1.0,  0.0,          0.0,
        0.0,  1.0,          0.0;
@@ -434,7 +449,7 @@ void ConvexMpcSolver::rebuildFixedMatrices() {
        0.0,
        0.0,
        0.0,
-       settings_.fzMin,
+       fzMin,
       -INF,
       -INF;
 
@@ -443,7 +458,7 @@ void ConvexMpcSolver::rebuildFixedMatrices() {
        INF,
        INF,
        INF,
-       settings_.fzMax,
+       fzMax,
        INF,
        INF;
 
@@ -470,10 +485,6 @@ void ConvexMpcSolver::rebuildFixedMatrices() {
        0.0;
 }
 
-void ConvexMpcSolver::setSettings(const ConvexMpcSettings& settings) {
-  settings_ = settings;
-  rebuildFixedMatrices();
-}
 
 void ConvexMpcSolver::reset() {
   last_u0_.setZero();
@@ -496,9 +507,9 @@ Vec34 ConvexMpcSolver::makeFallbackForces(const VecInt4& contact_now) const {
   const int effective_stance_count = no_stance ? 4 : stance_count;  // 如果没有任何支撑腿，就假设四条腿都在支撑，以平均分配力。
 
   const double fz_nominal =
-      settings_.mass * std::abs(settings_.g(2)) / static_cast<double>(effective_stance_count);
+      mass * std::abs(g(2)) / static_cast<double>(effective_stance_count);
 
-  const double fz = std::min(settings_.fzMax, std::max(settings_.fzMin, fz_nominal));
+  const double fz = std::min(fzMax, std::max(fzMin, fz_nominal));
 
   static rclcpp::Clock steady_clock(RCL_STEADY_TIME);
   RCLCPP_WARN_THROTTLE(
@@ -527,12 +538,12 @@ Vec34 ConvexMpcSolver::makeFallbackForces(const VecInt4& contact_now) const {
 ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
   ConvexMpcOutput out;
 
-  const int N = in.N;
+  const int horizon_N = in.N;
 
-  if (N <= 0 ||
-      static_cast<int>(in.xRef.size()) < N + 1 ||
-      static_cast<int>(in.contact.size()) < N ||
-      static_cast<int>(in.rFeet.size()) < N ||
+  if (horizon_N <= 0 ||
+      static_cast<int>(in.xRef.size()) < horizon_N + 1 ||
+      static_cast<int>(in.contact.size()) < horizon_N ||
+      static_cast<int>(in.rFeet.size()) < horizon_N ||
       in.dt <= 0.0 ||
       !std::isfinite(in.dt) ||
       !in.x0.allFinite() ||
@@ -548,7 +559,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
     ng_stage   // 每步一般线性约束行数，4*7=28，包括 4 条腿，每条腿 7 行约束（摩擦锥 5 行 + 摆动腿强制 fx=0, fy=0 的 2 行）
   */
   // HPIPM 的求解器内存准备函数，设置基础参数并分配内存。
-  hpipm_->resizeIfNeeded(settings_, N, nx_stage, nu_stage, ng_stage);
+  hpipm_->resizeIfNeeded(horizon_N, nx_stage, nu_stage, ng_stage);
 
   // ====== 线性离散 SRBD 模型 ======
   //
@@ -560,7 +571,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
   // 重力通过状态最后一维 g_z 进入速度更新：
   // v(k+1) = v(k) + dt * e_z * g_z + dt/m * sum(f_i)
 
-  for (int k = 0; k < N; ++k) {
+  for (int k = 0; k < horizon_N; ++k) {
     hpipm_->A_stage[k].setIdentity(); //先补充为单位阵，再填入非单位部分
     hpipm_->B_stage[k].setZero();
 
@@ -576,7 +587,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
       hpipm_->B_stage[k].block<3,3>(6, 3 * leg) =
           in.dt * in.Iw_inv * skew(r);
       hpipm_->B_stage[k].block<3,3>(9, 3 * leg) =
-          (in.dt / settings_.mass) * Mat3::Identity();
+          (in.dt / mass) * Mat3::Identity();
     }
   }
 
@@ -592,12 +603,12 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
 
   // stage 1 ... stage N-1 有状态代价；
   // stage 0 的 x0 是已知初始状态，不作为 HPIPM 决策变量，所以没有 Q_stage[0]。
-  for (int k = 1; k < N; ++k) {
-    hpipm_->q_stage[k].noalias() = -2.0 * settings_.Q * in.xRef[k];
+  for (int k = 1; k < horizon_N; ++k) {
+    hpipm_->q_stage[k].noalias() = -2.0 * Q * in.xRef[k];
   }
 
   // terminal cost：终端状态 x_N 的跟踪代价,单独拿出来方便以后算法单独设置Q权重
-  hpipm_->q_stage[N].noalias() = -2.0 * settings_.Q * in.xRef[N];
+  hpipm_->q_stage[horizon_N].noalias() = -2.0 * Q * in.xRef[horizon_N];
 
   // ====== Constraints: lg <= C*x + D*u <= ug ======
   // 约束下界 l_g，约束矩阵 C 和 D，约束上界 u_g
@@ -612,7 +623,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
 
 
   // 设置摩擦锥的上下界矩阵ci
-  for (int k = 0; k < N; ++k) {
+  for (int k = 0; k < horizon_N; ++k) {
     for (int leg = 0; leg < 4; ++leg) {
       const int row = rows_per_leg * leg;
 
@@ -648,7 +659,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
   hpipm_->BB[0] = hpipm_->B_stage[0].data();
   hpipm_->bb[0] = hpipm_->bb_stage[0].data();
 
-  for (int k = 1; k < N; ++k) {
+  for (int k = 1; k < horizon_N; ++k) {
     hpipm_->AA[k] = hpipm_->A_stage[k].data();
     hpipm_->BB[k] = hpipm_->B_stage[k].data();
     hpipm_->bb[k] = hpipm_->bb_stage[k].data();
@@ -669,9 +680,9 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
   // 0.5*x^T Q*x + 0.5*u^T R*u + q^T*x + r^T*u
   //
   // 当前在论文目标基础上，对真正会执行的 u0 额外加入：
-  // (u0 - last_u0)^T S (u0 - last_u0)，其中这个权重系数S代码中是settings_.S，不是HPIPM里的状态交叉项SS，完全不同的
-  if (has_last_solution_ && !settings_.S.isZero(0)) {
-    r_cost_rate_.noalias() = -2.0 * settings_.S * last_u0_; // 这里是计算之后的中间过程项
+  // (u0 - last_u0)^T S (u0 - last_u0)，其中这个权重系数S代码中是S，不是HPIPM里的状态交叉项SS，完全不同的
+  if (has_last_solution_ && !S.isZero(0)) {
+    r_cost_rate_.noalias() = -2.0 * S * last_u0_; // 这里是计算之后的中间过程项
     hpipm_->RR[0] = R_cost_rate_.data();
     hpipm_->rr[0] = r_cost_rate_.data();
   } else {
@@ -679,7 +690,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
     hpipm_->rr[0] = r_cost_zero_.data();
   }
 
-  for (int k = 1; k < N; ++k) {
+  for (int k = 1; k < horizon_N; ++k) {
     hpipm_->QQ[k] = Q_cost_.data();
     hpipm_->RR[k] = R_cost_.data();
     hpipm_->qq[k] = hpipm_->q_stage[k].data();
@@ -687,8 +698,8 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
   }
 
   // xN不是没用，而是用来评价：最后一步控制 u(N-1) 把系统推到了哪里
-  hpipm_->QQ[N] = Q_cost_.data();
-  hpipm_->qq[N] = hpipm_->q_stage[N].data();
+  hpipm_->QQ[horizon_N] = Q_cost_.data();
+  hpipm_->qq[horizon_N] = hpipm_->q_stage[horizon_N].data();
 
   // CC/DD/llg/uug 是 HPIPM 对一般线性约束的命名习惯。
   //
@@ -696,7 +707,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
   // llg[k] <= CC[k]*x_k + DD[k]*u_k <= uug[k]
   //
   // 当前约束只作用于输入足底力 u，所以 CC 可以为零。
-  for (int k = 0; k < N; ++k) {
+  for (int k = 0; k < horizon_N; ++k) {
     // 第一句分类讨论的意义
     // 第 0 步：C0 连尺寸都不该是 28x13，因为 nx[0]=0
     // 第 1 步以后：Ck 尺寸是 28x13，但内容全是 0
@@ -743,7 +754,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
   int hpipm_status = -1;
   d_ocp_qp_ipm_get_status(&hpipm_->workspace, &hpipm_status);
 
-  if (settings_.hpipm_verbose) { // hpipm_verbose 默认是false
+  if (hpipm_verbose) { // hpipm_verbose 默认是false
     int hpipm_iter = -1;
     d_ocp_qp_ipm_get_iter(&hpipm_->workspace, &hpipm_iter);
 
@@ -751,12 +762,12 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
                  "[ConvexMpcSolver][HPIPM] status=%d, iter=%d, N=%d, dt=%.6f\n",
                  hpipm_status,
                  hpipm_iter,
-                 N,
+                 horizon_N,
                  in.dt);
   }
 
   if (hpipm_status != 0) {// 求解失败
-    if (settings_.enableFallbackToLast && has_last_solution_ && last_u0_.allFinite()) {// 如果可以返回上一帧就返回
+    if (enableFallbackToLast && has_last_solution_ && last_u0_.allFinite()) {// 如果可以返回上一帧就返回
       out.u0 = last_u0_;
       out.success = true;
       return out;
@@ -764,6 +775,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
 
     return out;
   }
+
   // 从 HPIPM 解中提取第一步的控制输入 u0
   d_ocp_qp_sol_get_u(0, &hpipm_->qpSol, out.u0.data());
 
@@ -805,17 +817,17 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
     return makeFallbackForces(contact_now);   // 支撑比必须在 (0,1) 之间且有限
   }
 
-  if (settings_.N <= 0 ||
-      settings_.mass <= 0.0 ||
-      !std::isfinite(settings_.mass) ||
-      !std::isfinite(settings_.mu) ||
-      !std::isfinite(settings_.fzMin) ||
-      !std::isfinite(settings_.fzMax) ||
-      settings_.mu <= 0.0 ||
-      settings_.fzMax < settings_.fzMin ||
-      !settings_.Ib.allFinite() ||
-      !settings_.pcb_B.allFinite() ||
-      !settings_.g.allFinite()) {
+  if (N <= 0 ||
+      mass <= 0.0 ||
+      !std::isfinite(mass) ||
+      !std::isfinite(mu) ||
+      !std::isfinite(fzMin) ||
+      !std::isfinite(fzMax) ||
+      mu <= 0.0 ||
+      fzMax < fzMin ||
+      !Ib.allFinite() ||
+      !pcb_B.allFinite() ||
+      !g.allFinite()) {
     return makeFallbackForces(contact_now);
   }
 
@@ -842,10 +854,10 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   in.dt = control_dt;
 
   in.N = computeEffectiveHorizon(
-      settings_.N,
+      N,
       in.dt,
       gait_period,
-      settings_.enforceHalfGaitHorizon
+      enforceHalfGaitHorizon
   );
 
   if (in.N <= 0) {
@@ -858,15 +870,15 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   // x = [Theta(3), p_com(3), omega(3), v_com(3), g_z(1)]
 
   const Vec3 theta_now = rotMatToRPY(R_GB);
-  const Vec3 p_com_G = p_body_G + R_GB * settings_.pcb_B; // 将标准中心位置加上质心位置偏移
-  const Vec3 v_com_G = v_body_G + gyro_G.cross(R_GB * settings_.pcb_B); // cross()是 Eigen 的叉乘函数，也是质心位置补偿
+  const Vec3 p_com_G = p_body_G + R_GB * pcb_B; // 将标准中心位置加上质心位置偏移
+  const Vec3 v_com_G = v_body_G + gyro_G.cross(R_GB * pcb_B); // cross()是 Eigen 的叉乘函数，也是质心位置补偿
 
   in.x0.setZero();
   in.x0.segment<3>(0) = theta_now;
   in.x0.segment<3>(3) = p_com_G;
   in.x0.segment<3>(6) = gyro_G;
   in.x0.segment<3>(9) = v_com_G;
-  in.x0(12) = settings_.g(2);
+  in.x0(12) = g(2);
 
   // ====== xRef (N + 1) ======
   in.xRef.resize(in.N + 1);
@@ -891,7 +903,7 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
     // 参考速度：当前先保持 v_ref_G，不额外积分 dd_pcd_G
     in.xRef[k].segment<3>(9) = v_ref_G;
 
-    in.xRef[k](12) = settings_.g(2);
+    in.xRef[k](12) = g(2);
   }
 
   // ====== contact schedule (N) ======
@@ -951,7 +963,7 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
 
   in.rFeet.resize(in.N);
 
-  const Mat3 Iw = R_GB * settings_.Ib * R_GB.transpose(); // 计算G系下的惯性矩阵
+  const Mat3 Iw = R_GB * Ib * R_GB.transpose(); // 计算G系下的惯性矩阵
   const Eigen::LDLT<Mat3> ldlt(Iw); // LDLT 是一种矩阵分解方法
 
   if (ldlt.info() == Eigen::Success) {
