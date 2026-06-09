@@ -63,7 +63,7 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     }
     else if (force_solver_mode_ == ForceSolverMode::MPC)
     {
-        tau_ff_scale = 0.0;                             // MPC力分配衰减系数
+        tau_ff_scale = 0.25;                             // MPC力分配衰减系数
         tau_ff_limit_hip = 30.0;                        // MPC力分配前馈力矩限制：髋关节
         tau_ff_limit_thigh = 30.0;                      // MPC力分配前馈力矩限制：大腿关节
         tau_ff_limit_calf = 30.0;                       // MPC力分配前馈力矩限制：小腿关节
