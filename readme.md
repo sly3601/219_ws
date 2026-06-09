@@ -3,22 +3,31 @@
 
 * v4之后：
 ```
-colcon build   --packages-up-to ocs2_core sysu219_guide_controller sysu219_description keyboard_input hardware_sysu219   --symlink-install   --event-handlers console_direct+   --continue-on-error   --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${HOME}/219_ws/install
-```
 colcon build \
   --packages-up-to ocs2_core leg_pd_controller sysu219_guide_controller sysu219_description keyboard_input hardware_sysu219 \
   --symlink-install \
   --event-handlers console_direct+ \
   --continue-on-error \
   --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${HOME}/219_ws/install
+```
+
 
 2. source一下资源目录
 ```
 source install/setup.bash
 ```
 3. 运行launch文件
+* 运行机器人实机
 ```
 ros2 launch sysu219_guide_controller robot_hardware.launch.py
+```
+* 运行gazebo仿真
+```
+ros2 launch sysu219_guide_controller gazebo.launch.py 
+```
+* 运行键盘控制节点
+```
+ros2 run keyboard_input keyboard_input 
 ```
 4. 开启plotjugger进行数据可视化
 ```
@@ -131,3 +140,6 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
   * 弃用了原来的QP++的求解库，它已经不适合高速QP求解了，改用ocs2_ros2库自带并且性能足够优秀的HPIPM库。
    ## V4系列
 **V4系列开发中**
+* 2026.06.10 v4
+  * 补充gazebo仿真功能
+  * 去掉所有其他品牌狗的名字，完全变成实验室的狗名称，第一只狗的名字定为：sysu219
