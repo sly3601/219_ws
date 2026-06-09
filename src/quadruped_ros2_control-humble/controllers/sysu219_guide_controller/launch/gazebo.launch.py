@@ -17,7 +17,13 @@ def launch_setup(context, *args, **kwargs):
     pkg_path = os.path.join(get_package_share_directory(package_description))
 
     xacro_file = os.path.join(pkg_path, 'xacro', 'robot.xacro')
-    robot_description = xacro.process_file(xacro_file, mappings={'GAZEBO': 'true'}).toxml()
+    robot_description = xacro.process_file(
+        xacro_file,
+        mappings={
+            'GAZEBO': 'true',
+            'CLASSIC': 'true',
+        },
+    ).toxml()
 
     rviz_config_file = os.path.join(get_package_share_directory(package_description), "config", "visualize_urdf.rviz")
 
@@ -26,15 +32,20 @@ def launch_setup(context, *args, **kwargs):
         executable='rviz2',
         name='rviz_ocs2',
         output='screen',
-        arguments=["-d", rviz_config_file]
+        arguments=["-d", rviz_config_file],
+        parameters=[{'use_sim_time': True}],
     )
 
     gz_spawn_entity = Node(
-        package='ros_gz_sim',
-        executable='create',
+        package='gazebo_ros',
+        executable='spawn_entity.py',
         output='screen',
-        arguments=['-topic', 'robot_description', '-name',
-                   'robot', '-allow_renaming', 'true', '-z', init_height],
+        arguments=[
+            '-topic', 'robot_description',
+            '-entity', 'sysu219',
+            '-allow_renaming', 'true',
+            '-z', init_height,
+        ],
     )
 
     robot_state_publisher = Node(
@@ -44,6 +55,7 @@ def launch_setup(context, *args, **kwargs):
         parameters=[
             {
                 'publish_frequency': 20.0,
+                'use_sim_time': True,
                 'use_tf_static': True,
                 'robot_description': robot_description,
                 'ignore_timestamp': True
@@ -65,38 +77,26 @@ def launch_setup(context, *args, **kwargs):
                    "--controller-manager", "/controller_manager"],
     )
 
-    sysu219_guide_controller = Node(
-        package="controller_manager",
-        executable="spawner",
-        arguments=["sysu219_guide_controller", "--controller-manager", "/controller_manager"],
-    )
-
     return [
         rviz,
-        Node(
-            package='ros_gz_bridge',
-            executable='parameter_bridge',
-            arguments=['/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'],
-            output='screen'
-        ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
-                [PathJoinSubstitution([FindPackageShare('ros_gz_sim'),
+                [PathJoinSubstitution([FindPackageShare('gazebo_ros'),
                                        'launch',
-                                       'gz_sim.launch.py'])]),
-            launch_arguments=[('gz_args', [' -r -v 4 empty.sdf'])]),
+                                       'gazebo.launch.py'])]),
+            launch_arguments={'verbose': 'true'}.items()),
         robot_state_publisher,
         gz_spawn_entity,
         RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=gz_spawn_entity,
-                on_exit=[imu_sensor_broadcaster, joint_state_publisher],
+                on_exit=[joint_state_publisher],
             )
         ),
         RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=joint_state_publisher,
-                on_exit=[ sysu219_guide_controller],
+                on_exit=[imu_sensor_broadcaster],
             )
         ),
     ]

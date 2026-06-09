@@ -40,7 +40,7 @@ ros2 launch sysu219_description visualize.launch.py
 * Sysu219 Guide Controller
   ```bash
   source ~/ros2_ws/install/setup.bash
-  ros2 launch sysu219_guide_controller gazebo_classic.launch.py pkg_description:=sysu219_description
+  ros2 launch sysu219_guide_controller robot_hardware.launch.py pkg_description:=sysu219_description
   ```
 
 ### Gazebo Harmonic (ROS2 Jazzy)

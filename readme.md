@@ -5,21 +5,14 @@
 ```
 colcon build   --packages-up-to ocs2_core sysu219_guide_controller sysu219_description keyboard_input hardware_sysu219   --symlink-install   --event-handlers console_direct+   --continue-on-error   --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${HOME}/219_ws/install
 ```
-* v3.1之后，v4之前：
-```
-colcon build   --packages-up-to ocs2_core unitree_guide_controller go1_description keyboard_input hardware_unitree_mujoco   --symlink-install   --event-handlers console_direct+   --continue-on-error   --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${HOME}/219_ws/install
-```
-* v3.1之前：
-```
-colcon build --packages-up-to unitree_guide_controller go1_description keyboard_input hardware_unitree_mujoco --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --event-handlers console_direct+ --continue-on-error --cmake-args -DCMAKE_INSTALL_PREFIX=${HOME}/219_ws/install
-```
+
 2. source一下资源目录
 ```
 source install/setup.bash
 ```
 3. 运行launch文件
 ```
-ros2 launch unitree_guide_controller gazebo_classic.launch.py
+ros2 launch sysu219_guide_controller robot_hardware.launch.py
 ```
 4. 开启plotjugger进行数据可视化
 ```

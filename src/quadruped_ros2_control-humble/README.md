@@ -72,7 +72,7 @@ Video on Real Sysu219 Robot:
 * Launch the ros2-control
     ```bash
     source ~/ros2_ws/install/setup.bash
-    ros2 launch sysu219_guide_controller gazebo_classic.launch.py
+    ros2 launch sysu219_guide_controller robot_hardware.launch.py
     ```
 * Run the keyboard control node
     ```bash
