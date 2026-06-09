@@ -13,6 +13,7 @@ set(CONTROLLER_INCLUDE_DEPENDS
         rcpputils
         controller_interface
         realtime_tools
+        std_msgs
 )
 
 # find dependencies
