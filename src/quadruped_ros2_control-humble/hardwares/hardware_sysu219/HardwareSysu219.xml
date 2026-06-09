@@ -1,0 +1,9 @@
+<library path="hardware_sysu219">
+  <class name="hardware_sysu219/HardwareSysu219"
+         type="HardwareSysu219"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>
+      Robot System for sysu219 quadruped robot.
+    </description>
+  </class>
+</library>

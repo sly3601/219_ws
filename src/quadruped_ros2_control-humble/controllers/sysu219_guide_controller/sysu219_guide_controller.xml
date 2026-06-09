@@ -1,0 +1,9 @@
+<library path="sysu219_guide_controller">
+    <class name="sysu219_guide_controller/Sysu219GuideController"
+           type="sysu219_guide_controller::Sysu219GuideController"
+           base_class_type="controller_interface::ControllerInterface">
+        <description>
+            Quadruped Controller based on Sysu219 Guide.
+        </description>
+    </class>
+</library>

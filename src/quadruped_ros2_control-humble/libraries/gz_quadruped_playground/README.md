@@ -15,7 +15,7 @@ colcon build --packages-up-to gz_quadruped_playground --symlink-install
 
 ## Launch Simulation
 
-* Unitree Guide Controller
+* Sysu219 Guide Controller
   ```bash
   source ~/ros2_ws/install/setup.bash
   ros2 launch gz_quadruped_playground gazebo.launch.py

@@ -17,7 +17,7 @@ source ~/ros2_ws/install/setup.bash
 ros2 launch joystick_input joystick.launch.py
 ```
 
-## 1. Use Instructions for Unitree Guide
+## 1. Use Instructions for Sysu219 Guide
 
 ### 1.1 Control Mode
 

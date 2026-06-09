@@ -1,7 +1,11 @@
 # 1. 代码运行方式
 1. 编译
 
-* v3.1之后：
+* v4之后：
+```
+colcon build   --packages-up-to ocs2_core sysu219_guide_controller sysu219_description keyboard_input hardware_sysu219   --symlink-install   --event-handlers console_direct+   --continue-on-error   --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${HOME}/219_ws/install
+```
+* v3.1之后，v4之前：
 ```
 colcon build   --packages-up-to ocs2_core unitree_guide_controller go1_description keyboard_input hardware_unitree_mujoco   --symlink-install   --event-handlers console_direct+   --continue-on-error   --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${HOME}/219_ws/install
 ```
@@ -86,7 +90,7 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
 * 2026.04.19 v2.62
   * 完成了足底力分配算法核心balance_ctrl_->calF函数QP二次优化问题的学习，暂时禁用roll/pitch闭环，物理参数待更新标定。
   * 足底力分配QP优化算法正常运行，抬腿高度至少要0.05才有用，目前的参数抬腿太低的话后腿是抬不起来的，待调参
-  * 重大问题！右前的大腿和小腿，又是同时转了一整圈。我心态崩了。修改逻辑：非常详细地整理底层offset修正逻辑算法，然后加入补丁：思路：因为初始的read函数不断读取的passive状态，各关节总会落在正常的位置，所以多加一轮判断，如果位置差别过大直接while(1)卡死，无法忍受。
+  * 重大问题！右前的大腿和小腿，又是同时转了一整圈。我心态崩了。修改逻别动辑：非常详细地整理底层offset修正逻辑算法，然后加入补丁：思路：因为初始的read函数不断读取的passive状态，各关节总会落在正常的位置，所以多加一轮判断，如果位置差别过大直接while(1)卡死，无法忍受。
 * 2026.04.21 v2.62修复
   * 全新的HardwareUnitree.cpp内部底层确定关节位置逻辑，加上硬保险逻辑，进一步保证安全。
 * 2026.04.23 v2.7
@@ -126,3 +130,5 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
 * 2026.05.14 v3.1
   * 重大更新：初次移植加入一整套OSC2库，和高仿的 基础convex MPC的代码，更新了colcon build的语句。在libraries目录里加了全套的ocs2_ros2的第三方库
   * 弃用了原来的QP++的求解库，它已经不适合高速QP求解了，改用ocs2_ros2库自带并且性能足够优秀的HPIPM库。
+   ## V4系列
+**V4系列开发中**

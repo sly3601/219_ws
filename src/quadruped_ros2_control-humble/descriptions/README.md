@@ -1,20 +1,9 @@
 # Robot Descriptions
 
-This folder contains the URDF and SRDF files for the quadruped robot.
+This folder contains the URDF and SRDF files for the Sysu219 quadruped robot.
 
-* Unitree
-    * [Go1](unitree/go1_description/)
-    * [Go2](unitree/go2_description/)
-    * [A1](unitree/a1_description/)
-    * [Aliengo](unitree/aliengo_description/)
-    * [B2](unitree/b2_description/)
-* Xiaomi
-    * [Cyberdog](xiaomi/cyberdog_description/)
-* Deep Robotics
-    * [Lite 3](deep_robotics/lite3_description/)
-    * [X30](deep_robotics/x30_description/)
-* Anybotics
-    * [Anymal C](anybotics/anymal_c_description/)
+* Sysu219
+    * [Sysu219](sysu219/sysu219_description/)
 
 ## 1. Steps to transfer urdf to Mujoco model
 

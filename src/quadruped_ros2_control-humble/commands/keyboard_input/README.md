@@ -20,7 +20,7 @@ source ~/ros2_ws/install/setup.bash
 ros2 run keyboard_input keyboard_input
 ```
 
-## 1. Use Instructions for Unitree Guide
+## 1. Use Instructions for Sysu219 Guide
 ### 1.1 Control Mode
 * Passive Mode: Keyboard 1
 * Fixed Stand: Keyboard 2

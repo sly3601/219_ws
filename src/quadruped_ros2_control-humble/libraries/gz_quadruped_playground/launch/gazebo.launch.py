@@ -64,7 +64,7 @@ def launch_setup(context, *args, **kwargs):
         controller_launch = IncludeLaunchDescription(
             PythonLaunchDescriptionSource([PathJoinSubstitution([FindPackageShare('gz_quadruped_playground'),
                                                                  'launch',
-                                                                 'unitree_guide.launch.py'])])
+                                                                 'sysu219_guide.launch.py'])])
         )
         rviz_config_file = os.path.join(get_package_share_directory('gz_quadruped_playground'), "config", "rviz.rviz")
 
@@ -99,7 +99,7 @@ def generate_launch_description():
 
     pkg_description = DeclareLaunchArgument(
         'pkg_description',
-        default_value='go2_description',
+        default_value='sysu219_description',
         description='package for robot description'
     )
 
@@ -111,7 +111,7 @@ def generate_launch_description():
 
     controller = DeclareLaunchArgument(
         'controller',
-        default_value='unitree_guide',
+        default_value='sysu219_guide',
         description='The ROS2-Control Controllers'
     )
 

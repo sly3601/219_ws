@@ -1,0 +1,154 @@
+//
+// Created by tlab-uav on 24-9-16.
+//
+
+#include "sysu219_guide_controller/control/BalanceCtrl.h"
+
+#include <sysu219_guide_controller/common/mathTools.h>
+#include <sysu219_guide_controller/robot/QuadrupedRobot.h>
+
+#include "quadProgpp/QuadProg++.hh"
+
+BalanceCtrl::BalanceCtrl(const std::shared_ptr<QuadrupedRobot> &robot) {
+    // mass_ = robot->mass_;
+    mass_ = 40.5;
+
+    alpha_ = 0.001;
+    beta_ = 0.001; //由0.1增大到0.2，越大运动越平滑，越小越激进
+    g_ << 0, 0, -9.81;
+    friction_ratio_ = 0.4;
+    friction_mat_ << 1, 0, friction_ratio_, -1, 0, friction_ratio_, 0, 1, friction_ratio_, 0, -1,
+            friction_ratio_, 0, 0, 1;
+
+    pcb_ = Vec3(0.0, 0.0, 0.0);  //修改了质心位置，原本0 0 0 注意，这里的pcb_是质心位置，这个变量是balance控制器内部的private参数，和troting的pcb_没有关系了。
+    // pcb_ = Vec3(-0.10, -0.02, -0.04);
+    // Ib_ = Vec3(0.0792, 0.2085, 0.2265).asDiagonal(); // 原来宇树的参数
+    Ib_ = Vec3(0.624, 2.683, 2.934).asDiagonal(); // 暂定的参数
+
+    Vec6 s;
+    Vec12 w, u;
+    w << 10, 6, 3, 
+         10, 6, 3, 
+         10, 6, 3, 
+         10, 6, 3; // 提高后腿 fz 的惩罚？
+    u << 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3;
+    s << 40, 40, 220, 720, 720, 100; // 减小yaw方向权重到80
+
+    S_ = s.asDiagonal();
+    W_ = w.asDiagonal();
+    U_ = u.asDiagonal();
+
+    F_prev_.setZero();
+}
+
+// 已知机身现在“想要”的总力和总力矩，求四条腿各自应该提供多少足底反力。
+Vec34 BalanceCtrl::calF(const Vec3 &ddPcd, const Vec3 &dWbd, const RotMat &rot_matrix,
+                        const Vec34 &feet_pos_2_body, const VecInt4 &contact) {
+    calMatrixA(feet_pos_2_body, rot_matrix);
+    calVectorBd(ddPcd, dWbd, rot_matrix);// 正确，传入G系下期望加速度，G系下期望角加速度,B2P旋转矩阵
+    calConstraints(contact);
+
+    G_ = A_.transpose() * S_ * A_ + alpha_ * W_ + beta_ * U_;
+    g0T_ = -bd_.transpose() * S_ * A_ - beta_ * F_prev_.transpose() * U_;
+
+    solveQP();
+
+    F_prev_ = F_;
+    return vec12ToVec34(F_);
+}
+
+void BalanceCtrl::calMatrixA(const Vec34 &feet_pos_2_body, const RotMat &rotM) {
+    for (int i = 0; i < 4; ++i) {
+        A_.block(0, 3 * i, 3, 3) = I3;
+        A_.block(3, 3 * i, 3, 3) = skew(Vec3(feet_pos_2_body.col(i)) - rotM * pcb_);
+    }
+}
+
+void BalanceCtrl::calVectorBd(const Vec3 &ddPcd, const Vec3 &dWbd, const RotMat &rotM) {
+    bd_.head(3) = mass_ * (ddPcd - g_); //正确
+    bd_.tail(3) = rotM * Ib_ * rotM.transpose() * dWbd; // 正确，从右往左算，dWbd是G系下的期望角加速度
+}
+
+void BalanceCtrl::calConstraints(const VecInt4 &contact) {
+    int contactLegNum = 0;
+    for (int i(0); i < 4; ++i) {
+        if (contact[i] == 1) {
+            contactLegNum += 1;
+        }
+    }
+
+    CI_.resize(5 * contactLegNum, 12);
+    ci0_.resize(5 * contactLegNum);
+    CE_.resize(3 * (4 - contactLegNum), 12);
+    ce0_.resize(3 * (4 - contactLegNum));
+
+    CI_.setZero();
+    ci0_.setZero();
+    CE_.setZero();
+    ce0_.setZero();
+
+    int ceID = 0;
+    int ciID = 0;
+    for (int i(0); i < 4; ++i) {
+        if (contact[i] == 1) {
+            CI_.block(5 * ciID, 3 * i, 5, 3) = friction_mat_;
+            ++ciID;
+        } else {
+            CE_.block(3 * ceID, 3 * i, 3, 3) = I3;
+            ++ceID;
+        }
+    }
+}
+
+void BalanceCtrl::solveQP() {
+    const long n = F_.size();
+    const long m = ce0_.size();
+    const long p = ci0_.size();
+
+    quadprogpp::Matrix<double> G, CE, CI;
+    quadprogpp::Vector<double> g0, ce0, ci0, x;
+
+    G.resize(n, n);
+    CE.resize(n, m);
+    CI.resize(n, p);
+    g0.resize(n);
+    ce0.resize(m);
+    ci0.resize(p);
+    x.resize(n);
+
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < n; ++j) {
+            G[i][j] = G_(i, j);
+        }
+    }
+
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < m; ++j) {
+            CE[i][j] = CE_.transpose()(i, j);
+        }
+    }
+
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < p; ++j) {
+            CI[i][j] = CI_.transpose()(i, j);
+        }
+    }
+
+    for (int i = 0; i < n; ++i) {
+        g0[i] = g0T_[i];
+    }
+
+    for (int i = 0; i < m; ++i) {
+        ce0[i] = ce0_[i];
+    }
+
+    for (int i = 0; i < p; ++i) {
+        ci0[i] = ci0_[i];
+    }
+
+    solve_quadprog(G, g0, CE, ce0, CI, ci0, x);
+
+    for (int i = 0; i < n; ++i) {
+        F_[i] = x[i];
+    }
+}

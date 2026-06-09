@@ -13,11 +13,11 @@ Todo List:
 
 - [x] **[2025-02-23]** Add Gazebo Playground
   - [x] OCS2 controller for Gazebo Simulation
-  - [x] Refactor FSM and Unitree Guide Controller
-- [x] **[2025-03-30]** Add Real Go2 Robot Support
+  - [x] Refactor FSM and Sysu219 Guide Controller
+- [x] **[2025-03-30]** Add Real Sysu219 Robot Support
 - [ ] OCS2 Perceptive locomotion demo
 
-Video on Real Unitree Go2 Robot:
+Video on Real Sysu219 Robot:
 [![](http://i0.hdslb.com/bfs/archive/7d3856b3c5e5040f24990d3eab760cf8ba4cf80d.jpg)](https://www.bilibili.com/video/BV1QpZaY8EYV/)
 
 ## 1. Quick Start
@@ -29,28 +29,27 @@ Video on Real Unitree Go2 Robot:
     ```
 * Compile the package
     ```bash
-    colcon build --packages-up-to unitree_guide_controller go2_description keyboard_input --symlink-install
+    colcon build --packages-up-to sysu219_guide_controller sysu219_description keyboard_input --symlink-install
     ```
 
-### 1.1 Mujoco Simulator or Real Unitree Robot
-> **Warning:** CycloneDDS ROS2 RMW may conflict with unitree_sdk2. If you cannot launch unitree mujoco simulation
-> without `sudo`, then you cannot used `unitree_mujoco_hardware`. This conflict could be solved by one of below two
+### 1.1 Mujoco Simulator or Real Sysu219 Robot
+> **Warning:** CycloneDDS ROS2 RMW may conflict with unitree_sdk2. If you cannot launch the Mujoco simulation
+> without `sudo`, then you cannot use the hardware_sysu219 interface. This conflict could be solved by one of below two
 > methods:
 > 1. Uninstall CycloneDDS ROS2 RMW, used another ROS2 RMW, such as FastDDS **[Recommended]**.
 > 2. Follow the guide in [unitree_ros2](https://github.com/unitreerobotics/unitree_ros2) to configure the ROS2 RMW by
      compiling cyclone dds.
 
-* Compile Unitree Hardware Interfaces
+* Compile Sysu219 Hardware Interfaces
     ```bash
     cd ~/ros2_ws
-    colcon build --packages-up-to hardware_unitree_mujoco
+    colcon build --packages-up-to hardware_sysu219
     ```
-* Follow the guide in [unitree_mujoco](https://github.com/legubiao/unitree_mujoco) to launch the unitree mujoco go2
-  simulation
+* Launch the Mujoco simulation environment
 * Launch the ros2-control
     ```bash
     source ~/ros2_ws/install/setup.bash
-    ros2 launch unitree_guide_controller mujoco.launch.py
+    ros2 launch sysu219_guide_controller mujoco.launch.py
     ```
 * Run the keyboard control node
     ```bash
@@ -73,7 +72,7 @@ Video on Real Unitree Go2 Robot:
 * Launch the ros2-control
     ```bash
     source ~/ros2_ws/install/setup.bash
-    ros2 launch unitree_guide_controller gazebo_classic.launch.py
+    ros2 launch sysu219_guide_controller gazebo_classic.launch.py
     ```
 * Run the keyboard control node
     ```bash
@@ -97,7 +96,7 @@ Video on Real Unitree Go2 Robot:
 * Launch the ros2-control
   ```bash
   source ~/ros2_ws/install/setup.bash
-  ros2 launch unitree_guide_controller gazebo.launch.py
+  ros2 launch sysu219_guide_controller gazebo.launch.py
   ```
 * Run the keyboard control node
     ```bash
@@ -107,8 +106,8 @@ Video on Real Unitree Go2 Robot:
 
 ![gazebo](.images/gazebo.png)
 
-For more details, please refer to the [unitree guide controller](controllers/unitree_guide_controller/)
-and [go2 description](descriptions/unitree/go2_description/).
+For more details, please refer to the [sysu219 guide controller](controllers/sysu219_guide_controller/)
+and [sysu219 description](descriptions/sysu219/sysu219_description/).
 
 ## What's Next
 Congratulations! You have successfully launched the quadruped robot in the simulation. Here are some suggestions for you to have a try:
@@ -119,7 +118,7 @@ Congratulations! You have successfully launched the quadruped robot in the simul
 * **Simulate with more sensors**
   * [Gazebo Quadruped Playground](libraries/gz_quadruped_playground): Provide gazebo simulation with lidar or depth camera.
 * **Real Robot Deploy**
-  * [Unitree Go2 Robot](descriptions/unitree/go2_description): Check here about how to deploy on go2 robot.
+  * [Sysu219 Robot](descriptions/sysu219/sysu219_description): Check here about how to deploy on Sysu219.
 
 ## Reference
 
