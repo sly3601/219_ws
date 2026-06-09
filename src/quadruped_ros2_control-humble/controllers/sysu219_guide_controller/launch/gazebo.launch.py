@@ -43,7 +43,6 @@ def launch_setup(context, *args, **kwargs):
         arguments=[
             '-topic', 'robot_description',
             '-entity', 'sysu219',
-            '-allow_renaming', 'true',
             '-z', init_height,
         ],
     )
@@ -77,6 +76,19 @@ def launch_setup(context, *args, **kwargs):
                    "--controller-manager", "/controller_manager"],
     )
 
+    leg_pd_controller = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=["leg_pd_controller",
+                   "--controller-manager", "/controller_manager"],
+    )
+
+    sysu219_guide_controller = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=["sysu219_guide_controller", "--controller-manager", "/controller_manager"],
+    )
+
     return [
         rviz,
         IncludeLaunchDescription(
@@ -97,6 +109,18 @@ def launch_setup(context, *args, **kwargs):
             event_handler=OnProcessExit(
                 target_action=joint_state_publisher,
                 on_exit=[imu_sensor_broadcaster],
+            )
+        ),
+        RegisterEventHandler(
+            event_handler=OnProcessExit(
+                target_action=imu_sensor_broadcaster,
+                on_exit=[leg_pd_controller],
+            )
+        ),
+        RegisterEventHandler(
+            event_handler=OnProcessExit(
+                target_action=leg_pd_controller,
+                on_exit=[sysu219_guide_controller],
             )
         ),
     ]
