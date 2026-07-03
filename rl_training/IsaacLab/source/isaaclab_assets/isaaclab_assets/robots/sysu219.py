@@ -11,8 +11,8 @@ from isaaclab.assets.articulation import ArticulationCfg
 
 SYSU219_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        # TODO: 改成你的 sysu219.usd 真实路径
-        usd_path=r"C:/219_ws/rl_training/IsaacLab/source/isaaclab_assets/data/Robots/SYSU219/sysu219.usd",
+        # sysu219.usd 真实路径
+        usd_path="C:/219_ws/rl_training/IsaacLab/source/isaaclab_assets/data/Robots/SYSU219/sysu219.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
@@ -52,8 +52,8 @@ SYSU219_CFG = ArticulationCfg(
             ],
 
             # 单电机最大扭矩约 200 Nm， 保守写100Nm
-            effort_limit=100.0,
-            saturation_effort=100.0,
+            effort_limit=165.0,
+            saturation_effort=200.0,
 
             # 先写 20 rad/s，3.18 转/秒
             velocity_limit=22.0,
