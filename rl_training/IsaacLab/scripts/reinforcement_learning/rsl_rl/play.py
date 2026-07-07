@@ -136,6 +136,37 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
 
+        # ================= SYSU219 DEBUG START =================
+    try:
+        robot = env.unwrapped.scene["robot"]
+
+        print("\n========== ISAAC SYSU219 DEBUG ==========")
+
+        print("\n[joint_names]")
+        for i, name in enumerate(robot.joint_names):
+            print(i, name)
+
+        print("\n[default_joint_pos]")
+        print(robot.data.default_joint_pos[0].detach().cpu().numpy())
+
+        print("\n[joint_pos_now]")
+        print(robot.data.joint_pos[0].detach().cpu().numpy())
+
+        print("\n[joint_vel_now]")
+        print(robot.data.joint_vel[0].detach().cpu().numpy())
+
+        print("\n[body_names]")
+        for i, name in enumerate(robot.body_names):
+            print(i, name)
+
+        print("========== ISAAC SYSU219 DEBUG END ==========\n")
+
+    except Exception as e:
+        print("[SYSU219 DEBUG ERROR]", e)
+    # ================= SYSU219 DEBUG END =================
+
+    
+
     # convert to single-agent instance if required by the RL algorithm
     if isinstance(env.unwrapped, DirectMARLEnv):
         env = multi_agent_to_single_agent(env)
