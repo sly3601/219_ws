@@ -37,6 +37,10 @@ find_package(Boost REQUIRED COMPONENTS system filesystem log log_setup)
 find_package(blasfeo REQUIRED)
 find_package(hpipm REQUIRED)
 
+set(ONNXRUNTIME_ROOT /opt/onnxruntime)
+include_directories(${ONNXRUNTIME_ROOT}/include)
+link_directories(${ONNXRUNTIME_ROOT}/lib)
+
 foreach (Dependency IN ITEMS ${CONTROLLER_INCLUDE_DEPENDS})
     find_package(${Dependency} REQUIRED)
 endforeach ()
@@ -68,6 +72,9 @@ add_library(${PROJECT_NAME} SHARED
 
         src/debug/foot_marker_publisher.cpp
 
+        src/control/RLPolicy.cpp
+        src/FSM/StateRLWalk.cpp
+
 )
 target_include_directories(${PROJECT_NAME}
         PUBLIC
@@ -96,6 +103,8 @@ target_link_libraries(${PROJECT_NAME}
         PUBLIC
         hpipm
         blasfeo
+
+        onnxruntime
 )
 
 # 让 ROS2 pluginlib 加载 libsysu219_guide_controller.so 时，

@@ -304,6 +304,7 @@ namespace sysu219_guide_controller
         state_list_.freeStand = std::make_shared<StateFreeStand>(ctrl_interfaces_, ctrl_component_);
         state_list_.balanceTest = std::make_shared<StateBalanceTest>(ctrl_interfaces_, ctrl_component_);
         state_list_.trotting = std::make_shared<StateTrotting>(ctrl_interfaces_, ctrl_component_);
+        state_list_.rlWalk = std::make_shared<StateRLWalk>(ctrl_interfaces_, ctrl_component_);
 
         // Initialize FSM
         current_state_ = state_list_.passive;
@@ -365,6 +366,8 @@ namespace sysu219_guide_controller
             return state_list_.swingTest;
         case FSMStateName::BALANCETEST:
             return state_list_.balanceTest;
+        case FSMStateName::RLWALK:
+            return state_list_.rlWalk;
         default:
             return state_list_.invalid;
         }
