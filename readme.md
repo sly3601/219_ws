@@ -1,7 +1,75 @@
-# 1. 代码运行方式
-1. 编译
+# 1. 首次环境搭建
+1. 安装ROS2 humble
+```
+wget http://fishros.com/install -O fishros && . fishros
+```
+2. 安装git，并从云端下载我们的机器狗全部工程代码
+```
+sudo apt install git
+git clone https://github.com/sly3601/219_ws
+```
+3. 安装各种前置库
+```
+sudo apt-get update
+sudo apt-get install ros-humble-hardware-interface
+sudo apt-get install ros-humble-controller-interface
+sudo apt-get install ros-humble-realtime-tools
+sudo apt-get install ros-humble-gazebo-ros ros-humble-gazebo-ros2-control
+sudo apt-get install ros-humble-xacro
+sudo apt-get install ros-humble-ros2-control ros-humble-ros2-controllers
+sudo apt-get install ros-humble-robot-state-publisher ros-humble-joint-state-broadcaster ros-humble-imu-sensor-broadcaster
+```
+4. 安装RL的前置库
+```
+装 C++ ONNX Runtime如下：
+cd ~/Downloads
 
-* v4之后：
+ORT_VERSION=1.18.1
+
+wget https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz
+
+tar -xzf onnxruntime-linux-x64-${ORT_VERSION}.tgz
+
+sudo mkdir -p /opt/onnxruntime
+sudo cp -r onnxruntime-linux-x64-${ORT_VERSION}/* /opt/onnxruntime/
+
+装完之后配置动态库路径：
+echo "/opt/onnxruntime/lib" | sudo tee /etc/ld.so.conf.d/onnxruntime.conf
+sudo ldconfig
+```
+5. 安装串口相关库
+```
+sudo apt install ros-humble-serial-driver
+sudo apt install libserial-dev
+sudo apt-get install cutecom
+```
+```
+由于ros2没有官方提供，需要源码编译串口库，另新建一个工作空间：
+git clone https://github.com/ZhaoXiangBox/serial.git
+
+cd serial
+```
+```
+sudo apt update
+sudo apt install -y cmake g++ gcc libudev-dev
+```
+```
+mkdir build          # 创建build目录（若已存在会提示，可忽略）
+cd build             # 进入build目录（编译文件会生成在这里，不污染源码）
+```
+```
+cmake ../            # 关键：指定源码路径，生成Makefile
+```
+```
+make -j$(nproc)      # $(nproc)自动匹配CPU核心数，编译效率最高
+```
+```
+sudo make install    # 正确的安装命令，将库文件复制到系统默认路径
+```
+到此环境搭建全部完成。
+
+# 2. 代码运行方式
+1. 编译
 ```
 colcon build \
   --packages-up-to ocs2_core leg_pd_controller sysu219_guide_controller sysu219_description keyboard_input hardware_sysu219 \
@@ -35,7 +103,7 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
 ```
 
 
-# 2. 四足机器人开发过程记录
+# 3. 四足机器人开发过程记录
 ## V1系列
 **V1系列跑通了所有底层硬件通讯和初始机器人数学建模和姿态调试，并完成至troting状态的正常开环运行**
 * 2026.01.14 V1.1 完成了新硬件接口的初步对接！
