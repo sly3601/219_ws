@@ -171,6 +171,16 @@ namespace sysu219_guide_controller
             {
                 mode_ = FSMMode::CHANGE;
                 next_state_ = getNextState(next_state_name_);
+                // 兜底：状态名没有对应实现时 next_state_ 会是空指针，绝不能让下面直接解引用
+                if (!next_state_)
+                {
+                    RCLCPP_ERROR(get_node()->get_logger(),
+                                 "FSM 找不到状态实现（state id %d），强制切到 PASSIVE",
+                                 static_cast<int>(next_state_name_));
+                    next_state_ = state_list_.passive;
+                }
+                // 记下"上一状态名"，让 next_state_ 的 enter() 能据此决定过渡策略
+                next_state_->previous_state_name = current_state_->state_name;
                 RCLCPP_INFO(get_node()->get_logger(), "Switched from %s to %s",
                             current_state_->state_name_string.c_str(), next_state_->state_name_string.c_str());
             }
@@ -186,6 +196,18 @@ namespace sysu219_guide_controller
 
             current_state_->enter();
             mode_ = FSMMode::NORMAL;
+        }
+
+        // ========== 发布关节目标位置（cmd_pos）镜像到 /joint_cmd_states ==========
+        if (joint_cmd_pub_) {
+            sensor_msgs::msg::JointState msg;
+            msg.header.stamp = time;
+            msg.name = joint_names_;
+            msg.position.resize(joint_names_.size());
+            for (size_t i = 0; i < joint_names_.size() && i < ctrl_interfaces_.joint_position_command_interface_.size(); ++i) {
+                msg.position[i] = ctrl_interfaces_.joint_position_command_interface_[i].get().get_value();
+            }
+            joint_cmd_pub_->publish(msg);
         }
 
         return controller_interface::return_type::OK;
@@ -210,10 +232,34 @@ namespace sysu219_guide_controller
                 auto_declare<std::vector<std::string>>("feet_names", feet_names_);
 
             // pose parameters
+            prone_pos_ = auto_declare<std::vector<double>>("prone_pos", prone_pos_);
             down_pos_ = auto_declare<std::vector<double>>("down_pos", down_pos_);
             stand_pos_ = auto_declare<std::vector<double>>("stand_pos", stand_pos_);
             stand_kp_ = auto_declare<double>("stand_kp", stand_kp_);
             stand_kd_ = auto_declare<double>("stand_kd", stand_kd_);
+            prone_kp_ = auto_declare<double>("prone_kp", prone_kp_);
+            prone_kd_ = auto_declare<double>("prone_kd", prone_kd_);
+
+            // 姿态向量长度校验：三个姿态都必须恰好 12 个关节角，
+            // 否则各固定姿态状态里的 target_pos_[i] (i < 12) 会越界读
+            const auto check_pose_size = [this](const char* name, const std::vector<double>& pose)
+            {
+                if (pose.size() == 12)
+                {
+                    return true;
+                }
+                RCLCPP_ERROR(get_node()->get_logger(),
+                             "参数 %s 需要 12 个关节角（FR/FL/RR/RL × hip/thigh/calf），当前 %zu 个",
+                             name, pose.size());
+                return false;
+            };
+
+            if (!check_pose_size("prone_pos", prone_pos_)
+                || !check_pose_size("down_pos", down_pos_)
+                || !check_pose_size("stand_pos", stand_pos_))
+            {
+                return controller_interface::CallbackReturn::ERROR;
+            }
 
             get_node()->get_parameter("update_rate", ctrl_interfaces_.frequency_);
             RCLCPP_INFO(get_node()->get_logger(), "Controller Manager Update Rate: %d Hz", ctrl_interfaces_.frequency_);
@@ -265,6 +311,7 @@ namespace sysu219_guide_controller
         ctrl_interfaces_.node = get_node(); // <-- 移到最前面！
         ctrl_interfaces_.body_debug_pub = ctrl_interfaces_.node->create_publisher<std_msgs::msg::Float64MultiArray>("/body_debug", 10);
         ctrl_interfaces_.debug_pub      = ctrl_interfaces_.node->create_publisher<std_msgs::msg::Float64MultiArray>("/trotting_debug", 10);
+        joint_cmd_pub_ = ctrl_interfaces_.node->create_publisher<sensor_msgs::msg::JointState>("/joint_cmd_states", 10);
         tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(get_node());
         // clear out vectors in case of restart
         ctrl_interfaces_.clear();
@@ -298,6 +345,7 @@ namespace sysu219_guide_controller
 
         // Create FSM List
         state_list_.passive = std::make_shared<StatePassive>(ctrl_interfaces_);
+        state_list_.fixedProne = std::make_shared<StateFixedProne>(ctrl_interfaces_, prone_pos_, prone_kp_, prone_kd_);
         state_list_.fixedDown = std::make_shared<StateFixedDown>(ctrl_interfaces_, down_pos_, stand_kp_, stand_kd_);
         state_list_.fixedStand = std::make_shared<StateFixedStand>(ctrl_interfaces_, stand_pos_, stand_kp_, stand_kd_);
         state_list_.swingTest = std::make_shared<StateSwingTest>(ctrl_interfaces_, ctrl_component_);
@@ -354,6 +402,8 @@ namespace sysu219_guide_controller
             return state_list_.invalid;
         case FSMStateName::PASSIVE:
             return state_list_.passive;
+        case FSMStateName::FIXEDPRONE:
+            return state_list_.fixedProne;
         case FSMStateName::FIXEDDOWN:
             return state_list_.fixedDown;
         case FSMStateName::FIXEDSTAND:

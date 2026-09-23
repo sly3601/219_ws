@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<?xml-model
+  href="http://download.ros.org/schema/package_format3.xsd"
+  schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>tools</name>
+  <version>0.1.0</version>
+  <description>
+    调试工具集：RQt 关节微调插件 joint_tuner（12 关节滑条调姿 + 姿态切换 + 一键保存快照）、
+    RQt 只读查看插件 joint_state_viewer（实测 / 目标双列对比），以及可视化链路用的
+    joint_state_relay 节点。
+  </description>
+  <maintainer email="sly@example.com">sly</maintainer>
+  <license>MIT</license>
+
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>gazebo_msgs</depend>
+  <depend>python_qt_binding</depend>
+  <depend>python3-yaml</depend>
+
+  <exec_depend>rqt_gui</exec_depend>
+  <exec_depend>rqt_gui_py</exec_depend>
+  <exec_depend>gazebo_ros</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+    <rqt_gui plugin="${prefix}/plugin.xml"/>
+  </export>
+</package>

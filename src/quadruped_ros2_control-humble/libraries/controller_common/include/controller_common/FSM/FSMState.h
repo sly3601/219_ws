@@ -35,6 +35,10 @@ public:
     FSMStateName state_name;
     std::string state_name_string;
 
+    // 进入本状态之前所处状态，由 controller 在切状态时填充，
+    // 子类可在 enter() 中据此选择不同的过渡策略。
+    FSMStateName previous_state_name = FSMStateName::INVALID;
+
 protected:
     CtrlInterfaces& ctrl_interfaces_;
 };

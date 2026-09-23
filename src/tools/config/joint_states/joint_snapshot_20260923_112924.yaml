@@ -1,0 +1,15 @@
+# sysu219 关节目标快照
+# timestamp: 2026-09-23T11:29:24.329477
+joint_targets_rad:
+  - {name: FR_hip_joint, position: -0.054000}
+  - {name: FR_thigh_joint, position: 1.111000}
+  - {name: FR_calf_joint, position: -2.155000}
+  - {name: FL_hip_joint, position: 0.054000}
+  - {name: FL_thigh_joint, position: 1.111000}
+  - {name: FL_calf_joint, position: -2.155000}
+  - {name: RR_hip_joint, position: -0.163000}
+  - {name: RR_thigh_joint, position: 0.999000}
+  - {name: RR_calf_joint, position: -2.094000}
+  - {name: RL_hip_joint, position: 0.163000}
+  - {name: RL_thigh_joint, position: 0.999000}
+  - {name: RL_calf_joint, position: -2.094000}

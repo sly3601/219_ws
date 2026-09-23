@@ -46,9 +46,10 @@ void StatePassive::exit()
 
 FSMStateName StatePassive::checkChange()
 {
+    // 按 2 进入"完全趴着"状态（再按 2 依次到半趴、站立）
     if (ctrl_interfaces_.control_inputs_.command == 2)
     {
-        return FSMStateName::FIXEDDOWN;
+        return FSMStateName::FIXEDPRONE;
     }
     return FSMStateName::PASSIVE;
 }

@@ -1,3 +1,7 @@
 build/
 install/
 log/
+
+# Python 构建产物（colcon --symlink-install 时会在源码树里生成）
+__pycache__/
+*.py[cod]

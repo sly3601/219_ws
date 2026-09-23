@@ -66,13 +66,19 @@ make -j$(nproc)      # $(nproc)自动匹配CPU核心数，编译效率最高
 ```
 sudo make install    # 正确的安装命令，将库文件复制到系统默认路径
 ```
+6. 安装调试工具集（src/tools）的前置库
+```
+sudo apt-get install ros-humble-rqt-gui ros-humble-rqt-gui-py
+sudo apt-get install python3-python-qt-binding python3-yaml
+sudo apt-get install ros-humble-gazebo-ros
+```
 到此环境搭建全部完成。
 
 # 2. 代码运行方式
 1. 编译
 ```
 colcon build \
-  --packages-up-to ocs2_core leg_pd_controller sysu219_guide_controller sysu219_description keyboard_input hardware_sysu219 \
+  --packages-up-to ocs2_core leg_pd_controller sysu219_guide_controller sysu219_description keyboard_input hardware_sysu219 tools \
   --symlink-install \
   --event-handlers console_direct+ \
   --continue-on-error \
@@ -96,6 +102,14 @@ ros2 launch sysu219_guide_controller gazebo.launch.py
 * 运行键盘控制节点
 ```
 ros2 run keyboard_input keyboard_input 
+```
+* 运行关节调参工具（自带 RViz，不依赖仿真/实机，用于标定 stand_pos / down_pos / prone_pos）
+```
+ros2 launch tools joint_tuner.launch.py
+```
+* 运行关节状态查看工具（需仿真或实机已在运行，对比实测位置与目标位置）
+```
+ros2 launch tools joint_state_viewer.launch.py
 ```
 4. 开启plotjugger进行数据可视化
 ```
@@ -211,3 +225,9 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
 * 2026.06.10 v4
   * 补充gazebo仿真功能
   * 去掉所有其他品牌狗的名字，完全变成实验室的狗名称，第一只狗的名字定为：sysu219
+* 2026.09.23 v4.1
+  * 新增 FIXEDPRONE（全趴）状态：FSMState 新增状态类 StateFixedProne，三个固定姿态（全趴/半趴/站立）不再写死在控制器里，改为从 `sysu219_description/config/` 下的 `robot_control.yaml`（实机/MuJoCo）与 `gazebo.yaml`（Gazebo）读取 `stand_pos` / `down_pos` / `prone_pos`，并新增 `prone_kp` / `prone_kd` 两个增益参数；姿态参数在 `on_init` 里做 12 维长度校验，长度不对直接拒绝激活。
+  * 按键语义调整：1 键为失能（任何状态、任何时刻按下立即回 PASSIVE，不再受姿态过渡锁定期限制）；2 键变成固定姿态循环 —— PASSIVE 按 2 进全趴，之后每按一次 2 在 半趴 ⇄ 站立 之间往返；8 键从站立经半趴自动续到全趴，在半趴时按 8 直接去全趴。
+  * 控制器新增 `/joint_cmd_states` 话题，每拍发布当前关节目标位置（sensor_msgs/JointState），供调试工具对比"目标 vs 实测"。
+  * 新增独立调试工具包 `src/tools`：JointTuner（12 关节滑条调姿 + 前后腿批量同步 + 姿态切换 + 一键保存快照）、JointStateViewer（实测/目标双列只读显示）、joint_state_relay（把目标角镜像成 `/joint_states` 以在 RViz 中预览）。
+  * 修正若干状态机隐患：BALANCETEST 的 1 键改为回 PASSIVE；FIXEDDOWN 起点刚度改写为 `kp_ * kp_start_`（原先 kp/kd 起点量纲错误、kd 误用 kp_start_）；`getNextState` 加空指针兜底。

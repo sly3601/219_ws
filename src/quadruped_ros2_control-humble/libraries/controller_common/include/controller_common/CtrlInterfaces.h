@@ -49,6 +49,10 @@ struct CtrlInterfaces
     control_input_msgs::msg::Inputs control_inputs_;
     int frequency_{};
 
+    // FSM 用：FIXEDSTAND 按 8 时置位，表示"先到 FIXEDDOWN，等姿态过渡完成后再自动转到 FIXEDPRONE"。
+    // 放在这里是因为切状态时各状态 enter() 会把 control_inputs_.command 清 0，按键信号留不住。
+    bool go_prone_after_down{false};
+
     // ========== 新增：添加发布器指针 ==========
     std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64MultiArray>> body_debug_pub;
     std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64MultiArray>> debug_pub;
@@ -73,6 +77,9 @@ struct CtrlInterfaces
         imu_state_interface_.clear();
         imu_state_interface_.clear();
         foot_force_state_interface_.clear();
+
+        // 控制器重启（deactivate -> activate）时，FSM 的中间标志不能带到下一次运行
+        go_prone_after_down = false;
     }
 };
 

@@ -8,6 +8,7 @@ This repository contains the ros2-control based controllers for the quadruped ro
 * [Commands](commands): contains command node used to send command to the controller
 * [Descriptions](descriptions): contains the urdf model of the robot
 * [Hardwares](hardwares): contains the ros2-control hardware interface for the robot
+* [Tools](../tools): standalone RQt debug tools (joint tuning / joint state viewer), built independently from the controller
 
 Todo List:
 
@@ -24,7 +25,7 @@ Video on Real Sysu219 Robot:
 
 * rosdep
     ```bash
-    cd ~/ros2_ws
+    cd ~/219_ws
     rosdep install --from-paths src --ignore-src -r -y
     ```
 * Compile the package
@@ -33,31 +34,34 @@ Video on Real Sysu219 Robot:
     ```
 
 ### 1.1 Mujoco Simulator or Real Sysu219 Robot
-> **Warning:** CycloneDDS ROS2 RMW may conflict with unitree_sdk2. If you cannot launch the Mujoco simulation
-> without `sudo`, then you cannot use the hardware_sysu219 interface. This conflict could be solved by one of below two
-> methods:
+> **Warning:** CycloneDDS ROS2 RMW may conflict with unitree_sdk2, which is used by the
+> [sysu219_joystick_input](commands/sysu219_joystick_input) node. If that node cannot reach the wireless
+> remote without `sudo`, one of the below two methods could solve this conflict:
 > 1. Uninstall CycloneDDS ROS2 RMW, used another ROS2 RMW, such as FastDDS **[Recommended]**.
 > 2. Follow the guide in [unitree_ros2](https://github.com/unitreerobotics/unitree_ros2) to configure the ROS2 RMW by
-     compiling cyclone dds.
+>     compiling cyclone dds.
 
 * Compile Sysu219 Hardware Interfaces
     ```bash
-    cd ~/ros2_ws
+    cd ~/219_ws
     colcon build --packages-up-to hardware_sysu219
     ```
-* Launch the Mujoco simulation environment
-* Launch the ros2-control
+* Launch the ros2-control on the **real robot** (`robot_hardware.launch.py` loads
+  `config/robot_control.yaml` plus `config/hardware_config.yaml` through `ros2_control.xacro`)
     ```bash
-    source ~/ros2_ws/install/setup.bash
+    source ~/219_ws/install/setup.bash
+    ros2 launch sysu219_guide_controller robot_hardware.launch.py
+    ```
+* Launch the **Mujoco** simulation environment (the Mujoco C++ simulator is an external program, start it first)
+    ```bash
+    source ~/219_ws/install/setup.bash
     ros2 launch sysu219_guide_controller mujoco.launch.py
     ```
 * Run the keyboard control node
     ```bash
-    source ~/ros2_ws/install/setup.bash
+    source ~/219_ws/install/setup.bash
     ros2 run keyboard_input keyboard_input
     ```
-
-![mujoco](.images/mujoco.png)
 
 ### 1.2 Gazebo Classic Simulator (ROS2 Humble)
 
@@ -65,24 +69,26 @@ Video on Real Sysu219 Robot:
   ```bash
   sudo apt-get install ros-humble-gazebo-ros ros-humble-gazebo-ros2-control
   ```
-* Compile Leg PD Controller
+* Compile Leg PD Controller (Gazebo only exposes effort interfaces, so the PD controller is required)
     ```bash
     colcon build --packages-up-to leg_pd_controller
     ```
 * Launch the ros2-control
     ```bash
-    source ~/ros2_ws/install/setup.bash
-    ros2 launch sysu219_guide_controller robot_hardware.launch.py
+    source ~/219_ws/install/setup.bash
+    ros2 launch sysu219_guide_controller gazebo.launch.py
     ```
 * Run the keyboard control node
     ```bash
-    source ~/ros2_ws/install/setup.bash
+    source ~/219_ws/install/setup.bash
     ros2 run keyboard_input keyboard_input
     ```
 
-![gazebo classic](.images/gazebo_classic.png)
+### 1.3 Gazebo Harmonic Simulator (ROS2 Jazzy)
 
-### 1.3 Gazebo Harmonic Simulator (ROS2 Jazzy&Humble)
+> Gazebo Harmonic support lives in [gz_quadruped_playground](libraries/gz_quadruped_playground) and is only tested on
+> ROS2 Jazzy, since the `ros_gz` package name differs on Humble.
+
 * Install Gazebo
   ```bash
   sudo apt-get install ros-jazzy-ros-gz
@@ -94,16 +100,14 @@ Video on Real Sysu219 Robot:
   ```
 * Launch the ros2-control
   ```bash
-  source ~/ros2_ws/install/setup.bash
-  ros2 launch sysu219_guide_controller gazebo.launch.py
+  source ~/219_ws/install/setup.bash
+  ros2 launch gz_quadruped_playground gazebo.launch.py
   ```
 * Run the keyboard control node
     ```bash
-    source ~/ros2_ws/install/setup.bash
+    source ~/219_ws/install/setup.bash
     ros2 run keyboard_input keyboard_input
     ```
-
-![gazebo](.images/gazebo.png)
 
 For more details, please refer to the [sysu219 guide controller](controllers/sysu219_guide_controller/)
 and [sysu219 description](descriptions/sysu219/sysu219_description/).
@@ -111,11 +115,13 @@ and [sysu219 description](descriptions/sysu219/sysu219_description/).
 ## What's Next
 Congratulations! You have successfully launched the quadruped robot in the simulation. Here are some suggestions for you to have a try:
 * **More Robot Models** could be found at [description](descriptions/)
-* **Try more controllers**. 
-  * [OCS2 Quadruped Controller](controllers/ocs2_quadruped_controller): Robust MPC-based controller for quadruped robot
-  * [RL Quadruped Controller](controllers/rl_quadruped_controller): Reinforcement learning controller for quadruped robot
+* **Try more controllers**.
+  * [Sysu219 Guide Controller](controllers/sysu219_guide_controller): FSM based controller with the fixed pose, free stand, trotting, swing test, balance test and RL walk states
+  * [OCS2 Legged Robot Controller](libraries/ocs2_ros2/ocs2_robotic_examples/ocs2_legged_robot_ros): Robust MPC-based controller for quadruped robot
 * **Simulate with more sensors**
   * [Gazebo Quadruped Playground](libraries/gz_quadruped_playground): Provide gazebo simulation with lidar or depth camera.
+* **Debug and tune the robot**
+  * [Tools](../tools): RQt joint tuning / joint state viewer, plus snapshot saving for the fixed poses.
 * **Real Robot Deploy**
   * [Sysu219 Robot](descriptions/sysu219/sysu219_description): Check here about how to deploy on Sysu219.
 

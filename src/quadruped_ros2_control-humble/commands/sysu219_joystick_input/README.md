@@ -1,8 +1,9 @@
 # Sysu219 Joystick Input Node
 
-This node will listen to the wireless remote topic and publish a `unitree_go::msg::dds_::WirelessController_` message by using `unitree_sdk2`.
+This node will listen to the wireless remote topic and publish a `control_input_msgs/Input` message by using `unitree_sdk2`.
 
-> Before use this node, please use `ifconfig` command to check the network interface to connect to the robot, then change the parameter in launch file.
+> Before use this node, please use `ifconfig` command to check the network interface connected to the robot, then change the `network_interface` parameter in the launch file
+> ([joystick.launch.py](launch/joystick.launch.py), default `enp46s0`). The `domain` parameter defaults to `0`.
 
 Tested environment:
 * Ubuntu 24.04
@@ -10,37 +11,33 @@ Tested environment:
 
 ### Build Command
 ```bash
-cd ~/ros2_ws
+cd ~/219_ws
 colcon build --packages-up-to sysu219_joystick_input --symlink-install
 ```
 
 ### Launch Command
 ```bash
-source ~/ros2_ws/install/setup.bash
+source ~/219_ws/install/setup.bash
 ros2 launch sysu219_joystick_input joystick.launch.py
 ```
 
-## 1. Use Instructions for Controllers
+## 1. Use Instructions for the Sysu219 Guide Controller
 
-### 1.1 Sysu219 Guide Controller
-* Passive Mode: select
-* Fixed Down: start
-* Fixed Stand: start
-    * Free Stand: right + X
-    * Trot: right + Y
-    * SwingTest: right + B
-    * Balance: right + A
+The unitree remote buttons map to the `command` field of `control_input_msgs/msg/Inputs`:
 
-### 1.2 OCS2 Quadruped Controller
-* Passive Mode: select
-* OCS2 Mode: start
-  * Stance: start 
-  * trot: right + X
-  * standing trot: right + Y
-  * flying_trot: right + B
+| Buttons | command | Effect |
+| --- | --- | --- |
+| select | 1 | PASSIVE (motors disabled), always available |
+| start | 2 | Cycle the fixed poses: PRONE → DOWN → STAND → DOWN → STAND → ... |
+| right + B | 3 | FREE STAND (only from FIXED STAND) |
+| right + A | 4 | TROTTING (only from FIXED STAND) |
+| right + X | 5 | SWING TEST (only from FIXED STAND) |
+| right + Y | 6 | BALANCE TEST (only from FIXED STAND) |
+| left + B | 7 | RL WALK (only from FIXED STAND) |
+| left + A | 8 | PRONE: from FIXED STAND it goes to DOWN first and then continues to PRONE automatically |
+| left + X | 9 | Reserved, not handled by the guide controller |
+| left + Y | 10 | Reserved, not handled by the guide controller |
 
-### 1.3 RL Quadruped Controller
-* Passive Mode: select
-* Fixed Down: start
-* Fixed Stand: start
-  * RL Mode: right + X
+* Starting from PASSIVE, the first press of `start` goes to PRONE, then DOWN, then STAND, and afterwards
+  `start` toggles between DOWN and STAND.
+* `select` switches to PASSIVE from any state, and is not blocked by the pose transition lock.

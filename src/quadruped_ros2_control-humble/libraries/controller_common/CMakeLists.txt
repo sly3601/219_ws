@@ -23,6 +23,7 @@ endforeach ()
 add_library(${PROJECT_NAME} SHARED
         src/FSM/StatePassive.cpp
         src/FSM/BaseFixedStand.cpp
+        src/FSM/StateFixedProne.cpp
         src/FSM/StateFixedDown.cpp
 )
 

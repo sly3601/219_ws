@@ -86,14 +86,17 @@ void BaseFixedStand::exit()
 
 FSMStateName BaseFixedStand::checkChange()
 {
+    // 失能优先：1 键不受姿态过渡锁定期限制，随时可切
+    if (ctrl_interfaces_.control_inputs_.command == 1)
+    {
+        return FSMStateName::PASSIVE;
+    }
     if (percent_ < 1.5)
     {
         return FSMStateName::FIXEDSTAND;
     }
     switch (ctrl_interfaces_.control_inputs_.command)
     {
-    case 1:
-        return FSMStateName::PASSIVE;
     case 2:
         return FSMStateName::FIXEDDOWN;
     default:

@@ -7,8 +7,10 @@
 
 #include <controller_interface/controller_interface.hpp>
 #include <std_msgs/msg/string.hpp>
+#include <sensor_msgs/msg/joint_state.hpp>
 #include <controller_common/FSM/FSMState.h>
 #include <controller_common/FSM/StatePassive.h>
+#include <controller_common/FSM/StateFixedProne.h>
 #include <controller_common/FSM/StateFixedDown.h>
 #include <controller_common/common/enumClass.h>
 
@@ -27,6 +29,7 @@ namespace sysu219_guide_controller {
     struct FSMStateList {
         std::shared_ptr<FSMState> invalid;
         std::shared_ptr<StatePassive> passive;
+        std::shared_ptr<StateFixedProne> fixedProne;
         std::shared_ptr<StateFixedDown> fixedDown;
         std::shared_ptr<StateFixedStand> fixedStand;
         std::shared_ptr<StateFreeStand> freeStand;
@@ -82,7 +85,14 @@ namespace sysu219_guide_controller {
         std::vector<std::string> imu_interface_types_;
         std::vector<std::string> feet_names_;
 
-        // FR FL RR RL
+        // ========== 固定姿态参数 ==========
+        // 实际生效值来自参数文件：
+        //   仿真      descriptions/sysu219/sysu219_description/config/gazebo.yaml
+        //   实机/MuJoCo 同目录下的 config/robot_control.yaml
+        // 这里只是参数文件缺少对应键时的兜底默认值，调姿态请改参数文件。
+        // 每个姿态 12 个关节角，顺序：FR/FL/RR/RL × (hip, thigh, calf)，单位 rad
+
+        // 站立姿态（FIXEDSTAND）
         std::vector<double> stand_pos_ = {
             0.0, 0.9, -1.53,
             0.0, 0.9, -1.53,
@@ -90,19 +100,41 @@ namespace sysu219_guide_controller {
             0.0, 0.9, -1.3
         };
 
+        // 半趴姿态（FIXEDDOWN）
+        // 取值来源：tools/config/joint_states/joint_snapshot_20260923_112924.yaml
         std::vector<double> down_pos_ = {
-            0.0, 1.3, -2.4,
-            0.0, 1.3, -2.4,
-            0.0, 1.3, -2.4,
-            0.0, 1.3, -2.4
+            -0.054, 1.111, -2.155,
+            0.054, 1.111, -2.155,
+            -0.163, 0.999, -2.094,
+            0.163, 0.999, -2.094
         };
 
+        // 全趴姿态（FIXEDPRONE，PASSIVE 按 2 进入）
+        // 取值来源：tools/config/joint_states/joint_snapshot_20260923_213557.yaml
+        // 已对左右腿取平均（FR↔FL、RR↔RL），使左右完全对称
+        std::vector<double> prone_pos_ = {
+            -0.394, 1.599, -2.519,
+            0.394, 1.599, -2.519,
+            -0.435, 1.587, -2.490,
+            0.435, 1.587, -2.490
+        };
+
+        // 固定姿态的 MIT 增益（FIXEDDOWN / FIXEDSTAND 共用）
         double stand_kp_ = 260.0;
         double stand_kd_ = 3.8;
+
+        // FIXEDPRONE 专用增益（默认与 stand_kp_/stand_kd_ 相同）。
+        // FIXEDPRONE 的 kp/kd 是从"进入时的接口实际值"斜坡到这一对值，
+        // 所以从 FIXEDDOWN(260/3.8) 切进来时会平滑过渡，不会突变。
+        double prone_kp_ = 260.0;
+        double prone_kd_ = 3.8;
 
         rclcpp::Subscription<control_input_msgs::msg::Inputs>::SharedPtr control_input_subscription_;
         rclcpp::Subscription<std_msgs::msg::String>::SharedPtr robot_description_subscription_;
         std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+
+        // 关节目标位置镜像发布（话题：/joint_cmd_states），给 rqt 工具订阅
+        rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_cmd_pub_;
 
 
 

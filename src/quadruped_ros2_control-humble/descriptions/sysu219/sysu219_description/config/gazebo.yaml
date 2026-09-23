@@ -87,6 +87,37 @@ sysu219_guide_controller:
     imu_name: "imu_sensor"
     base_name: "base"
 
+    # ===== 固定姿态参数 =====
+    # 每个姿态 12 个关节角，顺序 FR/FL/RR/RL × (hip, thigh, calf)，单位 rad
+    # 站立姿态（FIXEDSTAND）
+    stand_pos: [0.0, 0.9, -1.53,
+                0.0, 0.9, -1.53,
+                0.0, 0.9, -1.3,
+                0.0, 0.9, -1.3]
+    # 半趴姿态（FIXEDDOWN）
+    # 取值来源：tools/config/joint_states/joint_snapshot_20260923_112924.yaml
+    down_pos: [-0.054, 1.111, -2.155,
+               0.054, 1.111, -2.155,
+               -0.163, 0.999, -2.094,
+               0.163, 0.999, -2.094]
+    # 全趴姿态（FIXEDPRONE，PASSIVE 按 2 进入）
+    # 取值来源：tools/config/joint_states/joint_snapshot_20260923_213557.yaml
+    # 已对左右腿取平均（FR↔FL、RR↔RL），使左右完全对称
+    prone_pos: [-0.394, 1.599, -2.519,
+                0.394, 1.599, -2.519,
+                -0.435, 1.587, -2.490,
+                0.435, 1.587, -2.490]
+
+    # 固定姿态的 MIT 增益（FIXEDDOWN / FIXEDSTAND 共用）
+    stand_kp: 260.0
+    stand_kd: 3.8
+
+    # FIXEDPRONE 专用增益。FIXEDPRONE 的 kp/kd 从"进入时的实际值"斜坡到这两个值，
+    # 所以从 FIXEDDOWN 切进来时会从 260/3.8 平滑过渡，不会突变。
+    # hip 在 down->prone 要转 0.28~0.44 rad，若出现粘滑振荡优先加 prone_kd。
+    prone_kp: 260.0
+    prone_kd: 3.8
+
     imu_interfaces:
       - orientation.w
       - orientation.x

@@ -1,0 +1,29 @@
+<library path=".">
+  <class name="JointTuner" type="tools.joint_tuner.joint_tuner_plugin.JointTunerPlugin" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      四足机器人 12 关节实时调姿窗口。读 /joint_states，按关节列表发 /joint_tuner/joint_targets
+      （tools 包私有话题），一键保存按钮把当前 12 关节目标位置保存为 YAML。
+    </description>
+    <qtgui>
+      <group>
+        <label>Tools</label>
+      </group>
+      <label>Joint Tuner</label>
+      <icon type="theme">applications-system</icon>
+    </qtgui>
+  </class>
+  <class name="JointStateViewer" type="tools.joint_state_viewer.joint_state_viewer_plugin.JointStateViewerPlugin" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      四足机器人 12 关节实时显示窗口。同时订阅 /joint_states（实测）和
+      /joint_cmd_states（目标，sysu219_guide_controller 内部镜像），双列显示实际 + 目标位置。
+      一键保存按钮把当前实测位置写到 ~/219_ws/src/tools/config/joint_states/。
+    </description>
+    <qtgui>
+      <group>
+        <label>Tools</label>
+      </group>
+      <label>Joint State Viewer</label>
+      <icon type="theme">utilities-system-monitor</icon>
+    </qtgui>
+  </class>
+</library>

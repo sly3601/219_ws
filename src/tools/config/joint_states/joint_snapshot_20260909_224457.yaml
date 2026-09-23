@@ -1,0 +1,18 @@
+# sysu219 关节快照（JointStateViewer 一键保存）
+# timestamp: 2026-09-09T22:44:57.491723
+# source_topic: /joint_states (joint_state_broadcaster 实测)
+# 说明：这是机器人当前的实测关节角（实际位置），不是目标位置。
+# 准备当 stand_pos_ 用时，先把机器人摆到目标姿态，再点保存。
+joint_targets_rad:
+  - {name: FR_hip_joint, position: -0.541236}
+  - {name: FR_thigh_joint, position: 1.251443}
+  - {name: FR_calf_joint, position: -2.535097}
+  - {name: FL_hip_joint, position: 0.379286}
+  - {name: FL_thigh_joint, position: 0.998805}
+  - {name: FL_calf_joint, position: -2.481357}
+  - {name: RR_hip_joint, position: -0.506660}
+  - {name: RR_thigh_joint, position: 1.059287}
+  - {name: RR_calf_joint, position: -2.512851}
+  - {name: RL_hip_joint, position: 0.375314}
+  - {name: RL_thigh_joint, position: 1.093742}
+  - {name: RL_calf_joint, position: -2.470813}

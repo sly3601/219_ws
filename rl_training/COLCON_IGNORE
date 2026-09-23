@@ -1,0 +1,2 @@
+# 标记 rl_training 不参与 colcon 构建：这里只放 IsaacLab/rsl_rl 上游源码，
+# 是非 ROS Python 包，没有 package.xml，会导致 colcon 报错。

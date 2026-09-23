@@ -65,7 +65,7 @@ void StateBalanceTest::exit() {
 FSMStateName StateBalanceTest::checkChange() {
     switch (ctrl_interfaces_.control_inputs_.command) {
         case 1:
-            return FSMStateName::FIXEDDOWN;
+            return FSMStateName::PASSIVE;
         case 2:
             return FSMStateName::FIXEDSTAND;
         default:

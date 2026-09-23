@@ -10,6 +10,7 @@ enum class FSMStateName
     // EXIT,
     INVALID,
     PASSIVE,
+    FIXEDPRONE,
     FIXEDDOWN,
     FIXEDSTAND,
     FREESTAND,

@@ -32,8 +32,8 @@ private:
 
     double kp_, kd_;
         // 加在现有成员后面
-    double kp_start_; // 初始kp（设为0）
-    double kd_start_; // 初始kd（设为0）
+    double kp_start_; // 切换瞬间给一个安全起步的 kp（避免关节失稳自由落体），run() 中再升到 kp_
+    double kd_start_; // 同 kd
 
     double duration_ = 600; // steps
     double percent_ = 0; //%

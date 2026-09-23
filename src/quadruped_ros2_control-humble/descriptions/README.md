@@ -20,27 +20,9 @@ This folder contains the URDF and SRDF files for the Sysu219 quadruped robot.
   compile robot.urdf robot.xml
   ```
 
-## 2. Dependencies for Gazebo Simulation
+## 2. Dependencies for Gazebo Classic 11 Simulation
 
-Gazebo Simulation only tested on ROS2 Jazzy. It add support for ROS2 Humble because the package name is different.
-
-* Gazebo Harmonic
-  ```bash
-  sudo apt-get install ros-jazzy-ros-gz
-  ```
-* Ros2-Control for Gazebo
-  ```bash
-  sudo apt-get install ros-jazzy-gz-ros2-control
-  ``` 
-* Legged PD Controller
-    ```bash
-    cd ~/ros2_ws
-    colcon build --packages-up-to leg_pd_controller
-    ```
-
-## 2. Dependencies for Gazebo Classic Simulation
-
-Gazebo Classic (Gazebo11) Simulation only tested on ROS2 Humble.
+Gazebo Classic (Gazebo11) Simulation is used on ROS2 Humble.
 
 * Gazebo Classic
   ```bash
@@ -49,9 +31,30 @@ Gazebo Classic (Gazebo11) Simulation only tested on ROS2 Humble.
 * Ros2-Control for Gazebo
   ```bash
   sudo apt-get install ros-humble-gazebo-ros2-control
-  ``` 
+  ```
 * Legged PD Controller
     ```bash
-    cd ~/ros2_ws
+    cd ~/219_ws
     colcon build --packages-up-to leg_pd_controller
     ```
+* Launch
+  ```bash
+  ros2 launch sysu219_guide_controller gazebo.launch.py pkg_description:=sysu219_description
+  ```
+
+## 3. Dependencies for Gazebo Harmonic Simulation
+
+Gazebo Harmonic Simulation is used on ROS2 Jazzy, and is launched through the `gz_quadruped_playground` package.
+
+* Gazebo Harmonic
+  ```bash
+  sudo apt-get install ros-jazzy-ros-gz
+  ```
+* Ros2-Control for Gazebo
+  ```bash
+  sudo apt-get install ros-jazzy-gz-ros2-control
+  ```
+* Launch
+  ```bash
+  ros2 launch gz_quadruped_playground gazebo.launch.py pkg_description:=sysu219_description
+  ```

@@ -2,7 +2,7 @@
 
 This package contains the real hardware interface for the Sysu219 robot motors and IMU.
 
-*[x] **[2025-01-16]** Add odometer states. 
+* [x] **[2025-01-16]** Add odometer states.
 
 ## 1. Interfaces
 
@@ -34,22 +34,37 @@ Tested environment:
 
 Build Command:
 ```bash
-cd ~/ros2_ws
+cd ~/219_ws
 colcon build --packages-up-to hardware_sysu219 --symlink-install
 ```
 
 ## 3. Config hardware
-Set the Sysu219 hardware plugin parameters in the xacro file.
+
+The hardware plugin is declared in
+[ros2_control.xacro](../../descriptions/sysu219/sysu219_description/xacro/ros2_control.xacro):
+
 ```xml
 <hardware>
     <plugin>hardware_sysu219/HardwareSysu219</plugin>
-    <param name="domain">1</param>
-    <param name="network_interface">lo</param>
+    <param name="yaml_file_path">$(find sysu219_description)/config/hardware_config.yaml</param>
+    <param name="imu_serial_port">/dev/ttyUSB0</param>
+    <param name="imu_serial_baud">921600</param>
+    <param name="debug">false</param>
+    <param name="imu_frame_id">imu_link</param>
 </hardware>
 ```
 
-After modified the config, you can tried to visualize the robot info from real robot by following command:
+* `yaml_file_path`: DM motor configuration, resolved by `HardwareSysu219` via `parseDmActData`.
+  See [hardware_config.yaml](../../descriptions/sysu219/sysu219_description/config/hardware_config.yaml),
+  which holds the per-leg serial ports (baudrate) and, for every motor, its `can_id` / `master_id` /
+  `type` / `direction` / `offset`.
+* `imu_serial_port` / `imu_serial_baud`: serial device and baudrate of the IMU.
+* `debug`: verbose logging switch of the hardware interface.
+* `imu_frame_id`: frame id of the IMU.
+
+After modifying the config, you can try to visualize the real robot info with the following command
+(the IMU and DM motors must be connected, otherwise `on_init` fails):
 ```bash
-source ~/ros2_ws/install/setup.bash
-ros2 launch hardware_sysu219 visualize.launch.py
+source ~/219_ws/install/setup.bash
+ros2 launch hardware_sysu219 visualize.launch.py pkg_description:=sysu219_description
 ```
