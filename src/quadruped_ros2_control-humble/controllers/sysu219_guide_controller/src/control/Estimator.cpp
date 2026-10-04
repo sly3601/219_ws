@@ -206,11 +206,11 @@ void Estimator::update() {
             R(24 + i, 24 + i) =
                     (1 + (1 - trust) * large_variance_) * RInit_(24 + i, 24 + i);
         }
-        // 新加变换：注意feet_pos_body_不是足底在世界系下的位置！而是足底在身体系下位置在世界系中的表示。
-        // feet_pos_body_.segment(3 * i, 3) = Vec3(foot_poses_[i].p.data);
-        // feet_vel_body_.segment(3 * i, 3) = Vec3(foot_vels_[i].data);
-        feet_pos_body_.segment(3 * i, 3) = rotation_ * Vec3(foot_poses_[i].p.data);
-        feet_vel_body_.segment(3 * i, 3) = rotation_ * Vec3(foot_vels_[i].data); // 简化版：只做B->G旋转，不加omega×r，即不考虑机身旋转
+        const Vec3 foot_pos_B(foot_poses_[i].p.data);
+        // 足端相对机身的位置及其世界系导数；固定支撑足时，后者等于 -v_body_G。
+        feet_pos_body_.segment(3 * i, 3) = rotation_ * foot_pos_B;
+        feet_vel_body_.segment(3 * i, 3) =
+            rotation_ * (Vec3(foot_vels_[i].data) + gyro_.cross(foot_pos_B));
     }
 
     u_ = rotation_ * acceleration_ + g_;

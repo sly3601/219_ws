@@ -31,7 +31,8 @@ public:
      * @param q_init current joint positions
      * @return target joint positions
      */
-    [[nodiscard]] KDL::JntArray calcQ(const KDL::Frame &pEe, const KDL::JntArray &q_init) const;
+    [[nodiscard]] KDL::JntArray calcQ(const KDL::Frame &pEe, const KDL::JntArray &q_init,
+                                    int* status = nullptr) const;
 
     /**
      * Calculate the current jacobian matrix.

@@ -17,6 +17,7 @@ set(CONTROLLER_INCLUDE_DEPENDS
         control_input_msgs
         controller_common
         kdl_parser
+        urdf
 
         rclcpp
         visualization_msgs
@@ -139,6 +140,9 @@ install(
         DIRECTORY launch
         DESTINATION share/${PROJECT_NAME}/
 )
+
+install(PROGRAMS scripts/gazebo_com_visualizer.py
+        DESTINATION lib/${PROJECT_NAME})
 
 ament_export_dependencies(${CONTROLLER_INCLUDE_DEPENDS})
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)

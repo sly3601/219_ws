@@ -387,6 +387,19 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /foot_markers
       Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Gazebo COM comparison
+      Namespaces:
+        com_gazebo: true
+        com_estimated: true
+      Topic:
+        Depth: 1
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /com_markers
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48

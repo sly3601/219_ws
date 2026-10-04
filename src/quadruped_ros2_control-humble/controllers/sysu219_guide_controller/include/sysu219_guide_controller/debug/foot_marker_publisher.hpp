@@ -18,7 +18,7 @@ public:
   // 构造函数：传入你的控制器节点指针
   explicit FootMarkerPublisher(rclcpp_lifecycle::LifecycleNode::SharedPtr node);
   
-  // 更新4个足底的位置（输入：按顺序FL/FR/RL/RR的坐标）
+  // 世界系下的足底目标（FR/FL/RR/RL）。
   void update(const std::array<geometry_msgs::msg::Point, 4> & foot_positions);
   
   // 发布MarkerArray到RViz2

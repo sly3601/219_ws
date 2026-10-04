@@ -93,7 +93,8 @@ auto WaveGenerator::update() -> void {
 void WaveGenerator::calcWave(Vec4 &phase, VecInt4 &contact, const WaveStatus status) {
     switch (status) {
         case WaveStatus::WAVE_ALL: {
-            const double past_t = static_cast<double>(getSystemTime() - start_t_) * 1e-6;
+            phase_system_time_ = getSystemTime();
+            const double past_t = static_cast<double>(phase_system_time_ - start_t_) * 1e-6;
             for (int i(0); i < 4; ++i) {
                 normal_t_(i) =
                         fmod(past_t + period_ - period_ * bias_(i), period_) / period_;

@@ -31,6 +31,7 @@ public:
     void restart();
 
     [[nodiscard]] const Vec34& getEndFeetPos() const { return end_p_; } // 获得预期落足点的位置
+    [[nodiscard]] const Vec34& getStartFeetPos() const { return start_p_; }
 
 private:
     Vec3 getFootPos(int i);

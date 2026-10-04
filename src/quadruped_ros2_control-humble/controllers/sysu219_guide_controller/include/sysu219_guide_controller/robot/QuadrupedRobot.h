@@ -27,11 +27,13 @@ public:
      * @return
      */
 
-    [[nodiscard]] std::vector<KDL::JntArray> getQ(const std::vector<KDL::Frame> &pEe_list) const;
+    [[nodiscard]] std::vector<KDL::JntArray> getQ(const std::vector<KDL::Frame> &pEe_list,
+        VecInt4* status = nullptr, Vec4* error = nullptr) const;
 
-    [[nodiscard]] Vec12 getQ(const Vec34 &vecP) const;
+    [[nodiscard]] Vec12 getQ(const Vec34 &vecP, VecInt4* status = nullptr, Vec4* error = nullptr) const;
 
-    Vec12 getQd(const std::vector<KDL::Frame> &pos, const Vec34 &vel);
+    // 在最终关节目标处求速度，不再重复做无关节限位的位置逆解。
+    Vec12 getQd(const Vec12 &q, const Vec34 &vel, Vec4* sigma_min = nullptr);
 
     /**
      * Calculate the foot end position based on joint positions
@@ -88,6 +90,7 @@ public:
     Vec34 feet_pos_normal_stand_;
     std::vector<KDL::JntArray> current_joint_pos_;
     std::vector<KDL::JntArray> current_joint_vel_;
+    Vec12 joint_lower_, joint_upper_, joint_velocity_limit_;
 
     void update();
 

@@ -24,6 +24,7 @@
 
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
+#include <geometry_msgs/msg/point_stamped.hpp>
 
 namespace sysu219_guide_controller {
     struct FSMStateList {
@@ -135,6 +136,8 @@ namespace sysu219_guide_controller {
 
         // 关节目标位置镜像发布（话题：/joint_cmd_states），给 rqt 工具订阅
         rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_cmd_pub_;
+        rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr com_estimated_pub_;
+        double last_com_publish_s_ = -1.0;
 
 
 

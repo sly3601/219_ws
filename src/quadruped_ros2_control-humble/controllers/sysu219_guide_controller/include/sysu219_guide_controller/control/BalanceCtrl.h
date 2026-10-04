@@ -27,6 +27,8 @@ public:
      */
     Vec34 calF(const Vec3 &ddPcd, const Vec3 &dWbd, const RotMat &rot_matrix,
                const Vec34 &feet_pos_2_body, const VecInt4 &contact);
+    size_t debugId() const { return debug_id_; }
+    int debugStatus() const { return debug_status_; } // 0: 有限目标值及输出；1: 非有限；-1: 尚未返回。
 
 private:
     void calMatrixA(const Vec34 &feet_pos_2_body, const RotMat &rotM);
@@ -48,6 +50,8 @@ private:
     Eigen::VectorXd ce0_, ci0_;
     Eigen::Matrix<double, 6, 12> A_;
     Eigen::Matrix<double, 5, 3> friction_mat_;
+    size_t debug_id_ = 0;
+    int debug_status_ = -1;
 };
 
 

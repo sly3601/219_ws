@@ -50,6 +50,8 @@ leg_pd_controller:
 
 sysu219_guide_controller:
   ros__parameters:
+    use_sim_time: true
+    gazebo_com_visualization: true
     update_rate: 250  # Hz
     command_prefix: "leg_pd_controller"
     joints:

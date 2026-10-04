@@ -11,6 +11,7 @@
 #include "controller_common/FSM/FSMState.h"
 // marker array可视化插件
 #include "sysu219_guide_controller/debug/foot_marker_publisher.hpp"
+#include "sysu219_guide_controller/debug/TrottingDebug.h"
 
 class StateTrotting final : public FSMState {
 public:
@@ -25,6 +26,8 @@ public:
     void exit() override;
 
     FSMStateName checkChange() override;
+    void recordDebug(const rclcpp::Time& time, const rclcpp::Duration& period,
+                     std::chrono::steady_clock::time_point update_begin, long long system_begin);
 
 
 
@@ -134,6 +137,13 @@ private:
     // MPC足底接触点是否已经初始化
     // 第一次进入 trotting 后，先初始化一次所有腿的足底点
     bool mpc_foot_hold_initialized_ = false;
+
+    // 250 Hz 控制中，每 5 周期同步求解 1 次 MPC（50 Hz）。
+    int mpc_cycle_ = 0;
+    Vec34 mpc_force_P_ = Vec34::Zero(); // 仅缓存 MPC 力，不包含摆动腿 PD。
+    TrottingDebug::Frame debug_frame_;
+    uint64_t debug_cycle_ = 0;
+    std::unique_ptr<TrottingDebug> trotting_debug_;
 
 };
 

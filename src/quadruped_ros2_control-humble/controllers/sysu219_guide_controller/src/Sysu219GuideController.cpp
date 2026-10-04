@@ -7,6 +7,7 @@
 #include <sysu219_guide_controller/gait/WaveGenerator.h>
 #include "sysu219_guide_controller/robot/QuadrupedRobot.h"
 #include "sysu219_guide_controller/common/mathTools.h"
+#include "sysu219_guide_controller/debug/DebugConfig.h"
 
 #include <Eigen/Geometry>
 
@@ -61,6 +62,10 @@ namespace sysu219_guide_controller
     controller_interface::return_type Sysu219GuideController::
     update(const rclcpp::Time& time, const rclcpp::Duration& period)
     {
+        const auto debug_begin = quadruped_debug::kLargeDebug ? std::chrono::steady_clock::now()
+            : std::chrono::steady_clock::time_point{};
+        const auto debug_system_begin = quadruped_debug::kLargeDebug ? getSystemTime() : 0LL;
+        bool trotting_ran = false;
         // auto now = std::chrono::steady_clock::now();
         // std::chrono::duration<double> time_diff = now - last_update_time_;
         // last_update_time_ = now;
@@ -77,6 +82,27 @@ namespace sysu219_guide_controller
         ctrl_component_.robot_model_->update();
         ctrl_component_.wave_generator_->update();
         ctrl_component_.estimator_->update();
+
+        // 仅 Gazebo 配置开启；所有 FSM 状态都以约 25 Hz 输出 MPC 的估计质心。
+        if (com_estimated_pub_ && ctrl_component_.convex_mpc_) {
+            const auto stamp = get_node()->get_clock()->now();
+            const double now_s = stamp.seconds();
+            if (now_s < last_com_publish_s_ || now_s - last_com_publish_s_ >= 0.04) {
+                const Vec3 com_G = ctrl_component_.estimator_->getPosition()
+                    + ctrl_component_.estimator_->getRotation()
+                      * ctrl_component_.convex_mpc_->comOffsetBody();
+                if (com_G.allFinite()) {
+                    geometry_msgs::msg::PointStamped msg;
+                    msg.header.frame_id = "world";
+                    msg.header.stamp = stamp;
+                    msg.point.x = com_G(0);
+                    msg.point.y = com_G(1);
+                    msg.point.z = com_G(2);
+                    com_estimated_pub_->publish(msg);
+                }
+                last_com_publish_s_ = now_s;
+            }
+        }
 
         if (tf_broadcaster_)
         {
@@ -187,6 +213,7 @@ namespace sysu219_guide_controller
             else
             {
                 current_state_->run(time, period);
+                trotting_ran = current_state_ == state_list_.trotting;
             }
         }
         else if (mode_ == FSMMode::CHANGE)
@@ -210,6 +237,8 @@ namespace sysu219_guide_controller
             joint_cmd_pub_->publish(msg);
         }
 
+        if (quadruped_debug::kLargeDebug && trotting_ran)
+            state_list_.trotting->recordDebug(time, period, debug_begin, debug_system_begin);
         return controller_interface::return_type::OK;
     }
 
@@ -226,6 +255,7 @@ namespace sysu219_guide_controller
             // imu sensor
             imu_name_ = auto_declare<std::string>("imu_name", imu_name_);
             base_name_ = auto_declare<std::string>("base_name", base_name_);
+            auto_declare<bool>("gazebo_com_visualization", false);
             imu_interface_types_ = auto_declare<std::vector<std::string>>("imu_interfaces", state_interface_types_);
             command_prefix_ = auto_declare<std::string>("command_prefix", command_prefix_);
             feet_names_ =
@@ -309,6 +339,13 @@ namespace sysu219_guide_controller
     {
         // ========== 1. 【关键修改】最先赋值 node 和 debug_pub ==========
         ctrl_interfaces_.node = get_node(); // <-- 移到最前面！
+        com_estimated_pub_.reset();
+        last_com_publish_s_ = -1.0;
+        if (get_node()->get_parameter("gazebo_com_visualization").as_bool() &&
+            get_node()->get_parameter("use_sim_time").as_bool()) {
+            com_estimated_pub_ = get_node()->create_publisher<geometry_msgs::msg::PointStamped>(
+                "/com_estimated", rclcpp::QoS(1));
+        }
         ctrl_interfaces_.body_debug_pub = ctrl_interfaces_.node->create_publisher<std_msgs::msg::Float64MultiArray>("/body_debug", 10);
         ctrl_interfaces_.debug_pub      = ctrl_interfaces_.node->create_publisher<std_msgs::msg::Float64MultiArray>("/trotting_debug", 10);
         joint_cmd_pub_ = ctrl_interfaces_.node->create_publisher<sensor_msgs::msg::JointState>("/joint_cmd_states", 10);
@@ -372,6 +409,7 @@ namespace sysu219_guide_controller
     controller_interface::CallbackReturn Sysu219GuideController::on_deactivate(
         const rclcpp_lifecycle::State& /*previous_state*/)
     {
+        com_estimated_pub_.reset();
         release_interfaces();
         return CallbackReturn::SUCCESS;
     }

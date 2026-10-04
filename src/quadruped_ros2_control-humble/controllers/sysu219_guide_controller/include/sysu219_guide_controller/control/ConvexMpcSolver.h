@@ -38,6 +38,12 @@ public:
   ~ConvexMpcSolver();
 
   void reset();
+  const Vec3& comOffsetBody() const { return pcb_B; }
+  struct DebugInfo {
+    size_t id = 0;
+    int status = -1, iter = -1, result = -1; // result: 1新解、2缓存、0保底。
+  };
+  const DebugInfo& debugInfo() const { return debug_info_; }
 
   ConvexMpcOutput solveMpc(const ConvexMpcInput& in);
   
@@ -47,7 +53,7 @@ public:
       const Vec34& foot_end_G,      // 当前周期摆动腿最终落脚点（G系）
       const VecInt4& contact_now,   // 当前 4 足接触状态，1 支撑，0 摆动
       const Vec4& phase_now,        // 当前 4 足支撑/摆动相内部进度 [0,1]
-      double control_dt,            // 主控制周期
+      double control_dt,            // MPC 预测步长；50 Hz 时为 0.02 s
       double gait_period,           // wave_generator_->get_t()
       double stance_ratio,          // wave_generator_->get_t_stance() / wave_generator_->get_t()
       const Vec3& p_body_G,         // 机身位置（世界系）
@@ -91,6 +97,7 @@ private:
   // last_u0_ 现在用于 HPIPM 失败时 fallback，也用于输入变化率项的上一帧输入。
   Vec12 last_u0_ = Vec12::Zero();
   bool has_last_solution_ = false;
+  DebugInfo debug_info_;
 
   std::unique_ptr<HpipmWorkspace> hpipm_;
 

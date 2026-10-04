@@ -108,6 +108,18 @@
 		<plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
 			<parameters>$(find sysu219_description)/config/gazebo.yaml</parameters>
 		</plugin>
+
+		<!-- 当前 MPC 以 base 原点近似质心；直接发布 Gazebo 的真实位姿。 -->
+		<plugin filename="libgazebo_ros_p3d.so" name="sysu219_body_ground_truth">
+			<ros>
+				<namespace>/gazebo</namespace>
+				<remapping>odom:=/gazebo/body_ground_truth</remapping>
+			</ros>
+			<body_name>base</body_name>
+			<frame_name>world</frame_name>
+			<update_rate>25</update_rate>
+			<gaussian_noise>0</gaussian_noise>
+		</plugin>
 	</gazebo>
 
 	<gazebo reference="trunk">

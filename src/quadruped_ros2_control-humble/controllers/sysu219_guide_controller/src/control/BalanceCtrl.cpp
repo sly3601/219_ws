@@ -8,6 +8,8 @@
 #include <sysu219_guide_controller/robot/QuadrupedRobot.h>
 
 #include "quadProgpp/QuadProg++.hh"
+#include <cmath>
+#include "sysu219_guide_controller/debug/DebugConfig.h"
 
 BalanceCtrl::BalanceCtrl(const std::shared_ptr<QuadrupedRobot> &robot) {
     // mass_ = robot->mass_;
@@ -146,9 +148,15 @@ void BalanceCtrl::solveQP() {
         ci0[i] = ci0_[i];
     }
 
-    solve_quadprog(G, g0, CE, ce0, CI, ci0, x);
+    if (quadruped_debug::kLargeDebug) {
+        ++debug_id_;
+        debug_status_ = -1;
+    }
+    const double objective = solve_quadprog(G, g0, CE, ce0, CI, ci0, x);
 
     for (int i = 0; i < n; ++i) {
         F_[i] = x[i];
     }
+    if (quadruped_debug::kLargeDebug)
+        debug_status_ = std::isfinite(objective) && F_.allFinite() ? 0 : 1;
 }

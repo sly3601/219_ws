@@ -22,9 +22,10 @@ KDL::Frame RobotLeg::calcPEe2B(const KDL::JntArray &joint_positions) const {
     return pEe;
 }
 
-KDL::JntArray RobotLeg::calcQ(const KDL::Frame &pEe, const KDL::JntArray &q_init) const {
+KDL::JntArray RobotLeg::calcQ(const KDL::Frame &pEe, const KDL::JntArray &q_init, int* status) const {
     KDL::JntArray q(chain_.getNrOfJoints());
-    ik_pose_solver_->CartToJnt(q_init, pEe, q);
+    const int result = ik_pose_solver_->CartToJnt(q_init, pEe, q);
+    if (status) *status = result;
     return q;
 }
 

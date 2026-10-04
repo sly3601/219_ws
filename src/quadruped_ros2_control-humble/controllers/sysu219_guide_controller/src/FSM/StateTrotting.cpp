@@ -9,6 +9,8 @@
 #include <sysu219_guide_controller/gait/WaveGenerator.h>
 #include <algorithm>
 #include <chrono>
+#include <cmath>
+#include "sysu219_guide_controller/debug/DebugConfig.h"
 
 /* 
 P系：定向本体系
@@ -27,8 +29,8 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     estimator_(ctrl_component.estimator_),
     robot_model_(ctrl_component.robot_model_),
     balance_ctrl_(ctrl_component.balance_ctrl_),
-    convex_mpc_(ctrl_component.convex_mpc_),
     wave_generator_(ctrl_component.wave_generator_),
+    convex_mpc_(ctrl_component.convex_mpc_),
     gait_generator_(ctrl_component, this){
 
     troting_kalman = 2;                             //总模式开关【已弃用】
@@ -84,6 +86,8 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
 
     
     dt_ = 1.0 / ctrl_interfaces_.frequency_;        // 控制周期dt
+    if (quadruped_debug::kLargeDebug)
+        trotting_debug_ = std::make_unique<TrottingDebug>(dt_);
     // 初始化足底可视化发布器
     foot_marker_pub_ = std::make_unique<quadruped_controller::FootMarkerPublisher>(this->ctrl_interfaces_.node);
 }
@@ -94,6 +98,8 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
  * @brief 进入Trotting状态时的初始化操作
  */
 void StateTrotting::enter() {
+    if (trotting_debug_) trotting_debug_->reset();
+    debug_cycle_ = 0;
     // 原地稳定踏步，世界系位置目标取进入时当前位置
     pcd_ = estimator_->getPosition();                   // 机身期望位置初始化
     v_cmd_body_.setZero();                              // 机身期望速度初始化
@@ -111,6 +117,9 @@ void StateTrotting::enter() {
     mpc_foot_hold_G_.setZero();
     mpc_contact_last_.setZero();
     mpc_foot_hold_initialized_ = false;
+    mpc_cycle_ = 0;
+    mpc_force_P_.setZero();
+    convex_mpc_->reset(); // 清除上次进入 Trotting 的成功解，避免跨状态复用。
 }
 
 /**
@@ -119,6 +128,13 @@ void StateTrotting::enter() {
  * @param period 时间间隔
  */
 void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*period*/) {
+    if (quadruped_debug::kLargeDebug) {
+        debug_frame_ = TrottingDebug::Frame{};
+        debug_frame_.contact = wave_generator_->contact_;
+        debug_frame_.phase = wave_generator_->phase_;
+        debug_frame_.transition = wave_generator_->getSwitchStatus();
+        debug_frame_.meta[TrottingDebug::WAVE] = static_cast<int>(wave_generator_->status_);
+    }
 
     pos_body_ = estimator_->getPosition();          // 获取当前身体位置（G系）
     vel_body_ = estimator_->getVelocity();          // 获取当前机身速度（G系）
@@ -184,7 +200,42 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
  * @brief 退出Trotting状态时的收尾操作
  */
 void StateTrotting::exit() {
+    if (trotting_debug_) trotting_debug_->finish();
     wave_generator_->status_ = WaveStatus::SWING_ALL;
+}
+
+void StateTrotting::recordDebug(const rclcpp::Time& time, const rclcpp::Duration& period,
+                              std::chrono::steady_clock::time_point update_begin, long long system_begin) {
+    if (!quadruped_debug::kLargeDebug || !trotting_debug_) return;
+    auto& f = debug_frame_;
+    f.meta[TrottingDebug::CYCLE] = debug_cycle_++;
+    f.meta[TrottingDebug::ROS_S] = time.seconds();
+    f.meta[TrottingDebug::STEADY_S] = std::chrono::duration<double>(update_begin.time_since_epoch()).count();
+    f.meta[TrottingDebug::SYSTEM_S] = system_begin * 1e-6;
+    f.meta[TrottingDebug::PHASE_SYSTEM_S] = wave_generator_->getPhaseSystemTime() * 1e-6;
+    f.meta[TrottingDebug::PERIOD_S] = period.seconds();
+    f.meta[TrottingDebug::MODE] = static_cast<int>(force_solver_mode_);
+    const auto& solver = convex_mpc_->debugInfo();
+    const bool mpc = force_solver_mode_ == ForceSolverMode::MPC;
+    f.meta[TrottingDebug::SOLVER_ID] = mpc ? solver.id : balance_ctrl_->debugId();
+    f.meta[TrottingDebug::SOLVER_STATUS] = mpc ? solver.status : balance_ctrl_->debugStatus();
+    f.meta[TrottingDebug::SOLVER_ITER] = mpc ? solver.iter : -1;
+    f.meta[TrottingDebug::SOLVER_RESULT] = mpc ? solver.result : balance_ctrl_->debugStatus() == 0 ? 1 : 0;
+    for (int i = 0; i < 10; ++i) f.imu(i) = ctrl_interfaces_.imu_state_interface_[i].get().get_value();
+    f.rpy = rotMatToRPY(B2P_RotMat);
+    f.p = pos_body_; f.v = vel_body_; f.p_ref = pcd_; f.v_ref = vel_target_;
+    f.feet_G = estimator_->getFeetPos();
+    f.goal_G = pos_feet_goal_G; f.vgoal_G = vel_feet_goal_G;
+    f.start_G = gait_generator_.getStartFeetPos(); f.end_G = gait_generator_.getEndFeetPos();
+    f.hold_G = mpc_foot_hold_G_;
+    for (int leg = 0; leg < 4; ++leg) {
+        f.feet_B.col(leg) = Vec3(robot_model_->getFeet2BPositions(leg).p.data);
+        f.q.segment<3>(3 * leg) = robot_model_->current_joint_pos_[leg].data;
+        f.qd.segment<3>(3 * leg) = robot_model_->current_joint_vel_[leg].data;
+    }
+    f.meta[TrottingDebug::UPDATE_MS] = std::chrono::duration<double, std::milli>(
+        std::chrono::steady_clock::now() - update_begin).count();
+    trotting_debug_->push(f);
 }
 
 /**
@@ -350,6 +401,7 @@ void StateTrotting::calcTau() {
     !pos_feet_G.allFinite() || 
     !vel_feet_G.allFinite()) 
     {
+        if (quadruped_debug::kLargeDebug) debug_frame_.meta[TrottingDebug::FLAGS] = 1;
         for (int k = 0; k < 12; ++k)
             ctrl_interfaces_.joint_torque_command_interface_[k].get().set_value(0.0);
         return;
@@ -375,6 +427,22 @@ void StateTrotting::calcTau() {
         }
     }
 
+    const bool mpc_contact_changed = (mpc_contact_last_ != wave_generator_->contact_);
+    // 接触切换时，下面会立即额外同步求解，而不是继续复用旧力。
+    if (quadruped_debug::kLargeDebug && force_solver_mode_ == ForceSolverMode::MPC && mpc_cycle_ != 0 &&
+        mpc_contact_changed) {
+        static rclcpp::Clock hold_clock(RCL_STEADY_TIME);
+        RCLCPP_INFO_THROTTLE(ctrl_interfaces_.node->get_logger(), hold_clock, 200,
+            "[MPC_CONTACT_UPDATE] cycle=%d sync_solve=1 "
+            "prev_contact=[%d %d %d %d] contact=[%d %d %d %d] "
+            "previous_ground_fz=[%.3f %.3f %.3f %.3f]",
+            mpc_cycle_,
+            mpc_contact_last_(0), mpc_contact_last_(1), mpc_contact_last_(2), mpc_contact_last_(3),
+            wave_generator_->contact_(0), wave_generator_->contact_(1),
+            wave_generator_->contact_(2), wave_generator_->contact_(3),
+            -mpc_force_P_(2, 0), -mpc_force_P_(2, 1),
+            -mpc_force_P_(2, 2), -mpc_force_P_(2, 3));
+    }
     // 记录上一周期接触状态
     mpc_contact_last_ = wave_generator_->contact_;
     // MPC步态准备结束
@@ -398,12 +466,15 @@ void StateTrotting::calcTau() {
             // calF函数内部计算出来的是P系下的地面对机身的反作用力，我们需要的是足端对地面的力，所以加负号取反
             force_feet_P = -balance_ctrl_->calF(dd_pcd, d_wbd, B2P_RotMat, pos_feet_P, wave_generator_->contact_);
         } 
-        else if (force_solver_mode_ == ForceSolverMode::MPC) 
+        // 正常每 5 周期同步求解（50 Hz）；接触变化时当周期额外求解。
+        else if (force_solver_mode_ == ForceSolverMode::MPC &&
+                 (mpc_cycle_ == 0 || mpc_contact_changed))
         {
             const double gait_period = wave_generator_->get_t();
             const double stance_ratio = wave_generator_->get_t_stance() / wave_generator_->get_t();
 
-            const auto mpc_begin = std::chrono::steady_clock::now();
+            const auto mpc_begin = quadruped_debug::kLargeDebug ? std::chrono::steady_clock::now()
+                : std::chrono::steady_clock::time_point{};
             // Convex MPC 里动力学方程默认用的是“地面对机身的接触力”，所以下游做 J^T f 时同样需要取负号得到“足端对地的力”
             force_feet_P = -convex_mpc_->solveFromDogWrench(
                 dd_pcd,
@@ -411,7 +482,7 @@ void StateTrotting::calcTau() {
                 gait_generator_.getEndFeetPos(),
                 wave_generator_->contact_,
                 wave_generator_->phase_,
-                dt_,
+                5.0 * dt_, // MPC 每 5 个控制周期更新：预测步长 20 ms（50 Hz）。
                 gait_period,
                 stance_ratio,
                 pos_body_,
@@ -424,33 +495,41 @@ void StateTrotting::calcTau() {
 
             // 完整 MPC 调用耗时；每次调用都统计，每秒输出一次，避免漏掉尖峰。
             // 包含准备、求解及保底返回；不包含估计器、IK、硬件 read/write。
-            const auto mpc_end = std::chrono::steady_clock::now();
-            const double total_ms =
-                std::chrono::duration<double, std::milli>(mpc_end - mpc_begin).count();
-            static auto report_begin = mpc_begin;
-            static double sum_ms = 0.0, max_ms = 0.0;
-            static size_t samples = 0, over_budget = 0;
-            sum_ms += total_ms;
-            max_ms = std::max(max_ms, total_ms);
-            ++samples;
-            if (total_ms > dt_ * 1000.0) ++over_budget;
+            if (quadruped_debug::kLargeDebug) {
+                const auto mpc_end = std::chrono::steady_clock::now();
+                const double total_ms =
+                    std::chrono::duration<double, std::milli>(mpc_end - mpc_begin).count();
+                static auto report_begin = mpc_begin;
+                static double sum_ms = 0.0, max_ms = 0.0;
+                static size_t samples = 0, over_budget = 0;
+                sum_ms += total_ms;
+                max_ms = std::max(max_ms, total_ms);
+                ++samples;
+                if (total_ms > dt_ * 1000.0) ++over_budget;
 
-            if (mpc_end - report_begin >= std::chrono::seconds(1)) {
-                RCLCPP_INFO(
-                    ctrl_interfaces_.node->get_logger(),
-                    "[MPC_TOTAL] last_ms=%.3f avg_ms=%.3f max_ms=%.3f "
-                    "nominal_step_ms=%.3f over_budget=%zu/%zu",
-                    total_ms, sum_ms / static_cast<double>(samples), max_ms,
-                    dt_ * 1000.0, over_budget, samples);
-                report_begin = mpc_end;
-                sum_ms = max_ms = 0.0;
-                samples = over_budget = 0;
+                if (mpc_end - report_begin >= std::chrono::seconds(1)) {
+                    RCLCPP_INFO(
+                        ctrl_interfaces_.node->get_logger(),
+                        "[MPC_TOTAL] last_ms=%.3f avg_ms=%.3f max_ms=%.3f "
+                        "nominal_step_ms=%.3f over_budget=%zu/%zu",
+                        total_ms, sum_ms / static_cast<double>(samples), max_ms,
+                        dt_ * 1000.0, over_budget, samples);
+                    report_begin = mpc_end;
+                    sum_ms = max_ms = 0.0;
+                    samples = over_budget = 0;
+                }
             }
+            mpc_force_P_ = force_feet_P;
+        }
+        if (force_solver_mode_ == ForceSolverMode::MPC) {
+            force_feet_P = mpc_force_P_;
+            mpc_cycle_ = (mpc_cycle_ + 1) % 5;
         }
 
     }
     catch (...) 
     {
+        if (quadruped_debug::kLargeDebug) debug_frame_.meta[TrottingDebug::FLAGS] = 2;
         for (int k = 0; k < 12; ++k) 
             ctrl_interfaces_.joint_torque_command_interface_[k].get().set_value(0.0); 
         return; 
@@ -525,47 +604,68 @@ void StateTrotting::calcQQd() {
     qd_goal.setZero();
 
     Vec34 pos_feet_target_B, vel_feet_target_B;
+    const Vec3 omega_B = estimator_->getGyro();
 
     // 将足端目标位置和速度从G系转换为B系
     for (int i = 0; i < 4; ++i) {
         pos_feet_target_B.col(i) = P2B_RotMat * (pos_feet_goal_G.col(i) - pos_body_);
-        vel_feet_target_B.col(i) = P2B_RotMat * (vel_feet_goal_G.col(i) - vel_body_);
+        // 对 r_B = R_G2B * (p_foot_G - p_body_G) 求导，须扣除机身转动项。
+        vel_feet_target_B.col(i) = P2B_RotMat * (vel_feet_goal_G.col(i) - vel_body_)
+                                 - omega_B.cross(pos_feet_target_B.col(i));
     }
-    // 关节位置/速度逆解
-    q_goal = robot_model_->getQ(pos_feet_target_B);
-    std::vector<KDL::Frame> pos_feet_target_frame(4);
-    for (int i = 0; i < 4; ++i) {
-        pos_feet_target_frame[i].p = KDL::Vector(
-            pos_feet_target_B(0, i),
-            pos_feet_target_B(1, i),
-            pos_feet_target_B(2, i)
-        );
-        pos_feet_target_frame[i].M = KDL::Rotation::Identity();
-    }
-    qd_goal = robot_model_->getQd(pos_feet_target_frame, vel_feet_target_B);
-
-    // hip小范围限制
-    const double hip_center = 0.0;    // 髋关节中心位置（0 rad）
-    const double hip_min = hip_center - hip_q_range;
-    const double hip_max = hip_center + hip_q_range;
-
-    // 关节限幅
-    for (int leg_idx = 0; leg_idx < 4; ++leg_idx) 
-    {
-        const int hip_idx   = leg_idx * 3 + 0;
-        const int thigh_idx = leg_idx * 3 + 1;
-        const int calf_idx  = leg_idx * 3 + 2;
-
-        // 髋关节位置限幅
-        q_goal(hip_idx)  = saturation(q_goal(hip_idx),   Vec2(hip_min,   hip_max));
-        // 髋关节速度限制，防止突然抽动
-        qd_goal(hip_idx) = saturation(qd_goal(hip_idx), Vec2(-hip_qd_range, hip_qd_range));
-
+    const bool debug = quadruped_debug::kLargeDebug;
+    q_goal = robot_model_->getQ(pos_feet_target_B,
+        debug ? &debug_frame_.ik_q : nullptr, debug ? &debug_frame_.fk_q : nullptr);
+    if (debug) {
+        debug_frame_.goal_B = pos_feet_target_B;
+        debug_frame_.vgoal_B = vel_feet_target_B;
+        debug_frame_.q_raw = q_goal;
     }
 
+    Vec12 lower = robot_model_->joint_lower_, upper = robot_model_->joint_upper_;
+    Vec12 velocity_limit = robot_model_->joint_velocity_limit_;
+    for (int leg = 0; leg < 4; ++leg) {
+        const int hip = 3 * leg;
+        lower(hip) = std::max(lower(hip), -hip_q_range);
+        upper(hip) = std::min(upper(hip), hip_q_range);
+        velocity_limit(hip) = std::min(velocity_limit(hip), hip_qd_range);
+        // 非有限逆解保持该腿当前角度，并取消该腿速度目标。
+        if (!q_goal.segment<3>(hip).allFinite()) {
+            q_goal.segment<3>(hip) = robot_model_->current_joint_pos_[leg].data;
+            vel_feet_target_B.col(leg).setZero();
+        }
+        for (int j = hip; j < hip + 3; ++j) {
+            if (!std::isfinite(q_goal(j))) q_goal(j) = 0.5 * (lower(j) + upper(j));
+            q_goal(j) = std::clamp(q_goal(j), lower(j), upper(j));
+        }
+    }
+
+    // 速度使用同一组限位后的角度，避免重复 IK 把膝关节推向伸直奇异点。
+    qd_goal = robot_model_->getQd(q_goal, vel_feet_target_B,
+        debug ? &debug_frame_.sigma_qd : nullptr);
+    if (debug) {
+        debug_frame_.qd_raw = qd_goal;
+        // 保留 CSV 列名：此处不再有第二次 IK，记录实际用于速度求解的 q 的误差。
+        debug_frame_.ik_qd = debug_frame_.ik_q;
+        for (int leg = 0; leg < 4; ++leg) {
+            KDL::JntArray leg_q(3);
+            leg_q.data = q_goal.segment<3>(3 * leg);
+            const auto foot = robot_model_->calcPEe2B_four_feet(leg, leg_q);
+            debug_frame_.fk_qd(leg) = (Vec3(foot.p.data) - pos_feet_target_B.col(leg)).norm();
+        }
+    }
+    for (int j = 0; j < 12; ++j) {
+        qd_goal(j) = std::clamp(qd_goal(j), -velocity_limit(j), velocity_limit(j));
+        if ((q_goal(j) <= lower(j) && qd_goal(j) < 0.0) ||
+            (q_goal(j) >= upper(j) && qd_goal(j) > 0.0)) qd_goal(j) = 0.0;
+    }
+    if (debug) {
+        debug_frame_.q_cmd = q_goal;
+        debug_frame_.qd_cmd = qd_goal;
+    }
+    q_goal_debug = q_goal;
     // 将关节目标位置和速度赋值给控制接口
     for (int i = 0; i < 12; i++) {
-        q_goal_debug = q_goal; // 用于调试，发布到ROS2话题
         ctrl_interfaces_.joint_position_command_interface_[i].get().set_value(q_goal(i));
         ctrl_interfaces_.joint_velocity_command_interface_[i].get().set_value(qd_goal(i));
     }

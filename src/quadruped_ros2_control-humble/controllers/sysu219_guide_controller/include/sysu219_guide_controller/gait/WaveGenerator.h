@@ -26,6 +26,8 @@ public:
     [[nodiscard]] double get_t_stance() const { return period_ * st_ratio_; }
     [[nodiscard]] double get_t_swing() const { return period_ * (1 - st_ratio_); }
     [[nodiscard]] double get_t() const { return period_; }
+    [[nodiscard]] const VecInt4& getSwitchStatus() const { return switch_status_; }
+    [[nodiscard]] long long getPhaseSystemTime() const { return phase_system_time_; }
 
     Vec4 phase_;
     VecInt4 contact_;
@@ -51,6 +53,7 @@ private:
     WaveStatus status_past_;
 
     long start_t_{};
+    long long phase_system_time_ = -1; // 最近一次计算 WAVE_ALL 相位所用的系统时钟。
 };
 
 

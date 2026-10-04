@@ -30,6 +30,7 @@ def prepend_env_value(name, value):
 def launch_setup(context, *args, **kwargs):
     package_description = context.launch_configurations['pkg_description']
     init_height = context.launch_configurations['height']
+    com_history_seconds = float(context.launch_configurations['com_history_seconds'])
 
     pkg_path = os.path.join(get_package_share_directory(package_description))
     leg_pd_prefix = get_package_prefix('leg_pd_controller')
@@ -56,6 +57,13 @@ def launch_setup(context, *args, **kwargs):
         output='screen',
         arguments=["-d", rviz_config_file],
         parameters=[{'use_sim_time': True}],
+    )
+
+    com_visualizer = Node(
+        package='sysu219_guide_controller',
+        executable='gazebo_com_visualizer.py',
+        output='screen',
+        parameters=[{'use_sim_time': True, 'history_seconds': com_history_seconds}],
     )
 
     gz_spawn_entity = Node(
@@ -136,6 +144,7 @@ def launch_setup(context, *args, **kwargs):
         ),
 
         rviz,
+        com_visualizer,
 
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
@@ -203,6 +212,9 @@ def generate_launch_description():
         [
             pkg_description,
             height,
+            DeclareLaunchArgument(
+                'com_history_seconds', default_value='10.0',
+                description='Duration of COM comparison traces in simulation seconds'),
             OpaqueFunction(function=launch_setup),
         ]
     )

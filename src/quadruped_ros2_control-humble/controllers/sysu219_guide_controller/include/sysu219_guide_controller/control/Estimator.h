@@ -34,7 +34,7 @@ public:
      * @return robot central velocity
      */
     Vec3 getVelocity() {    // 从状态向量x_hat_的第3个元素开始，截取3个元素（即速度部分）
-        return x_hat_.segment(3, 3); // 也是身体坐标系吧
+        return x_hat_.segment(3, 3); // 机身在世界坐标系下的线速度
     }
 
     /**
@@ -66,7 +66,10 @@ public:
         const std::vector<KDL::Vector> feet_vel = robot_model_->getFeet2BVelocities();// 先获取身体坐标系下的足底速度
         Vec34 result;
         for (int i(0); i < 4; ++i) {
-            result.col(i) = Vec3(feet_vel[i].data) + getVelocity();
+            const Vec3 foot_pos_B(foot_poses_[i].p.data);
+            // v_foot_G = v_body_G + R_B2G * (J * qd + omega_B x r_B)
+            result.col(i) = rotation_ * (Vec3(feet_vel[i].data) + gyro_.cross(foot_pos_B))
+                            + getVelocity();
         }
         return result;
     }
