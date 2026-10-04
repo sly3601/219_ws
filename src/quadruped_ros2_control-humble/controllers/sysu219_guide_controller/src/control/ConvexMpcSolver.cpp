@@ -347,7 +347,8 @@ ConvexMpcSolver::ConvexMpcSolver()
 
   N = 25;                         // N = 最大预测步数，不是最终一定使用的预测步数，实际时域不能超过半个步态周期
   mass = 40.5;                    // 机器人质量，单位 kg
-  Ib = Mat3::Identity();          // 机身的转动惯量矩阵，单位 kg*m^2，B 系表达
+  // Ib = Mat3::Identity();          // 机身的转动惯量矩阵，单位 kg*m^2，B 系表达
+  Ib = Vec3(0.624, 2.683, 2.934).asDiagonal();
   pcb_B = Vec3::Zero();           // pcb_B 表示“从机身原点 body 到质心 COM 的偏移向量”，在 B 系下表达。COM = body + R * pcb_B
   g = Vec3(0.0, 0.0, -9.81);      // 重力加速度向量
 

@@ -7,6 +7,8 @@
 #include <sysu219_guide_controller/control/CtrlComponent.h>
 #include <sysu219_guide_controller/control/Estimator.h>
 #include <sysu219_guide_controller/gait/WaveGenerator.h>
+#include <algorithm>
+#include <chrono>
 
 /* 
 P系：定向本体系
@@ -401,6 +403,7 @@ void StateTrotting::calcTau() {
             const double gait_period = wave_generator_->get_t();
             const double stance_ratio = wave_generator_->get_t_stance() / wave_generator_->get_t();
 
+            const auto mpc_begin = std::chrono::steady_clock::now();
             // Convex MPC 里动力学方程默认用的是“地面对机身的接触力”，所以下游做 J^T f 时同样需要取负号得到“足端对地的力”
             force_feet_P = -convex_mpc_->solveFromDogWrench(
                 dd_pcd,
@@ -418,6 +421,31 @@ void StateTrotting::calcTau() {
                 Rd,
                 vel_target_
             );
+
+            // 完整 MPC 调用耗时；每次调用都统计，每秒输出一次，避免漏掉尖峰。
+            // 包含准备、求解及保底返回；不包含估计器、IK、硬件 read/write。
+            const auto mpc_end = std::chrono::steady_clock::now();
+            const double total_ms =
+                std::chrono::duration<double, std::milli>(mpc_end - mpc_begin).count();
+            static auto report_begin = mpc_begin;
+            static double sum_ms = 0.0, max_ms = 0.0;
+            static size_t samples = 0, over_budget = 0;
+            sum_ms += total_ms;
+            max_ms = std::max(max_ms, total_ms);
+            ++samples;
+            if (total_ms > dt_ * 1000.0) ++over_budget;
+
+            if (mpc_end - report_begin >= std::chrono::seconds(1)) {
+                RCLCPP_INFO(
+                    ctrl_interfaces_.node->get_logger(),
+                    "[MPC_TOTAL] last_ms=%.3f avg_ms=%.3f max_ms=%.3f "
+                    "nominal_step_ms=%.3f over_budget=%zu/%zu",
+                    total_ms, sum_ms / static_cast<double>(samples), max_ms,
+                    dt_ * 1000.0, over_budget, samples);
+                report_begin = mpc_end;
+                sum_ms = max_ms = 0.0;
+                samples = over_budget = 0;
+            }
         }
 
     }
