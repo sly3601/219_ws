@@ -3,6 +3,7 @@
 #include <sysu219_guide_controller/common/mathTools.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -147,6 +148,9 @@ private:
 };
 
 struct ConvexMpcSolver::HpipmWorkspace {
+  // 新增：成功解对应的接触状态和时间，用于限制旧解的使用范围。
+  std::array<int, 4> last_solution_contact{{0, 0, 0, 0}};
+  std::chrono::steady_clock::time_point last_solution_time{};
   // 这是缓存当前 HPIPM 的问题规模。
   // 如果本次 MPC 的规模和上次一样，就不重新分配 HPIPM 内存，只更新求解器参数
   int cached_N = -1;
@@ -295,6 +299,10 @@ struct ConvexMpcSolver::HpipmWorkspace {
   void applySettings() {
     d_ocp_qp_ipm_arg_set_default(hpipm_mode::SPEED, &arg);
 
+    // 新增：覆盖上面的 SPEED 默认设置，使用数值鲁棒模式。
+    // 保留后面显式设置的容差、正则化和 Riccati 参数。
+    d_ocp_qp_ipm_arg_set_default(hpipm_mode::ROBUST, &arg);
+
     int iter_max = 30;          // hpipm_iter_max = HPIPM 最大迭代次数
     double alpha_min = 1e-12;   // hpipm_alpha_min = HPIPM 线搜索最小步长
     double mu0 = 1e1;           // hpipm_mu0 = 初始 barrier parameter，内点法初始障碍参数
@@ -309,6 +317,10 @@ struct ConvexMpcSolver::HpipmWorkspace {
     int pred_corr = 1;          // hpipm_pred_corr = predictor-corrector 开关，pred = predictor，预测步；corr = corrector，校正步，1 表示启用
     int ric_alg = 0;            // hpipm_ric_alg = Riccati algorithm，Riccati 递推算法类型，ric = Riccati，0 表示 square-root Riccati
 
+    // 新增：Gazebo 调试阶段先允许最多 60 次迭代，仍须检查实际耗时。
+    // HPIPM 的 ric_alg=0 是经典 Riccati，1 才是 square-root；原注释保留作记录。
+    // 新增说明：上方 60 次的原注释对应上一版，现恢复 30 次以限制耗时。
+    iter_max = 30;
     d_ocp_qp_ipm_arg_set_iter_max(&iter_max, &arg);
     d_ocp_qp_ipm_arg_set_alpha_min(&alpha_min, &arg);
     d_ocp_qp_ipm_arg_set_mu0(&mu0, &arg);
@@ -368,6 +380,13 @@ ConvexMpcSolver::ConvexMpcSolver()
                       0.05, 0.05, 0.05,
                       0.05, 0.05, 0.05,
                       0.05, 0.05, 0.05;
+
+  // 新增：Gazebo 支撑能力验证的起始权重，覆盖上面保留的原始 R/S 赋值。
+  // 状态以 m、rad、m/s 为单位，而力以 N 为单位；原始 R=1 会压制正常支撑力。
+  // S 也同步减小，避免上一帧接近零的力拖住支撑力建立。
+  // 这是仿真验证参数，不代表最终调参结果；Q 和其余模型参数保持原值。
+  R = 1e-6 * Mat12::Identity();
+  S = 1e-6 * Mat12::Identity();
 
   rebuildFixedMatrices();
 }
@@ -690,12 +709,18 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
     hpipm_->rr[0] = r_cost_zero_.data();
   }
 
+  // HPIPM 的输入-状态交叉项：12×13 零矩阵
+  // 必须放在循环外，保证调用求解器时内存有效
+  MatX zero_state_input_cross = MatX::Zero(nu_stage, nx_stage);
   for (int k = 1; k < horizon_N; ++k) {
+    hpipm_->SS[k] = zero_state_input_cross.data();
+
     hpipm_->QQ[k] = Q_cost_.data();
     hpipm_->RR[k] = R_cost_.data();
     hpipm_->qq[k] = hpipm_->q_stage[k].data();
     hpipm_->rr[k] = r_cost_zero_.data();
   }
+  
 
   // xN不是没用，而是用来评价：最后一步控制 u(N-1) 把系统推到了哪里
   hpipm_->QQ[horizon_N] = Q_cost_.data();
@@ -736,6 +761,50 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
   double** hlus = nullptr;
 
   // 不求解，只装填，d_ocp_qp_set_all函数把前面准备好的所有 MPC 数学数据，统一写进 HPIPM 的 QP 问题对象 hpipm_->qp 里
+  // 新增：用 HPIPM mask 关闭无效边界，不让 +/-INF 参与内点法计算。
+  // 原有约束和注释保留。支撑腿启用摩擦锥下界和 fz 上下界；
+  // 摆动腿只启用 fx=fy=fz=0 的边界，其余边界全部屏蔽。
+  std::vector<VecX> lower_masks(horizon_N, VecX::Zero(ng_stage));
+  std::vector<VecX> upper_masks(horizon_N, VecX::Zero(ng_stage));
+  for (int k = 0; k < horizon_N; ++k) {
+    for (int leg = 0; leg < 4; ++leg) {
+      const int row = rows_per_leg * leg;
+      if (in.contact[k][leg] == 1) {
+        lower_masks[k].segment(row, 5).setOnes();
+        upper_masks[k](row + 4) = 1.0;
+      } else {
+        lower_masks[k].segment(row + 4, 3).setOnes();
+        upper_masks[k].segment(row + 4, 3).setOnes();
+      }
+    }
+    // 新增：当前 R、S 为正对角阵，输入-状态交叉项为零。
+    // 取消摆动足的动力学作用和线性约束，最优输入由正二次代价压到零。
+    // 原有“零力上下界”的代码和注释保留，但对应边界在此屏蔽。
+    // 若以后加入跨足耦合代价或非零交叉项，需要重新检查这一处理。
+    for (int leg = 0; leg < 4; ++leg) {
+      if (in.contact[k][leg] == 0) {
+        hpipm_->B_stage[k].block<13, 3>(0, 3 * leg).setZero();
+        const int row = rows_per_leg * leg;
+        lower_masks[k].segment(row, rows_per_leg).setZero();
+        upper_masks[k].segment(row, rows_per_leg).setZero();
+        // 首阶段摆动足不应被上一帧的支撑力平滑项激励。
+        if (k == 0) {
+          r_cost_rate_.segment<3>(3 * leg).setZero();
+        }
+      }
+    }
+
+    // 无效边界的数值也置零；真正取消约束的是下面传给 HPIPM 的 mask。
+    for (int row = 0; row < ng_stage; ++row) {
+      if (lower_masks[k](row) == 0.0) {
+        hpipm_->lg_stage[k](row) = 0.0;
+      }
+      if (upper_masks[k](row) == 0.0) {
+        hpipm_->ug_stage[k](row) = 0.0;
+      }
+    }
+  }
+
   d_ocp_qp_set_all(
       hpipm_->AA.data(), hpipm_->BB.data(), hpipm_->bb.data(),
       hpipm_->QQ.data(), hpipm_->SS.data(), hpipm_->RR.data(), hpipm_->qq.data(), hpipm_->rr.data(),
@@ -747,12 +816,46 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
       &hpipm_->qp
   );
 
+  // 新增：set_all 之后设置 mask；每次装填后都重新设置。
+  for (int k = 0; k < horizon_N; ++k) {
+    d_ocp_qp_set_lg_mask(k, lower_masks[k].data(), &hpipm_->qp);
+    d_ocp_qp_set_ug_mask(k, upper_masks[k].data(), &hpipm_->qp);
+  }
+
   // 求解 QP 问题，得到 hpipm_->qpSol 解
+  // 新增：测量求解器本身的耗时，不含整个控制周期的其他工作。
+  const auto solve_begin_time = std::chrono::steady_clock::now();
   d_ocp_qp_ipm_solve(&hpipm_->qp, &hpipm_->qpSol, &hpipm_->arg, &hpipm_->workspace);
+
+  const auto solve_end_time = std::chrono::steady_clock::now();
+  const double solve_ms =
+      std::chrono::duration<double, std::milli>(solve_end_time - solve_begin_time).count();
 
   // 从 HPIPM 的 workspace 里读取求解状态，hpipm_status == 0表示求解成功，hpipm_status < 0 表示求解失败。
   int hpipm_status = -1;
   d_ocp_qp_ipm_get_status(&hpipm_->workspace, &hpipm_status);
+
+  // 新增说明：HPIPM 以 status=0 表示成功；正数也是失败状态。
+  // status=1 表示迭代达到上限，并不直接证明问题不可行。
+  // 四个残差依次为：驻点、动力学等式、不等式、互补条件。
+  double diag_stat = 0.0, diag_eq = 0.0, diag_ineq = 0.0, diag_comp = 0.0;
+  int diag_iter = -1;
+  d_ocp_qp_ipm_get_iter(&hpipm_->workspace, &diag_iter);
+  d_ocp_qp_ipm_get_max_res_stat(&hpipm_->workspace, &diag_stat);
+  d_ocp_qp_ipm_get_max_res_eq(&hpipm_->workspace, &diag_eq);
+  d_ocp_qp_ipm_get_max_res_ineq(&hpipm_->workspace, &diag_ineq);
+  d_ocp_qp_ipm_get_max_res_comp(&hpipm_->workspace, &diag_comp);
+  static rclcpp::Clock residual_clock(RCL_STEADY_TIME);
+  RCLCPP_INFO_THROTTLE(
+      rclcpp::get_logger("ConvexMpcSolver"), residual_clock, 1000,
+      "[MPC_RES] status=%d iter=%d res[stat,eq,ineq,comp]=[%.3e %.3e %.3e %.3e]",
+      hpipm_status, diag_iter, diag_stat, diag_eq, diag_ineq, diag_comp);
+
+  static rclcpp::Clock timing_clock(RCL_STEADY_TIME);
+  RCLCPP_INFO_THROTTLE(
+      rclcpp::get_logger("ConvexMpcSolver"), timing_clock, 1000,
+      "[MPC_TIMING] solve_ms=%.3f nominal_step_ms=%.3f status=%d iter=%d",
+      solve_ms, in.dt * 1000.0, hpipm_status, diag_iter);
 
   if (hpipm_verbose) { // hpipm_verbose 默认是false
     int hpipm_iter = -1;
@@ -767,7 +870,33 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
   }
 
   if (hpipm_status != 0) {// 求解失败
+    // 新增诊断：在回退到上一帧之前记录真实求解状态，每秒最多打印一次。
+    int failed_iter = -1;
+    d_ocp_qp_ipm_get_iter(&hpipm_->workspace, &failed_iter);
+    static rclcpp::Clock failure_clock(RCL_STEADY_TIME);
+    RCLCPP_ERROR_THROTTLE(
+        rclcpp::get_logger("ConvexMpcSolver"), failure_clock, 1000,
+        "[MPC_DIAG] HPIPM status=%d iter=%d N=%d dt=%.6f cached=%d",
+        hpipm_status, failed_iter, horizon_N, in.dt,
+        static_cast<int>(has_last_solution_));
     if (enableFallbackToLast && has_last_solution_ && last_u0_.allFinite()) {// 如果可以返回上一帧就返回
+      // 新增：接触腿已变化或旧解超过 20 ms 时，拒绝使用旧解。
+      // 返回未成功的 out，由外层按当前接触腿生成保底力。
+      const double cached_age_ms = std::chrono::duration<double, std::milli>(
+          solve_end_time - hpipm_->last_solution_time).count();
+      const bool same_contact = (in.contact[0] == hpipm_->last_solution_contact);
+      if (!same_contact || cached_age_ms < 0.0 || cached_age_ms > 20.0) {
+        static rclcpp::Clock cache_reject_clock(RCL_STEADY_TIME);
+        RCLCPP_WARN_THROTTLE(
+            rclcpp::get_logger("ConvexMpcSolver"), cache_reject_clock, 1000,
+            "[MPC_CACHE] rejected same_contact=%d age_ms=%.3f",
+            static_cast<int>(same_contact), cached_age_ms);
+        return out;
+      }
+      static rclcpp::Clock cache_use_clock(RCL_STEADY_TIME);
+      RCLCPP_WARN_THROTTLE(
+          rclcpp::get_logger("ConvexMpcSolver"), cache_use_clock, 1000,
+          "[MPC_CACHE] using_previous_solution age_ms=%.3f", cached_age_ms);
       out.u0 = last_u0_;
       out.success = true;
       return out;
@@ -782,6 +911,26 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
   out.success = out.u0.allFinite();
 
   if (out.success) {
+    // 新增：明确清零当前摆动足输出，消除数值误差后再统计和缓存。
+    for (int leg = 0; leg < 4; ++leg) {
+      if (in.contact[0][leg] == 0) {
+        out.u0.segment<3>(3 * leg).setZero();
+      }
+    }
+    // 新增：只对本次成功解记录接触反力，不把保底力当成 MPC 成功解。
+    double total_fz = 0.0;
+    for (int leg = 0; leg < 4; ++leg) {
+      total_fz += out.u0(3 * leg + 2);
+    }
+    static rclcpp::Clock force_clock(RCL_STEADY_TIME);
+    RCLCPP_INFO_THROTTLE(
+        rclcpp::get_logger("ConvexMpcSolver"), force_clock, 1000,
+        "[MPC_FORCE] fresh_solution=1 sum_fz=%.3f expected_weight=%.3f contact=[%d %d %d %d]",
+        total_fz, mass * std::abs(g(2)), in.contact[0][0], in.contact[0][1],
+        in.contact[0][2], in.contact[0][3]);
+    // 新增：只有本次实际成功求解才更新缓存的接触状态和时间。
+    hpipm_->last_solution_contact = in.contact[0];
+    hpipm_->last_solution_time = solve_end_time;
     last_u0_ = out.u0;
     has_last_solution_ = true;
   }
@@ -805,15 +954,39 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
     const RotMat& Rd_GB,         // 期望机身姿态旋转矩阵，B 系到 G 系。用于生成参考姿态 theta_ref。
     const Vec3& v_ref_G          // 期望机身/质心线速度，G 系表达。用于生成参考速度和参考位置轨迹。
     ) {
+  // 新增诊断：只记录原因，不改变原来的保底返回和控制参数。
+  // finite 数组中 1 表示数值有限，0 表示该输入含 NaN 或 Inf。
+  auto log_fallback_reason = [&](const char* reason) {
+    static rclcpp::Clock input_clock(RCL_STEADY_TIME);
+    RCLCPP_ERROR_THROTTLE(
+        rclcpp::get_logger("ConvexMpcSolver"), input_clock, 1000,
+        "[MPC_DIAG] fallback=%s dt=%.6f gait=%.6f stance=%.6f "
+        "finite[a,hold,end,phase,p,v,R,gyro,Rd,vref]=[%d %d %d %d %d %d %d %d %d %d]",
+        reason, control_dt, gait_period, stance_ratio,
+        static_cast<int>(dd_pcd_G.allFinite()),
+        static_cast<int>(foot_hold_G.allFinite()),
+        static_cast<int>(foot_end_G.allFinite()),
+        static_cast<int>(phase_now.allFinite()),
+        static_cast<int>(p_body_G.allFinite()),
+        static_cast<int>(v_body_G.allFinite()),
+        static_cast<int>(R_GB.allFinite()),
+        static_cast<int>(gyro_G.allFinite()),
+        static_cast<int>(Rd_GB.allFinite()),
+        static_cast<int>(v_ref_G.allFinite()));
+  };
+
   if (control_dt <= 0.0 || !std::isfinite(control_dt)) {  // 控制周期必须正数且有限
+    log_fallback_reason("invalid_control_dt");
     return makeFallbackForces(contact_now);
   }
 
   if (gait_period <= 0.0 || !std::isfinite(gait_period)) { // 步态周期必须正数且有限
+    log_fallback_reason("invalid_gait_period");
     return makeFallbackForces(contact_now);
   }
 
   if (stance_ratio <= 0.0 || stance_ratio >= 1.0 || !std::isfinite(stance_ratio)) {
+    log_fallback_reason("invalid_stance_ratio");
     return makeFallbackForces(contact_now);   // 支撑比必须在 (0,1) 之间且有限
   }
 
@@ -828,6 +1001,7 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
       !Ib.allFinite() ||
       !pcb_B.allFinite() ||
       !g.allFinite()) {
+    log_fallback_reason("invalid_model_parameters");
     return makeFallbackForces(contact_now);
   }
 
@@ -841,11 +1015,13 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
       !gyro_G.allFinite() ||
       !Rd_GB.allFinite() ||
       !v_ref_G.allFinite()) {
+    log_fallback_reason("nonfinite_input");
     return makeFallbackForces(contact_now);
   }
 
   for (int leg = 0; leg < 4; ++leg) {
     if (contact_now(leg) != 0 && contact_now(leg) != 1) {
+      log_fallback_reason("invalid_contact");
       return makeFallbackForces(contact_now);
     }
   }
@@ -861,6 +1037,7 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   );
 
   if (in.N <= 0) {
+    log_fallback_reason("empty_horizon");
     return makeFallbackForces(contact_now);
   }
 
@@ -880,6 +1057,18 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   in.x0.segment<3>(9) = v_com_G;
   in.x0(12) = g(2);
 
+  // 新增：检查刚进入 Trotting 时的高度、竖直速度和参考姿态。
+  // first_pending=1 表示尚未有成功解；48 N 不能仅凭总力认定原因。
+  const Vec3 diag_theta_ref = rotMatToRPY(Rd_GB);
+  static rclcpp::Clock state_clock(RCL_STEADY_TIME);
+  RCLCPP_INFO_THROTTLE(
+      rclcpp::get_logger("ConvexMpcSolver"), state_clock, 1000,
+      "[MPC_STATE] first_pending=%d pz=%.4f vz=%.4f az_ref=%.4f vz_ref=%.4f "
+      "rp_now=[%.4f %.4f] rp_ref=[%.4f %.4f]",
+      static_cast<int>(!has_last_solution_), p_com_G(2), v_com_G(2),
+      dd_pcd_G(2), v_ref_G(2), theta_now(0), theta_now(1),
+      diag_theta_ref(0), diag_theta_ref(1));
+
   // ====== xRef (N + 1) ======
   in.xRef.resize(in.N + 1);
 
@@ -893,15 +1082,17 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
     in.xRef[k].segment<3>(0) = theta_ref;
 
     // 参考位置轨迹：p_ref = p_now + v_ref*t + 0.5*a_ref*t^2
-    in.xRef[k].segment<3>(3) <<
-        p_com_G(0) + v_ref_G(0) * t_k + 0.5 * dd_pcd_G(0) * t_k * t_k,
-        p_com_G(1) + v_ref_G(1) * t_k + 0.5 * dd_pcd_G(1) * t_k * t_k,
-        p_com_G(2) + v_ref_G(2) * t_k + 0.5 * dd_pcd_G(2) * t_k * t_k;
+    // 修正：从当前质心速度出发，按外层 PD 给出的加速度预测。
+    // 上方旧公式注释保留；参考起始速度由 v_ref_G 改为 v_com_G。
+    in.xRef[k].segment<3>(3) =
+        p_com_G + v_com_G * t_k + 0.5 * dd_pcd_G * t_k * t_k;
 
     in.xRef[k].segment<3>(6) << 0.0, 0.0, 0.0;
 
     // 参考速度：当前先保持 v_ref_G，不额外积分 dd_pcd_G
-    in.xRef[k].segment<3>(9) = v_ref_G;
+    // 修正：速度参考与位置参考互为导数。
+    // 上方“保持 v_ref_G”的原注释对应修改前实现，现改为一致的加速参考。
+    in.xRef[k].segment<3>(9) = v_com_G + dd_pcd_G * t_k;
 
     in.xRef[k](12) = g(2);
   }
@@ -969,10 +1160,12 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   if (ldlt.info() == Eigen::Success) {
     in.Iw_inv = ldlt.solve(Mat3::Identity()); // 求逆矩阵
   } else {
+    log_fallback_reason("inertia_factorization_failed");
     return makeFallbackForces(contact_now);
   }
 
   if (!in.Iw_inv.allFinite()) {
+    log_fallback_reason("nonfinite_inverse_inertia");
     return makeFallbackForces(contact_now);
   }
 
@@ -997,6 +1190,7 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   const ConvexMpcOutput out = solveMpc(in);
 
   if (!out.success) {
+    log_fallback_reason("solveMpc_no_usable_solution");
     return makeFallbackForces(contact_now);
   }
 

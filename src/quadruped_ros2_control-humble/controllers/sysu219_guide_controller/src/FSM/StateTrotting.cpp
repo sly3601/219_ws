@@ -30,7 +30,7 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     gait_generator_(ctrl_component, this){
 
     troting_kalman = 2;                             //总模式开关【已弃用】
-    force_solver_mode_ = ForceSolverMode::QP;       //总模式开关
+    force_solver_mode_ = ForceSolverMode::MPC;       //总模式开关
 
     hip_q_range = 0.16;                               // 髋关节限制范围（±0.16 rad，约 ±9.2°）
     hip_qd_range = 1.0;                                // 髋关节速度限制（±1.0 rad/s）
@@ -63,10 +63,10 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     }
     else if (force_solver_mode_ == ForceSolverMode::MPC)
     {
-        tau_ff_scale = 0.25;                             // MPC力分配衰减系数
-        tau_ff_limit_hip = 30.0;                        // MPC力分配前馈力矩限制：髋关节
-        tau_ff_limit_thigh = 30.0;                      // MPC力分配前馈力矩限制：大腿关节
-        tau_ff_limit_calf = 30.0;                       // MPC力分配前馈力矩限制：小腿关节
+        tau_ff_scale = 1.0;                             // MPC力分配衰减系数
+        tau_ff_limit_hip = 34.0;                        // MPC力分配前馈力矩限制：髋关节
+        tau_ff_limit_thigh = 82.0;                      // MPC力分配前馈力矩限制：大腿关节
+        tau_ff_limit_calf = 100.0;                      // MPC力分配前馈力矩限制：小腿关节
     }
 
     // 摆动腿闭环相关参数
