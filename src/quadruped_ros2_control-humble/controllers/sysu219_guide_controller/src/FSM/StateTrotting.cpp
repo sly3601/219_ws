@@ -39,7 +39,8 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     hip_q_range = 16.16;                               // 髋关节限制范围（±0.16 rad，约 ±9.2°）
     hip_qd_range = 10.0;                                // 髋关节速度限制（±1.0 rad/s）
 
-    Kp_motor_stance = 300;     // 支撑相电机位置增益
+    // MPC 支撑腿不叠加位置弹簧，避免足端位置估计误差产生反向收腿力矩。
+    Kp_motor_stance = force_solver_mode_ == ForceSolverMode::MPC ? 0.0 : 300.0;
     Kd_motor_stance = 4.5;     // 支撑相电机速度增益
     Kp_motor_swing = 220;       // 摆动相电机位置增益
     Kd_motor_swing = 3.8;         // 摆动相电机速度增益
