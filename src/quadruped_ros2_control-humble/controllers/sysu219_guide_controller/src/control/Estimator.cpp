@@ -9,6 +9,7 @@
 
 #include "controller_common/CtrlInterfaces.h"
 #include <cmath>
+#include <sysu219_guide_controller/debug/DebugConfig.h>
 
 Estimator::Estimator(CtrlInterfaces &ctrl_interfaces, CtrlComponent &ctrl_component) : ctrl_interfaces_(ctrl_interfaces),
                                                       robot_model_(ctrl_component.robot_model_),
@@ -215,6 +216,7 @@ void Estimator::update() {
 
     u_ = rotation_ * acceleration_ + g_;
     x_hat_ = A * x_hat_ + B * u_;
+    if (quadruped_debug::kLargeDebug) debug_v_predicted_ = x_hat_.segment<3>(3);
     y_hat_ = C * x_hat_;
 
     // Update the measurement value
@@ -236,6 +238,7 @@ void Estimator::update() {
         Ppriori * C.transpose() * SR * STC * Ppriori.transpose();
 
     // // Using low pass filter to smooth the velocity
+    if (quadruped_debug::kLargeDebug) debug_v_unfiltered_ = x_hat_.segment<3>(3);
     low_pass_filters_[0]->addValue(x_hat_(3));
     low_pass_filters_[1]->addValue(x_hat_(4));
     low_pass_filters_[2]->addValue(x_hat_(5));

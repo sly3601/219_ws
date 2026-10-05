@@ -144,6 +144,26 @@ install(
 install(PROGRAMS scripts/gazebo_com_visualizer.py
         DESTINATION lib/${PROJECT_NAME})
 
+# Gazebo 只读诊断单独构建。实机可显式关闭；未安装 Gazebo 时自动跳过。
+# 控制器本体没有 Gazebo 头文件、链接依赖或运行依赖。
+option(BUILD_GAZEBO_PHYSICS_DEBUG "Build optional Gazebo physics diagnostic plugin" ON)
+if(BUILD_GAZEBO_PHYSICS_DEBUG)
+    find_package(gazebo QUIET)
+    if(gazebo_FOUND)
+        find_package(gazebo_ros QUIET)
+        if(gazebo_ros_FOUND)
+            find_package(Threads REQUIRED)
+            add_library(sysu219_physics_debug SHARED src/debug/GazeboPhysicsDebug.cpp)
+            target_compile_features(sysu219_physics_debug PRIVATE cxx_std_17)
+            target_include_directories(sysu219_physics_debug PRIVATE include ${GAZEBO_INCLUDE_DIRS})
+            target_link_directories(sysu219_physics_debug PRIVATE ${GAZEBO_LIBRARY_DIRS})
+            target_link_libraries(sysu219_physics_debug ${GAZEBO_LIBRARIES} Threads::Threads)
+            ament_target_dependencies(sysu219_physics_debug gazebo_ros rclcpp std_msgs)
+            install(TARGETS sysu219_physics_debug LIBRARY DESTINATION lib/${PROJECT_NAME})
+        endif()
+    endif()
+endif()
+
 ament_export_dependencies(${CONTROLLER_INCLUDE_DEPENDS})
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 

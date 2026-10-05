@@ -85,6 +85,11 @@ private:
 
     // Robot command
     Vec3 pcd_;
+    Vec2 startup_xy_start_ = Vec2::Zero(), startup_xy_target_ = Vec2::Zero();
+    double startup_elapsed_ = 0.0, startup_duration_ = 0.65;
+    bool startup_align_pending_ = true;
+    double height_start_ = 0.0, height_target_ = 0.0;
+    double height_ramp_elapsed_ = 0.0, height_ramp_duration_ = 0.65;
     Vec3 vel_target_, v_cmd_body_;
     double dt_;
     double yaw_cmd_{}, d_yaw_cmd_{}, d_yaw_cmd_past_{};
@@ -127,10 +132,10 @@ private:
 
     bool first_run = true; // 新增：是否第一次进入trotting状态的标志
 
-    // MPC足底接触点记忆：记录每条腿最近一次进入支撑相时的足底世界坐标
+    // MPC支撑点：每次求解前更新当前支撑脚的估计世界坐标。
     Vec34 mpc_foot_hold_G_;
 
-    // MPC接触状态记忆：用于判断 swing -> stance 的落地瞬间
+    // MPC接触状态记忆：用于接触切换时立即重新求解。
     // 上一个控制周期第 i 条腿的接触状态
     VecInt4 mpc_contact_last_;
 

@@ -109,7 +109,14 @@ public:
 
     void update();
 
+    // 仅诊断：预测后、观测校正后但低通之前的速度，以及去重力后的加速度。
+    const Vec3& debugVelocityPredicted() const { return debug_v_predicted_; }
+    const Vec3& debugVelocityUnfiltered() const { return debug_v_unfiltered_; }
+    const Vec3& debugAcceleration() const { return u_; }
+    double debugDt() const { return dt_; }
+
 private:
+    Vec3 debug_v_predicted_ = Vec3::Zero(), debug_v_unfiltered_ = Vec3::Zero();
     CtrlInterfaces &ctrl_interfaces_;
     std::shared_ptr<QuadrupedRobot> &robot_model_;
     std::shared_ptr<WaveGenerator> &wave_generator_;

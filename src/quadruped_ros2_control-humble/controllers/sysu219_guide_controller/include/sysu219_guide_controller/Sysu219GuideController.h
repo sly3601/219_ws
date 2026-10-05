@@ -7,6 +7,7 @@
 
 #include <controller_interface/controller_interface.hpp>
 #include <std_msgs/msg/string.hpp>
+#include <std_msgs/msg/float64_multi_array.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <controller_common/FSM/FSMState.h>
 #include <controller_common/FSM/StatePassive.h>
@@ -138,6 +139,8 @@ namespace sysu219_guide_controller {
         rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_cmd_pub_;
         rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr com_estimated_pub_;
         double last_com_publish_s_ = -1.0;
+        rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr estimator_debug_pub_;
+        double last_estimator_debug_s_ = -1.0;
 
 
 

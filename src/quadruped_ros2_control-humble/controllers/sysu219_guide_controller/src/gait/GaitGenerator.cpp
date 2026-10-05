@@ -45,7 +45,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
         if (trotting_ptr_ && trotting_ptr_->troting_kalman == 2) 
         {
             // 闭环：原来的逻辑，用 estimator 的全局足端位置
-            // 初始化时，start_p_就是当前的足端位置，后续每次落地都会刷新足底起始位置
+            // 初始化时记录当前脚位置，支撑相前半段继续刷新。
             start_p_ = estimator_->getFeetPos();
             end_p_ = start_p_;
             // 同时记录“当时那一刻”的 B 系名义足底位置
@@ -71,7 +71,20 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 nominal_feet_body_(1, leg) = foot_nominal.p.y();
                 nominal_feet_body_(2, leg) = foot_nominal.p.z();
             }
-            // nominal_feet_body_ = estimator_->getFeetPos2Body();
+            // 保留原名义足点的形状，仅整体平移，使对角交点对齐 MPC 质心。
+            const Vec2 a = nominal_feet_body_.col(0).head<2>();
+            const Vec2 b = nominal_feet_body_.col(3).head<2>();
+            const Vec2 c = nominal_feet_body_.col(1).head<2>();
+            const Vec2 d = nominal_feet_body_.col(2).head<2>();
+            const Vec2 u = b - a, v = d - c;
+            const double denominator = u.x() * v.y() - u.y() * v.x();
+            if (std::abs(denominator) > 1e-6) {
+                const Vec2 w = c - a;
+                const Vec2 intersection = a + u * ((w.x() * v.y() - w.y() * v.x()) / denominator);
+                const Vec2 shift = nominal_support_center_ - intersection;
+                for (int leg = 0; leg < 4; ++leg)
+                    nominal_feet_body_.col(leg).head<2>() += shift;
+            }
         }
         else if (trotting_ptr_ && (trotting_ptr_->troting_kalman == 0))
         {
@@ -109,23 +122,11 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
         // 条件1：当前腿处于支撑相（踩地）
         if (wave_generator_->contact_(i) == 1) 
         {
-            // 支撑相位小于0.5：刷新支撑点（脚刚落地，锁定当前位置）
-            if (wave_generator_->phase_(i) < 0.5) 
+            if (wave_generator_->phase_(i) < 0.5)
             {
-                // foot contact the ground
-                if (trotting_ptr_ && trotting_ptr_->troting_kalman == 1) 
-                {
+                if (trotting_ptr_ &&
+                    (trotting_ptr_->troting_kalman == 1 || trotting_ptr_->troting_kalman == 2))
                     start_p_.col(i) = estimator_->getFootPos(i);
-                }
-                else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 0)
-                {
-                    // 开环：只在first_run_初始化一次 start_p_，之后就完全不更新了（不依赖 estimator）
-                }
-                else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 2)
-                {
-                    start_p_.col(i) = estimator_->getFootPos(i);   // 世界系落脚点
-                }
-                
             }
             feet_pos.col(i) = start_p_.col(i);
             feet_vel.col(i).setZero();// 这里本来就应该是零的，支撑相不需要移动，速度为0
@@ -170,8 +171,8 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                             + k_y * (body_vel_global(1) - vxy_goal_(1));
 
                 // 给速度预测项限幅，防止一步修太猛
-                next_step(0) = saturation(next_step(0), Vec2(-0.035, 0.035));
-                next_step(1) = saturation(next_step(1), Vec2(-0.035, 0.035)); 
+                next_step(0) = saturation(next_step(0), Vec2(-10.135, 10.135));
+                next_step(1) = saturation(next_step(1), Vec2(-10.135, 10.135)); 
                 const double yaw = estimator_->getYaw();
                 const double d_yaw = estimator_->getDYaw();
 
@@ -201,7 +202,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 double target_x = foot_pos(0);
                 double target_y = foot_pos(1);
                 
-                const double step_limit_xy = 0.04; // 步长限幅，防止迈步目标跳太远
+                const double step_limit_xy = 0.84; // 步长限幅，防止迈步目标跳太远
 
                 // 最终 x 落点相对当前摆动起点限幅
                 target_x = saturation(target_x, Vec2(start_p_(0, i) - step_limit_xy,
@@ -239,7 +240,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 end_p_.col(i) = feet_end_calc_.calcFootPos(i, vxy_goal_, d_yaw_goal_, wave_generator_->phase_(i));
             }
 
-            // 调用你原有的摆线函数：计算平滑的足端轨迹/速度
+            // 调用你原有的摆线函数：计算足端轨迹/速度
             feet_pos.col(i) = getFootPos(i);
             feet_vel.col(i) = getFootVel(i);
         }

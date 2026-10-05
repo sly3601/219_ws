@@ -30,6 +30,8 @@ public:
 
     void restart();
 
+    void setNominalSupportCenter(const Vec2& center) { nominal_support_center_ = center; }
+
     [[nodiscard]] const Vec34& getEndFeetPos() const { return end_p_; } // 获得预期落足点的位置
     [[nodiscard]] const Vec34& getStartFeetPos() const { return start_p_; }
 
@@ -87,6 +89,7 @@ private:
     CtrlComponent& ctrl_component_; // 新增：引用控制组件，获取robot_model_
 
     Vec34 nominal_feet_body_; // 新增：足底在身体坐标系下的名义位置（站立时位置）
+    Vec2 nominal_support_center_ = Vec2::Zero(); // 名义足点对角线交点，采用落点公式的 yaw 坐标系。
 
 };
 

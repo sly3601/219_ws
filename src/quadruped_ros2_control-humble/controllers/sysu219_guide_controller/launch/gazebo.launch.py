@@ -1,4 +1,5 @@
 import os
+import xml.etree.ElementTree as ET
 
 import xacro
 from ament_index_python.packages import get_package_prefix, get_package_share_directory
@@ -7,6 +8,7 @@ from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     OpaqueFunction,
+    LogInfo,
     IncludeLaunchDescription,
     RegisterEventHandler,
     SetEnvironmentVariable,
@@ -43,6 +45,20 @@ def launch_setup(context, *args, **kwargs):
             'CLASSIC': 'true',
         },
     ).toxml()
+
+    # 仅此 Gazebo launch 注入只读插件；实机 URDF/launch 不加载它。
+    physics_debug_path = os.path.join(get_package_prefix('sysu219_guide_controller'),
+                                     'lib', 'sysu219_guide_controller', 'libsysu219_physics_debug.so')
+    diagnostics_status = '[PHYSICS_DEBUG] plugin unavailable: build optional Gazebo diagnostic target first'
+    if os.path.isfile(physics_debug_path):
+        root = ET.fromstring(robot_description)
+        gazebo = ET.SubElement(root, 'gazebo')
+        plugin = ET.SubElement(gazebo, 'plugin',
+                               filename=physics_debug_path, name='sysu219_physics_debug')
+        ros = ET.SubElement(plugin, 'ros')
+        ET.SubElement(ros, 'namespace').text = '/gazebo'
+        robot_description = ET.tostring(root, encoding='unicode')
+        diagnostics_status = '[PHYSICS_DEBUG] plugin available; enabled by kLargeDebug'
 
     rviz_config_file = os.path.join(
         get_package_share_directory(package_description),
@@ -133,6 +149,7 @@ def launch_setup(context, *args, **kwargs):
     )
 
     return [
+        LogInfo(msg=diagnostics_status),
         SetEnvironmentVariable(
             'AMENT_PREFIX_PATH',
             prepend_env_value('AMENT_PREFIX_PATH', leg_pd_prefix),

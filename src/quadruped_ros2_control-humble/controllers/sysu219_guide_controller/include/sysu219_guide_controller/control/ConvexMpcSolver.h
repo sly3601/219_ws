@@ -46,16 +46,16 @@ public:
   const DebugInfo& debugInfo() const { return debug_info_; }
 
   ConvexMpcOutput solveMpc(const ConvexMpcInput& in);
+  [[nodiscard]] int predictionSteps(double prediction_dt, double gait_period) const;
   
     Vec34 solveFromDogWrench(
       const Vec3& dd_pcd_G,         // 机身期望加速度（世界系）
-      const Vec34& foot_hold_G,     // 每条腿最近一次落地/支撑时记录的 G 系足底接触点
+      const Vec34& foot_hold_G,     // 本次求解前更新的支撑脚 G 系估计位置
       const Vec34& foot_end_G,      // 当前周期摆动腿最终落脚点（G系）
       const VecInt4& contact_now,   // 当前 4 足接触状态，1 支撑，0 摆动
-      const Vec4& phase_now,        // 当前 4 足支撑/摆动相内部进度 [0,1]
+      const std::vector<std::array<int, 4>>& contact_table, // WaveGenerator 给出的未来接触表，第 0 行为当前接触
       double control_dt,            // MPC 预测步长；50 Hz 时为 0.02 s
       double gait_period,           // wave_generator_->get_t()
-      double stance_ratio,          // wave_generator_->get_t_stance() / wave_generator_->get_t()
       const Vec3& p_body_G,         // 机身位置（世界系）
       const Vec3& v_body_G,         // 机身速度（世界系）
       const RotMat& R_GB,           // 机身姿态（旋转矩阵）

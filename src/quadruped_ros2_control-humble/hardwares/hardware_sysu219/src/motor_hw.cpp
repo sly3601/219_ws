@@ -1,5 +1,6 @@
 #include "hardware_sysu219/motor_hw.hpp"
 
+#include <algorithm>
 #include <signal.h>
 namespace damiao
 {    
@@ -304,6 +305,8 @@ void Motor_Control::control_mit(Motor &DM_Motor, float kp, float kd, float q, fl
     uint16_t q_uint = float_to_uint(q, -limit_param_cmd.Q_MAX, limit_param_cmd.Q_MAX, 16);
 
     // 9. 浮点转定点：速度dq（单位：rad/s）→ 12位定点数，物理范围[-DQ_MAX, DQ_MAX]
+    // 保留上层已有更严格的限幅；仅防止超出本电机协议量程后发生位域回绕。
+    dq = std::clamp(dq, -limit_param_cmd.DQ_MAX, limit_param_cmd.DQ_MAX);
     uint16_t dq_uint = float_to_uint(dq, -limit_param_cmd.DQ_MAX,limit_param_cmd.DQ_MAX, 12);
 
     // 10. 浮点转定点：扭矩tau（单位：N·m）→ 12位定点数，物理范围[-TAU_MAX, TAU_MAX]

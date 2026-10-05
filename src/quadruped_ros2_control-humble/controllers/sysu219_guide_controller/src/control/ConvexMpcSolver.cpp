@@ -22,57 +22,6 @@ extern "C" {
 
 #include <rclcpp/rclcpp.hpp>
 
-// 限制到 [0,1]
-// clamp = 夹紧/限幅。
-// clamp01(x) 表示把 x 限制到 0 到 1 之间。
-static inline double clamp01(const double x) {
-  return std::max(0.0, std::min(1.0, x));
-}
-
-// 相位 wrap 到 [0,1)
-// wrap = 环绕。
-// 例如 1.2 会变成 0.2，-0.1 会变成 0.9。
-// 用于处理步态周期相位，因为相位超过 1 后应回到 0。
-static inline double wrap01(const double x) {
-  double y = std::fmod(x, 1.0);
-  if (y < 0.0) {
-    y += 1.0;
-  }
-  return y;
-}
-
-/*
- * WaveGenerator 的 phase_ 是“当前支撑相/摆动相内部进度”，不是完整周期 phase。
- *
- * contact = 1:
- *   phase = normal_t / stanceRatio
- *   normal_t = phase * stanceRatio
- *
- * contact = 0:
- *   phase = (normal_t - stanceRatio) / (1 - stanceRatio)
- *   normal_t = stanceRatio + phase * (1 - stanceRatio)
- *
- * normal_t 才是完整步态周期内的归一化相位 [0,1)。
- * 
- * 这个函数的作用就是：
- * 把 WaveGenerator 给出的“支撑相/摆动相内部进度”转换成完整步态周期里的统一相位 normal_t ∈ [0,1)，
- * 方便后面预测 horizon 内每条腿未来是支撑还是摆动。
- */
-static inline double legModePhaseToCyclePhase(
-    const double mode_phase,      // mode_phase 是 WaveGenerator 的 phase_，表示当前支撑相/摆动相内部进度
-    const int contact,            // contact 是当前接触状态，1 支撑，0 摆动
-    const double stance_ratio) {  // stance_ratio 是一个步态周期内支撑相的占比，例如 0.6 表示支撑相占 60%，摆动相占 40%
-  const double ph = clamp01(mode_phase);
-  const double st = clamp01(stance_ratio);
-
-  // 一个完整周期里先支撑、后摆动
-  if (contact == 1) {
-    return ph * st;
-  }
-
-  return st + ph * (1.0 - st);
-}
-
 /*
  * 本函数用于计算本次 MPC 实际应该用多少个预测步 N
  * 根据“半个步态周期”限制，计算实际 HPIPM horizon steps。
@@ -358,7 +307,7 @@ ConvexMpcSolver::ConvexMpcSolver()
   // 状态顺序：
   // x = [Theta(3), p_com(3), omega(3), v_com(3), g_z(1)]
 
-  N = 5;                          // 50 Hz MPC：5 * 20 ms = 100 ms，保留原预测时域；仍受半个步态周期限制。
+  N = 5;                          // 恢复 50 Hz MPC 的原预测时域：5 * 20 ms = 100 ms。
   mass = 40.5;                    // 机器人质量，单位 kg
   // Ib = Mat3::Identity();          // 机身的转动惯量矩阵，单位 kg*m^2，B 系表达
   Ib = Vec3(0.624, 2.683, 2.934).asDiagonal();
@@ -369,7 +318,7 @@ ConvexMpcSolver::ConvexMpcSolver()
   fzMin = 0.0;
   fzMax = 350.0;
 
-  enforceHalfGaitHorizon = true;  // 论文：预测时域不能超过半个步态周期
+  enforceHalfGaitHorizon = true;  // 保留当前固定落点模型的半步态周期限制。
 
   // regularization = 数值正则化系数。
   // 加到 QP Hessian 对角线上，避免矩阵病态或半正定导致求解器不稳定。
@@ -380,7 +329,7 @@ ConvexMpcSolver::ConvexMpcSolver()
   R.setZero();
   S.setZero();
   Q.diagonal() << 300, 300, 20, // 3轴角度，姿态的权重
-                      50,  50,  320,// 3轴位置，机身位置的权重
+                      120,  120,  320,// 3轴位置，机身位置的权重
                       5,   5,   5,  // 3轴角速度，姿态变化的权重
                       5,   5,   10, // 3轴速度，机身速度的权重
                       0.0;          // 重力
@@ -948,8 +897,9 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
     static rclcpp::Clock timing_clock(RCL_STEADY_TIME);
     RCLCPP_INFO_THROTTLE(
         rclcpp::get_logger("ConvexMpcSolver"), timing_clock, 1000,
-        "[MPC_TIMING] solve_ms=%.3f nominal_step_ms=%.3f status=%d iter=%d",
-        solve_ms, in.dt * 1000.0, hpipm_status, diag_iter);
+        "[MPC_TIMING] solve_ms=%.3f nominal_step_ms=%.3f N=%d horizon_ms=%.3f status=%d iter=%d",
+        solve_ms, in.dt * 1000.0, horizon_N, horizon_N * in.dt * 1000.0,
+        hpipm_status, diag_iter);
   }
 
   if (quadruped_debug::kLargeDebug && hpipm_verbose) {
@@ -1030,15 +980,19 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
   return out;
 }
 
+int ConvexMpcSolver::predictionSteps(
+    const double prediction_dt, const double gait_period) const {
+  return computeEffectiveHorizon(N, prediction_dt, gait_period, enforceHalfGaitHorizon);
+}
+
 Vec34 ConvexMpcSolver::solveFromDogWrench(
     const Vec3& dd_pcd_G,        // 期望质心/机身线加速度，G 系表达。用于生成参考位置轨迹 p_ref = p_now + v_ref*t + 0.5*a_ref*t^2。
-    const Vec34& foot_hold_G,    // 四条腿最近一次落地/进入支撑时记录的足底固定接触点，G 系表达。每一列对应一条腿的足底世界坐标。
+    const Vec34& foot_hold_G,    // 本次求解前更新的支撑脚估计位置，G 系表达；该次预测内按固定支点处理。
     const Vec34& foot_end_G,     // 在摆动腿时，预期足底支撑落点
     const VecInt4& contact_now,  // 当前四条腿接触状态。1 表示支撑腿，0 表示摆动腿。顺序为 FR, FL, RR, RL。
-    const Vec4& phase_now,       // 当前四条腿在各自支撑相/摆动相内部的归一化进度，范围 [0,1]。注意不是完整步态周期相位。
+    const std::vector<std::array<int, 4>>& contact_table, // 步态生成器提供的接触预测，第 0 行对应当前控制帧。
     const double control_dt,     // MPC 预测步长，单位秒；50 Hz 时为 0.02 s，用于动力学、参考轨迹和接触预测。
     const double gait_period,    // 当前完整步态周期，单位秒。例如 trot 一个完整周期的时间。
-    const double stance_ratio,   // 支撑相占完整步态周期的比例。stance_ratio = 支撑相时间 / 完整步态周期。
     const Vec3& p_body_G,        // 当前机身原点位置，G 系表达。后面会结合 pcb_B 转成质心位置 p_com_G。
     const Vec3& v_body_G,        // 当前机身原点线速度，G 系表达。后面会结合质心偏置和角速度转成质心速度 v_com_G。
     const RotMat& R_GB,          // 当前机身姿态旋转矩阵，表示从 B 系到 G 系的旋转。用于计算 RPY、质心偏置、世界系惯量。
@@ -1053,13 +1007,12 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
     static rclcpp::Clock input_clock(RCL_STEADY_TIME);
     RCLCPP_ERROR_THROTTLE(
         rclcpp::get_logger("ConvexMpcSolver"), input_clock, 1000,
-        "[MPC_DIAG] fallback=%s dt=%.6f gait=%.6f stance=%.6f "
-        "finite[a,hold,end,phase,p,v,R,gyro,Rd,vref]=[%d %d %d %d %d %d %d %d %d %d]",
-        reason, control_dt, gait_period, stance_ratio,
+        "[MPC_DIAG] fallback=%s dt=%.6f gait=%.6f contact_steps=%zu "
+        "finite[a,hold,end,p,v,R,gyro,Rd,vref]=[%d %d %d %d %d %d %d %d %d]",
+        reason, control_dt, gait_period, contact_table.size(),
         static_cast<int>(dd_pcd_G.allFinite()),
         static_cast<int>(foot_hold_G.allFinite()),
         static_cast<int>(foot_end_G.allFinite()),
-        static_cast<int>(phase_now.allFinite()),
         static_cast<int>(p_body_G.allFinite()),
         static_cast<int>(v_body_G.allFinite()),
         static_cast<int>(R_GB.allFinite()),
@@ -1076,11 +1029,6 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   if (gait_period <= 0.0 || !std::isfinite(gait_period)) { // 步态周期必须正数且有限
     log_fallback_reason("invalid_gait_period");
     return makeFallbackForces(contact_now);
-  }
-
-  if (stance_ratio <= 0.0 || stance_ratio >= 1.0 || !std::isfinite(stance_ratio)) {
-    log_fallback_reason("invalid_stance_ratio");
-    return makeFallbackForces(contact_now);   // 支撑比必须在 (0,1) 之间且有限
   }
 
   if (N <= 0 ||
@@ -1101,7 +1049,6 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   if (!dd_pcd_G.allFinite() ||
       !foot_hold_G.allFinite() ||
       !foot_end_G.allFinite() ||
-      !phase_now.allFinite() ||
       !p_body_G.allFinite() ||
       !v_body_G.allFinite() ||
       !R_GB.allFinite() ||
@@ -1122,16 +1069,30 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   ConvexMpcInput in;
   in.dt = control_dt;
 
-  in.N = computeEffectiveHorizon(
-      N,
-      in.dt,
-      gait_period,
-      enforceHalfGaitHorizon
-  );
+  in.N = predictionSteps(in.dt, gait_period);
 
   if (in.N <= 0) {
     log_fallback_reason("empty_horizon");
     return makeFallbackForces(contact_now);
+  }
+
+  if (static_cast<int>(contact_table.size()) != in.N) {
+    log_fallback_reason("invalid_contact_table_size");
+    return makeFallbackForces(contact_now);
+  }
+  for (int leg = 0; leg < 4; ++leg) {
+    if (contact_table[0][leg] != contact_now(leg)) {
+      log_fallback_reason("contact_table_current_mismatch");
+      return makeFallbackForces(contact_now);
+    }
+  }
+  for (const auto& step : contact_table) {
+    for (int contact : step) {
+      if (contact != 0 && contact != 1) {
+        log_fallback_reason("invalid_contact_table_value");
+        return makeFallbackForces(contact_now);
+      }
+    }
   }
 
   // ====== x0 = [Theta, p_com, omega, v_com, g_z] ======
@@ -1193,50 +1154,13 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   }
 
   // ====== contact schedule (N) ======
-  //
-  // 使用当前每条腿的 phase_now 和 contact_now 预测未来接触状态。
-  //
-  // WaveGenerator 的 phase_now 是当前支撑相/摆动相内部进度：
-  // contact=1: normal_phase = phase_now * stance_ratio
-  // contact=0: normal_phase = stance_ratio + phase_now * (1 - stance_ratio)
-
-  in.contact.resize(in.N);
-
-  // normal_phase_now是一个完整步态周期内的相位，范围[0,1)，先支撑再摆动
-  Vec4 normal_phase_now;
-  normal_phase_now.setZero();
-
-  for (int leg = 0; leg < 4; ++leg) {
-    normal_phase_now(leg) =
-        legModePhaseToCyclePhase(
-            phase_now(leg),
-            contact_now(leg),
-            stance_ratio  // stance_ratio是1个步态周期内支撑相的占比
-        );
-  }
-  /*  
-  * 根据normal_phase_now，
-  * 预测 MPC horizon 内每一个未来时刻 k，四条腿分别是支撑还是摆动，
-  * 并写入 in.contact[k]
-  */
-  for (int k = 0; k < in.N; ++k) {
-    const double t_k = static_cast<double>(k) * in.dt;
-
-    std::array<int, 4> ck;
-    for (int leg = 0; leg < 4; ++leg) {
-      const double normal_k =
-          wrap01(normal_phase_now(leg) + t_k / gait_period);  // 相位 wrap 到 [0,1)
-
-      ck[leg] = (normal_k < stance_ratio) ? 1 : 0;
-    }
-
-    in.contact[k] = ck;
-  }
+  // 直接使用步态生成器的预测，包含全支撑/全摆动和状态切换。
+  in.contact = contact_table;
 
   // ====== rFeet schedule (N) ======
   //
   // foot_hold_G 由 StateTrotting 传入：
-  // foot_hold_G.col(i) = 第 i 条腿最近一次落地/支撑时记录的 G 系足底接触点。
+  // foot_hold_G.col(i) = 本次求解前更新的第 i 条支撑腿 G 系估计位置。
   //
   // 这里不做任何足端正解，也不重新做 body->foot 到 world 的坐标变换。
   // MPC 这里只需要计算 SRBD 转动动力学里的力臂：

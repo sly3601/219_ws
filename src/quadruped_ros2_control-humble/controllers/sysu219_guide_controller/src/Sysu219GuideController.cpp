@@ -80,7 +80,7 @@ namespace sysu219_guide_controller
         }
 
         ctrl_component_.robot_model_->update();
-        ctrl_component_.wave_generator_->update();
+        ctrl_component_.wave_generator_->update(period.seconds());
         ctrl_component_.estimator_->update();
 
         // 仅 Gazebo 配置开启；所有 FSM 状态都以约 25 Hz 输出 MPC 的估计质心。
@@ -239,6 +239,28 @@ namespace sysu219_guide_controller
 
         if (quadruped_debug::kLargeDebug && trotting_ran)
             state_list_.trotting->recordDebug(time, period, debug_begin, debug_system_begin);
+        // 仿真诊断：所有 FSM 状态都可采集；50 Hz，无订阅者时不组装消息。
+        if (quadruped_debug::kLargeDebug && estimator_debug_pub_ &&
+            estimator_debug_pub_->get_subscription_count() > 0 &&
+            (last_estimator_debug_s_ < 0.0 || time.seconds() < last_estimator_debug_s_ ||
+             time.seconds() - last_estimator_debug_s_ >= 0.02 - 1e-9)) {
+            const auto& est = ctrl_component_.estimator_;
+            std_msgs::msg::Float64MultiArray msg;
+            msg.data.reserve(28);
+            msg.data = {time.seconds(), static_cast<double>(current_state_->state_name), period.seconds()};
+            const auto append = [&](const auto& values) {
+                for (int i = 0; i < values.size(); ++i) msg.data.push_back(values(i));
+            };
+            append(est->getPosition()); append(est->getVelocity());
+            append(est->debugVelocityPredicted()); append(est->debugVelocityUnfiltered());
+            append(est->debugAcceleration());
+            append(ctrl_component_.wave_generator_->contact_);
+            append(ctrl_component_.wave_generator_->phase_);
+            msg.data.push_back(est->debugDt());
+            msg.data.push_back(static_cast<double>(mode_));
+            estimator_debug_pub_->publish(msg);
+            last_estimator_debug_s_ = time.seconds();
+        }
         return controller_interface::return_type::OK;
     }
 
@@ -339,6 +361,11 @@ namespace sysu219_guide_controller
     {
         // ========== 1. 【关键修改】最先赋值 node 和 debug_pub ==========
         ctrl_interfaces_.node = get_node(); // <-- 移到最前面！
+        estimator_debug_pub_.reset();
+        last_estimator_debug_s_ = -1.0;
+        if (quadruped_debug::kLargeDebug && get_node()->get_parameter("use_sim_time").as_bool())
+            estimator_debug_pub_ = get_node()->create_publisher<std_msgs::msg::Float64MultiArray>(
+                "/estimator_debug", rclcpp::SensorDataQoS());
         com_estimated_pub_.reset();
         last_com_publish_s_ = -1.0;
         if (get_node()->get_parameter("gazebo_com_visualization").as_bool() &&
@@ -380,6 +407,16 @@ namespace sysu219_guide_controller
             }
         }
 
+        if (quadruped_debug::kLargeDebug) {
+            const auto& positions = ctrl_interfaces_.joint_position_state_interface_;
+            const auto& velocities = ctrl_interfaces_.joint_velocity_state_interface_;
+            RCLCPP_INFO(get_node()->get_logger(), "[JOINT_DEBUG] position_count=%zu velocity_count=%zu",
+                positions.size(), velocities.size());
+            for (size_t i = 0; i < std::min(positions.size(), velocities.size()); ++i)
+                RCLCPP_INFO(get_node()->get_logger(), "[JOINT_DEBUG] index=%zu position=%s velocity=%s",
+                    i, positions[i].get().get_name().c_str(), velocities[i].get().get_name().c_str());
+        }
+
         // Create FSM List
         state_list_.passive = std::make_shared<StatePassive>(ctrl_interfaces_);
         state_list_.fixedProne = std::make_shared<StateFixedProne>(ctrl_interfaces_, prone_pos_, prone_kp_, prone_kd_);
@@ -409,6 +446,7 @@ namespace sysu219_guide_controller
     controller_interface::CallbackReturn Sysu219GuideController::on_deactivate(
         const rclcpp_lifecycle::State& /*previous_state*/)
     {
+        estimator_debug_pub_.reset();
         com_estimated_pub_.reset();
         release_interfaces();
         return CallbackReturn::SUCCESS;

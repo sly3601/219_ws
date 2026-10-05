@@ -5,6 +5,7 @@
 #include "sysu219_guide_controller/gait/WaveGenerator.h"
 
 #include <iostream>
+#include <cmath>
 
 WaveGenerator::WaveGenerator(const double period, const double st_ratio, const Vec4 &bias) {
 
@@ -12,6 +13,7 @@ WaveGenerator::WaveGenerator(const double period, const double st_ratio, const V
     contact_past_.setZero();
     status_past_ = WaveStatus::SWING_ALL;
     status_ = WaveStatus::SWING_ALL;
+    switch_status_ << 0, 0, 0, 0;
 
     period_ = period;
     st_ratio_ = st_ratio;
@@ -30,10 +32,11 @@ WaveGenerator::WaveGenerator(const double period, const double st_ratio, const V
             exit(-1);
         }
     }
-    start_t_ = getSystemTime();
 }
 
-auto WaveGenerator::update() -> void {
+auto WaveGenerator::update(const double control_dt) -> void {
+    control_dt_ = std::isfinite(control_dt) && control_dt > 0.0 ? control_dt : 0.0;
+    control_time_ += control_dt_;
     // 【第1步】用【当前状态status_】计算【当前相位phase_】和【当前接触状态contact_】
     // 注意：这一步算出来的contact_，在WAVE_ALL模式下，应该是"对角腿1，对角腿0"
     calcWave(phase_, contact_, status_);
@@ -90,14 +93,34 @@ auto WaveGenerator::update() -> void {
     }
 }
 
+std::vector<std::array<int, 4>> WaveGenerator::getMpcContactTable(
+    const int steps, const double prediction_dt) const {
+    if (steps <= 0 || !std::isfinite(prediction_dt) || prediction_dt <= 0.0)
+        return {};
+
+    WaveGenerator preview = *this;
+    const double tick_dt = control_dt_ > 0.0 ? control_dt_ : prediction_dt;
+    double elapsed = 0.0;
+    std::vector<std::array<int, 4>> table(steps);
+    for (int k = 0; k < steps; ++k) {
+        // 按控制帧推进，不能直接跳过切换期间各腿匹配旧状态的时刻。
+        const double target_time = k * prediction_dt;
+        while (elapsed + tick_dt <= target_time + 1e-12) {
+            preview.update(tick_dt);
+            elapsed += tick_dt;
+        }
+        for (int leg = 0; leg < 4; ++leg)
+            table[k][leg] = preview.contact_(leg);
+    }
+    return table;
+}
+
 void WaveGenerator::calcWave(Vec4 &phase, VecInt4 &contact, const WaveStatus status) {
     switch (status) {
         case WaveStatus::WAVE_ALL: {
-            phase_system_time_ = getSystemTime();
-            const double past_t = static_cast<double>(phase_system_time_ - start_t_) * 1e-6;
             for (int i(0); i < 4; ++i) {
                 normal_t_(i) =
-                        fmod(past_t + period_ - period_ * bias_(i), period_) / period_;
+                        fmod(control_time_ + period_ - period_ * bias_(i), period_) / period_;
                 if (normal_t_(i) < st_ratio_) {
                     contact(i) = 1;
                     phase(i) = normal_t_(i) / st_ratio_;
