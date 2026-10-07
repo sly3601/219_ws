@@ -76,6 +76,7 @@ sudo apt-get install ros-humble-gazebo-ros
 
 # 2. 代码运行方式
 1. 编译
+在CPU强大的主机上编译：
 ```
 colcon build \
   --packages-up-to ocs2_core leg_pd_controller sysu219_guide_controller sysu219_description keyboard_input hardware_sysu219 tools \
@@ -84,7 +85,7 @@ colcon build \
   --continue-on-error \
   --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${HOME}/219_ws/install
 ```
-
+在CPU算力局促的小机器上编译：
 ```
 MAKEFLAGS="-j1 -l1" CMAKE_BUILD_PARALLEL_LEVEL=1 \
 colcon build \
@@ -112,7 +113,7 @@ ros2 launch sysu219_guide_controller robot_hardware.launch.py
 ```
 ros2 launch sysu219_guide_controller gazebo.launch.py 
 ```
-* 运行键盘控制节点
+* 另开一个终端，运行键盘控制节点
 ```
 ros2 run keyboard_input keyboard_input 
 ```
@@ -244,3 +245,8 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libpthread.so.0 QT_QPA_PLATFORM=xcb LD_LIBRARY_
   * 控制器新增 `/joint_cmd_states` 话题，每拍发布当前关节目标位置（sensor_msgs/JointState），供调试工具对比"目标 vs 实测"。
   * 新增独立调试工具包 `src/tools`：JointTuner（12 关节滑条调姿 + 前后腿批量同步 + 姿态切换 + 一键保存快照）、JointStateViewer（实测/目标双列只读显示）、joint_state_relay（把目标角镜像成 `/joint_states` 以在 RViz 中预览）。
   * 修正若干状态机隐患：BALANCETEST 的 1 键改为回 PASSIVE；FIXEDDOWN 起点刚度改写为 `kp_ * kp_start_`（原先 kp/kd 起点量纲错误、kd 误用 kp_start_）；`getNextState` 加空指针兜底。
+ 
+* 2026.10.07 v4.2
+  * 突然发现之前的MPC模式根本就没有进入，运行的一直都是原先的QP模式，所以进行了一系列的大改
+  * 最终结果是：真正的convex MPC模式可用，并且troting效果比之前QP更好，已经可以接入遥控器控制行走了
+  * 代价：新增大量代码，且高度耦合，QP、MPC、debug、安全代码等，需要进一步梳理和解耦。
