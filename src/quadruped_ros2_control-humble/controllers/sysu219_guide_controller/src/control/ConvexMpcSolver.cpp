@@ -307,14 +307,14 @@ ConvexMpcSolver::ConvexMpcSolver()
   // 状态顺序：
   // x = [Theta(3), p_com(3), omega(3), v_com(3), g_z(1)]
 
-  N = 5;                          // 恢复 50 Hz MPC 的原预测时域：5 * 20 ms = 100 ms。
+  N = 15;                          // 恢复 50 Hz MPC 的原预测时域：5 * 20 ms = 100 ms。
   mass = 40.5;                    // 机器人质量，单位 kg
   // Ib = Mat3::Identity();          // 机身的转动惯量矩阵，单位 kg*m^2，B 系表达
   Ib = Vec3(0.624, 2.683, 2.934).asDiagonal();
   pcb_B = Vec3::Zero();           // pcb_B 表示“从机身原点 body 到质心 COM 的偏移向量”，在 B 系下表达。COM = body + R * pcb_B
   g = Vec3(0.0, 0.0, -9.81);      // 重力加速度向量
 
-  mu = 0.4;                       // 摩擦系数
+  mu = 0.35;                      // 摩擦系数
   fzMin = 0.0;
   fzMax = 350.0;
 
@@ -328,10 +328,10 @@ ConvexMpcSolver::ConvexMpcSolver()
   Q.setZero();
   R.setZero();
   S.setZero();
-  Q.diagonal() << 300, 300, 20, // 3轴角度，姿态的权重
-                      120,  120,  320,// 3轴位置，机身位置的权重
-                      5,   5,   5,  // 3轴角速度，姿态变化的权重
-                      5,   5,   10, // 3轴速度，机身速度的权重
+  Q.diagonal() << 380, 460, 23, // 3轴角度，姿态的权重
+                      500,  300,  640,// 3轴位置，机身位置的权重
+                      45,   54,   5,  // 3轴角速度，姿态变化的权重
+                      570,   670,   470, // 3轴速度，机身速度的权重
                       0.0;          // 重力
 
   R.diagonal() << 1, 1, 1,  // 力大小限制惩罚权重
@@ -344,12 +344,19 @@ ConvexMpcSolver::ConvexMpcSolver()
                       0.05, 0.05, 0.05,
                       0.05, 0.05, 0.05;
 
-  // 新增：Gazebo 支撑能力验证的起始权重，覆盖上面保留的原始 R/S 赋值。
-  // 状态以 m、rad、m/s 为单位，而力以 N 为单位；原始 R=1 会压制正常支撑力。
-  // S 也同步减小，避免上一帧接近零的力拖住支撑力建立。
-  // 这是仿真验证参数，不代表最终调参结果；Q 和其余模型参数保持原值。
-  R = 1e-6 * Mat12::Identity();
-  S = 1e-6 * Mat12::Identity();
+  // 以下为实际生效的 R/S，覆盖上面的初始值；仿真和实机共用。
+  // R 保持原值；S 保留各腿原有变化惩罚，并增加总竖直承重变化惩罚。
+  R.diagonal() << 1e-4, 1e-4, 1e-6,  // FR: fx, fy, fz
+                  1e-4, 1e-4, 1e-6,  // FL
+                  1e-4, 1e-4, 1e-6,  // RR
+                  1e-4, 1e-4, 1e-6;  // RL
+  S.diagonal() << 1e-3, 1e-3, 1e-6,  // FR: fx, fy, fz
+                  1e-3, 1e-3, 1e-6,  // FL
+                  1e-3, 1e-3, 1e-6,  // RR
+                  1e-3, 1e-3, 1e-6;  // RL
+  // 额外惩罚 1e-3 * (本次总 fz - 上次总 fz)^2；腿间转移承重不受此项惩罚。
+  const Vec12 total_fz = (Vec12() << 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1).finished();
+  S.noalias() += 1e-3 * total_fz * total_fz.transpose();
 
   rebuildFixedMatrices();
 }
@@ -617,6 +624,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
         // stance
         hpipm_->lg_stage[k].segment(row, rows_per_leg) = lower_bound_stance_;
         hpipm_->ug_stage[k].segment(row, rows_per_leg) = upper_bound_stance_;
+        if (k == 0) hpipm_->ug_stage[k](row + 4) = std::min(fzMax, in.liftoff_fz_limit(leg));
       }
     }
   }
@@ -664,6 +672,9 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
   // 当前在论文目标基础上，对真正会执行的 u0 额外加入：
   // (u0 - last_u0)^T S (u0 - last_u0)，其中这个权重系数S代码中是S，不是HPIPM里的状态交叉项SS，完全不同的
   if (has_last_solution_ && !S.isZero(0)) {
+    // 上次求解会屏蔽摆动足的代价耦合，每次必须先恢复完整矩阵。
+    R_cost_rate_.noalias() = R_cost_ + 2.0 * S;
+    // 保留上次所有腿的承重，避免抬脚时把总承重参考也一起减掉。
     r_cost_rate_.noalias() = -2.0 * S * last_u0_; // 这里是计算之后的中间过程项
     hpipm_->RR[0] = R_cost_rate_.data();
     hpipm_->rr[0] = r_cost_rate_.data();
@@ -725,8 +736,8 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
 
   // 不求解，只装填，d_ocp_qp_set_all函数把前面准备好的所有 MPC 数学数据，统一写进 HPIPM 的 QP 问题对象 hpipm_->qp 里
   // 新增：用 HPIPM mask 关闭无效边界，不让 +/-INF 参与内点法计算。
-  // 原有约束和注释保留。支撑腿启用摩擦锥下界和 fz 上下界；
-  // 摆动腿只启用 fx=fy=fz=0 的边界，其余边界全部屏蔽。
+  // 支撑腿启用摩擦锥下界和 fz 上下界；
+  // 摆动腿屏蔽一般约束，下面同时取消其动力学作用和代价耦合。
   std::vector<VecX> lower_masks(horizon_N, VecX::Zero(ng_stage));
   std::vector<VecX> upper_masks(horizon_N, VecX::Zero(ng_stage));
   for (int k = 0; k < horizon_N; ++k) {
@@ -740,18 +751,19 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
         upper_masks[k].segment(row + 4, 3).setOnes();
       }
     }
-    // 新增：当前 R、S 为正对角阵，输入-状态交叉项为零。
-    // 取消摆动足的动力学作用和线性约束，最优输入由正二次代价压到零。
-    // 原有“零力上下界”的代码和注释保留，但对应边界在此屏蔽。
-    // 若以后加入跨足耦合代价或非零交叉项，需要重新检查这一处理。
+    // 当前 R 为正对角阵，S 含总承重耦合，输入-状态交叉项为零。
+    // 摆动足从动力学和首阶段 S 中移除，仅保留正的 R 代价，使其最优力为零。
     for (int leg = 0; leg < 4; ++leg) {
       if (in.contact[k][leg] == 0) {
         hpipm_->B_stage[k].block<13, 3>(0, 3 * leg).setZero();
         const int row = rows_per_leg * leg;
         lower_masks[k].segment(row, rows_per_leg).setZero();
         upper_masks[k].segment(row, rows_per_leg).setZero();
-        // 首阶段摆动足不应被上一帧的支撑力平滑项激励。
+        // 首阶段摆动足不能用虚假力抵消支撑足的总承重代价。
         if (k == 0) {
+          R_cost_rate_.middleRows(3 * leg, 3).setZero();
+          R_cost_rate_.middleCols(3 * leg, 3).setZero();
+          R_cost_rate_.block<3, 3>(3 * leg, 3 * leg) = R_cost_.block<3, 3>(3 * leg, 3 * leg);
           r_cost_rate_.segment<3>(3 * leg).setZero();
         }
       }
@@ -986,7 +998,7 @@ int ConvexMpcSolver::predictionSteps(
 }
 
 Vec34 ConvexMpcSolver::solveFromDogWrench(
-    const Vec3& dd_pcd_G,        // 期望质心/机身线加速度，G 系表达。用于生成参考位置轨迹 p_ref = p_now + v_ref*t + 0.5*a_ref*t^2。
+    const Vec3& p_ref_G,         // 机身期望位置，G 系表达；与指令速度生成参考，不使用 QP 的 Kpp/Kdp。
     const Vec34& foot_hold_G,    // 本次求解前更新的支撑脚估计位置，G 系表达；该次预测内按固定支点处理。
     const Vec34& foot_end_G,     // 在摆动腿时，预期足底支撑落点
     const VecInt4& contact_now,  // 当前四条腿接触状态。1 表示支撑腿，0 表示摆动腿。顺序为 FR, FL, RR, RL。
@@ -998,7 +1010,10 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
     const RotMat& R_GB,          // 当前机身姿态旋转矩阵，表示从 B 系到 G 系的旋转。用于计算 RPY、质心偏置、世界系惯量。
     const Vec3& gyro_G,          // 当前机身角速度，G 系表达。对应论文状态里的 omega。
     const RotMat& Rd_GB,         // 期望机身姿态旋转矩阵，B 系到 G 系。用于生成参考姿态 theta_ref。
-    const Vec3& v_ref_G          // 期望机身/质心线速度，G 系表达。用于生成参考速度和参考位置轨迹。
+    const Vec3& v_ref_G,         // 期望机身/质心线速度，G 系表达。用于生成参考速度和参考位置轨迹。
+    const Vec4& liftoff_fz_limit,
+    const std::vector<Vec3>& p_ref_trajectory_G,
+    const std::vector<Vec3>& v_ref_trajectory_G
     ) {
   // 新增诊断：只记录原因，不改变原来的保底返回和控制参数。
   // finite 数组中 1 表示数值有限，0 表示该输入含 NaN 或 Inf。
@@ -1008,9 +1023,9 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
     RCLCPP_ERROR_THROTTLE(
         rclcpp::get_logger("ConvexMpcSolver"), input_clock, 1000,
         "[MPC_DIAG] fallback=%s dt=%.6f gait=%.6f contact_steps=%zu "
-        "finite[a,hold,end,p,v,R,gyro,Rd,vref]=[%d %d %d %d %d %d %d %d %d]",
+        "finite[pref,hold,end,p,v,R,gyro,Rd,vref]=[%d %d %d %d %d %d %d %d %d]",
         reason, control_dt, gait_period, contact_table.size(),
-        static_cast<int>(dd_pcd_G.allFinite()),
+        static_cast<int>(p_ref_G.allFinite()),
         static_cast<int>(foot_hold_G.allFinite()),
         static_cast<int>(foot_end_G.allFinite()),
         static_cast<int>(p_body_G.allFinite()),
@@ -1046,7 +1061,7 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
     return makeFallbackForces(contact_now);
   }
 
-  if (!dd_pcd_G.allFinite() ||
+  if (!p_ref_G.allFinite() ||
       !foot_hold_G.allFinite() ||
       !foot_end_G.allFinite() ||
       !p_body_G.allFinite() ||
@@ -1068,6 +1083,7 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
 
   ConvexMpcInput in;
   in.dt = control_dt;
+  in.liftoff_fz_limit = liftoff_fz_limit.cwiseMax(fzMin).cwiseMin(fzMax);
 
   in.N = predictionSteps(in.dt, gait_period);
 
@@ -1118,17 +1134,24 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
     static rclcpp::Clock state_clock(RCL_STEADY_TIME);
     RCLCPP_INFO_THROTTLE(
         rclcpp::get_logger("ConvexMpcSolver"), state_clock, 1000,
-        "[MPC_STATE] first_pending=%d pz=%.4f vz=%.4f az_ref=%.4f vz_ref=%.4f "
+        "[MPC_STATE] first_pending=%d pz=%.4f vz=%.4f pz_ref=%.4f vz_ref=%.4f "
         "rp_now=[%.4f %.4f] rp_ref=[%.4f %.4f]",
         static_cast<int>(!has_last_solution_), p_com_G(2), v_com_G(2),
-        dd_pcd_G(2), v_ref_G(2), theta_now(0), theta_now(1),
+        p_ref_G(2), v_ref_G(2), theta_now(0), theta_now(1),
         diag_theta_ref(0), diag_theta_ref(1));
   }
 
   // ====== xRef (N + 1) ======
+  const bool has_trajectory = !p_ref_trajectory_G.empty() || !v_ref_trajectory_G.empty();
+  if (has_trajectory && (p_ref_trajectory_G.size() != static_cast<size_t>(in.N + 1) ||
+                         v_ref_trajectory_G.size() != static_cast<size_t>(in.N + 1))) {
+    log_fallback_reason("invalid_reference_trajectory_size");
+    return makeFallbackForces(contact_now);
+  }
   in.xRef.resize(in.N + 1);
 
   const Vec3 theta_ref = rotMatToRPY(Rd_GB);
+  const Vec3 p_com_ref_G = p_ref_G + Rd_GB * pcb_B;
 
   for (int k = 0; k <= in.N; ++k) {
     const double t_k = static_cast<double>(k) * in.dt;
@@ -1137,18 +1160,18 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
 
     in.xRef[k].segment<3>(0) = theta_ref;
 
-    // 参考位置轨迹：p_ref = p_now + v_ref*t + 0.5*a_ref*t^2
-    // 修正：从当前质心速度出发，按外层 PD 给出的加速度预测。
-    // 上方旧公式注释保留；参考起始速度由 v_ref_G 改为 v_com_G。
-    in.xRef[k].segment<3>(3) =
-        p_com_G + v_com_G * t_k + 0.5 * dd_pcd_G * t_k * t_k;
+    // 对齐时使用完整的减速轨迹；迈步后仍按期望位置和指令速度生成参考。
+    in.xRef[k].segment<3>(3) = has_trajectory
+        ? (p_ref_trajectory_G[k] + Rd_GB * pcb_B).eval()
+        : (p_com_ref_G + v_ref_G * t_k).eval();
 
     in.xRef[k].segment<3>(6) << 0.0, 0.0, 0.0;
 
-    // 参考速度：当前先保持 v_ref_G，不额外积分 dd_pcd_G
-    // 修正：速度参考与位置参考互为导数。
-    // 上方“保持 v_ref_G”的原注释对应修改前实现，现改为一致的加速参考。
-    in.xRef[k].segment<3>(9) = v_com_G + dd_pcd_G * t_k;
+    in.xRef[k].segment<3>(9) = has_trajectory ? v_ref_trajectory_G[k] : v_ref_G;
+    if (!in.xRef[k].allFinite()) {
+      log_fallback_reason("nonfinite_reference_trajectory");
+      return makeFallbackForces(contact_now);
+    }
 
     in.xRef[k](12) = g(2);
   }
@@ -1165,11 +1188,11 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   // 这里不做任何足端正解，也不重新做 body->foot 到 world 的坐标变换。
   // MPC 这里只需要计算 SRBD 转动动力学里的力臂：
   //
-  // r_i(k) = p_foot_hold_i - p_com_ref(k)
+  // r_i(k) = p_foot_i - p_com_now
   //
   // 其中：
   // p_foot_hold_i 是外部已经记录好的 G 系固定接触点；
-  // p_com_ref(k) 是第 k 个预测步的参考 COM 位置。
+  // 按本次测量 COM 冻结力臂，目标位置误差不作为实际几何变化。
 
   in.rFeet.resize(in.N);
 
@@ -1192,13 +1215,11 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   for (int k = 0; k < in.N; ++k) {
     std::array<Vec3, 4> rk;
 
-    const Vec3 p_com_ref_G = in.xRef[k].segment<3>(3);
-
     for (int leg = 0; leg < 4; ++leg) {
       if (contact_now(leg) == 1) {
-        rk[leg] = foot_hold_G.col(leg) - p_com_ref_G;
+        rk[leg] = foot_hold_G.col(leg) - p_com_G;
       } else {
-        rk[leg] = foot_end_G.col(leg) - p_com_ref_G;
+        rk[leg] = foot_end_G.col(leg) - p_com_G;
       }
     }
 
@@ -1208,18 +1229,33 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   // ====== solve MPC ======
   const ConvexMpcOutput out = solveMpc(in);
 
+  Vec34 force_feet_P = Vec34::Zero();
   if (!out.success) {
     log_fallback_reason("solveMpc_no_usable_solution");
-    return makeFallbackForces(contact_now);
+    force_feet_P = makeFallbackForces(contact_now);
   }
 
-  Vec34 force_feet_P;
-
-  for (int leg = 0; leg < 4; ++leg) {
+  for (int leg = 0; out.success && leg < 4; ++leg) {
     force_feet_P(0, leg) = out.u0(3 * leg + 0);
     force_feet_P(1, leg) = out.u0(3 * leg + 1);
     force_feet_P(2, leg) = out.u0(3 * leg + 2);
   }
+
+  // 缓存/重力保底也必须遵守卸载上限；移出的竖直负载交给其余支撑腿。
+  double removed_fz = 0.0;
+  Vec4 capacity = Vec4::Zero();
+  for (int leg = 0; leg < 4; ++leg) {
+    const double limit = contact_now(leg) == 1 ? in.liftoff_fz_limit(leg) : 0.0;
+    const double fz = force_feet_P(2, leg);
+    if (fz > limit) {
+      removed_fz += fz - limit;
+      force_feet_P.col(leg) *= limit / fz;
+    }
+    capacity(leg) = std::max(0.0, limit - force_feet_P(2, leg));
+  }
+  const double available_fz = capacity.sum();
+  if (available_fz > 0.0)
+    force_feet_P.row(2) += (std::min(removed_fz, available_fz) / available_fz * capacity).transpose();
 
   return force_feet_P;
 }

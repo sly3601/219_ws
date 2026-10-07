@@ -3,7 +3,8 @@
 
 	<ros2_control name="GazeboSystem" type="system">
 		<hardware>
-			<plugin>gazebo_ros2_control/GazeboSystem</plugin>
+			<!-- 仅仿真反馈适配：统一向估计器和电机 PD 提供角度差分速度。 -->
+			<plugin>sysu219_guide_controller/GazeboEncoderSystem</plugin>
 		</hardware>
 
 		<joint name="FR_hip_joint">

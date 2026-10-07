@@ -45,45 +45,22 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
         if (trotting_ptr_ && trotting_ptr_->troting_kalman == 2) 
         {
             // 闭环：原来的逻辑，用 estimator 的全局足端位置
-            // 初始化时记录当前脚位置，支撑相前半段继续刷新。
+            // 初始化记录当前脚位置；迈步后保留计划落点。
             start_p_ = estimator_->getFeetPos();
             end_p_ = start_p_;
-            // 同时记录“当时那一刻”的 B 系名义足底位置
-            // 以后摆动终点就往这个名义位置回
-            static const double nominal_q[4][3] = {
-                {0.0, 0.9, -1.53},  // FR
-                {0.0, 0.9, -1.53},  // FL
-                {0.0, 0.9, -1.30},  // RR
-                {0.0, 0.9, -1.30}   // RL
-            };
-
+            // 使用 FixStand 的腿部姿态；髋关节名义角保持零，避免向外劈叉。
             for (int leg = 0; leg < 4; ++leg)
             {
                 KDL::JntArray q_nominal(3);
-                q_nominal(0) = nominal_q[leg][0];
-                q_nominal(1) = nominal_q[leg][1];
-                q_nominal(2) = nominal_q[leg][2];
+                q_nominal(0) = 0.0;
+                q_nominal(1) = nominal_joint_positions_[3 * leg + 1];
+                q_nominal(2) = nominal_joint_positions_[3 * leg + 2];
 
                 KDL::Frame foot_nominal =
                     ctrl_component_.robot_model_->calcPEe2B_four_feet(leg, q_nominal);
 
-                nominal_feet_body_(0, leg) = foot_nominal.p.x();
-                nominal_feet_body_(1, leg) = foot_nominal.p.y();
-                nominal_feet_body_(2, leg) = foot_nominal.p.z();
-            }
-            // 保留原名义足点的形状，仅整体平移，使对角交点对齐 MPC 质心。
-            const Vec2 a = nominal_feet_body_.col(0).head<2>();
-            const Vec2 b = nominal_feet_body_.col(3).head<2>();
-            const Vec2 c = nominal_feet_body_.col(1).head<2>();
-            const Vec2 d = nominal_feet_body_.col(2).head<2>();
-            const Vec2 u = b - a, v = d - c;
-            const double denominator = u.x() * v.y() - u.y() * v.x();
-            if (std::abs(denominator) > 1e-6) {
-                const Vec2 w = c - a;
-                const Vec2 intersection = a + u * ((w.x() * v.y() - w.y() * v.x()) / denominator);
-                const Vec2 shift = nominal_support_center_ - intersection;
-                for (int leg = 0; leg < 4; ++leg)
-                    nominal_feet_body_.col(leg).head<2>() += shift;
+                nominal_feet_yaw_.col(leg) = nominal_body_to_yaw_
+                    * Vec3(foot_nominal.p.x(), foot_nominal.p.y(), foot_nominal.p.z());
             }
         }
         else if (trotting_ptr_ && (trotting_ptr_->troting_kalman == 0))
@@ -113,7 +90,30 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 end_p_.col(i) = start_p_.col(i);
             }
         }
+        contact_last_ = wave_generator_->contact_;
+        swing_start_offset_.setZero();
+        swing_pos_ = start_p_;
+        swing_vel_.setZero();
+        swing_phase_last_.setZero();
         first_run_ = false;
+    }
+
+    // 起步全支撑期间刷新；首次抬脚时冻结四腿布局，后续始终作为落点几何基准。
+    if (trotting_ptr_ && trotting_ptr_->troting_kalman == 2 && startup_swing_started_.sum() == 0) {
+        const Vec34 feet = estimator_->getFeetPos();
+        const Vec3 body = estimator_->getPosition();
+        const RotMat global_to_yaw = rotz(estimator_->getYaw()).transpose();
+        for (int leg = 0; leg < 4; ++leg)
+            startup_feet_yaw_.col(leg) = global_to_yaw * (feet.col(leg) - body);
+        // 前后脚分别采用 FixStand 模型的名义间距，保留起步横向中心与前后位置。
+        const double front_center_y = 0.5 * (startup_feet_yaw_(1, 0) + startup_feet_yaw_(1, 1));
+        const double rear_center_y = 0.5 * (startup_feet_yaw_(1, 2) + startup_feet_yaw_(1, 3));
+        const double front_half_width = 0.5 * (nominal_feet_yaw_(1, 1) - nominal_feet_yaw_(1, 0));
+        const double rear_half_width = 0.5 * (nominal_feet_yaw_(1, 3) - nominal_feet_yaw_(1, 2));
+        startup_feet_yaw_(1, 0) = front_center_y - front_half_width;
+        startup_feet_yaw_(1, 1) = front_center_y + front_half_width;
+        startup_feet_yaw_(1, 2) = rear_center_y - rear_half_width;
+        startup_feet_yaw_(1, 3) = rear_center_y + rear_half_width;
     }
 
     // 遍历机器人的4条腿（0:右前 1:左前 2:右后 3:左后）
@@ -122,7 +122,10 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
         // 条件1：当前腿处于支撑相（踩地）
         if (wave_generator_->contact_(i) == 1) 
         {
-            if (wave_generator_->phase_(i) < 0.5)
+            if (contact_last_(i) == 0)
+                start_p_.col(i) = end_p_.col(i);
+            else if (wave_generator_->phase_(i) < 0.5 &&
+                     wave_generator_->status_ == WaveStatus::STANCE_ALL)
             {
                 if (trotting_ptr_ &&
                     (trotting_ptr_->troting_kalman == 1 || trotting_ptr_->troting_kalman == 2))
@@ -134,6 +137,16 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
         // 条件2：当前腿处于摆动相（抬脚迈步）
         else 
         {
+            if (contact_last_(i) == 1 && trotting_ptr_ &&
+                (trotting_ptr_->troting_kalman == 1 || trotting_ptr_->troting_kalman == 2))
+                swing_start_offset_.col(i) = estimator_->getFootPos(i) - start_p_.col(i);
+            if (contact_last_(i) == 1) {
+                if (trotting_ptr_ && trotting_ptr_->troting_kalman == 2)
+                    startup_swing_started_(i) = 1;
+                swing_pos_.col(i) = start_p_.col(i) + swing_start_offset_.col(i);
+                swing_vel_.col(i).setZero();
+                swing_phase_last_(i) = 0.0;
+            }
             // foot not contact, swing
             // ==============================================
             // 核心修复：开环/闭环 分两套逻辑计算「迈步终点」
@@ -156,40 +169,46 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 const double t_stance = wave_generator_->get_t_stance();
                 const double t_swing  = wave_generator_->get_t_swing();
 
-                const double k_x = 0.005;
-                const double k_y = 0.005;
-                // 原作者 x 方向落脚点预测项：
-                // 1) 剩余摆动时间机身位移
-                // 2) 半个支撑相机身位移
-                // 3) x 方向速度误差修正
-                next_step(0) = body_vel_global(0) * (1.0 - wave_generator_->phase_(i)) * t_swing
-                            + body_vel_global(0) * t_stance / 2.0
-                            + k_x * (body_vel_global(0) - vxy_goal_(0));
+                const double k_x = 0.5;
+                const double k_y = 0.25;
+                // k_x/k_y 为无量纲速度反馈比例：1 保留原响应，0.5 减半速度偏差引起的落点修正。
+                // 期望速度前馈保留；剩余摆动时间预测、半摆动时间修正和原 5 ms 额外修正均保留。
+                next_step(0) = (vxy_goal_(0) + k_x * (body_vel_global(0) - vxy_goal_(0)))
+                            * (1.0 - wave_generator_->phase_(i)) * t_swing
+                            + vxy_goal_(0) * t_stance / 2.0
+                            + k_x * (body_vel_global(0) - vxy_goal_(0)) * t_swing / 2.0
+                            + k_x * 0.005 * (body_vel_global(0) - vxy_goal_(0));
 
-                next_step(1) = body_vel_global(1) * (1.0 - wave_generator_->phase_(i)) * t_swing
-                            + body_vel_global(1) * t_stance / 2.0
-                            + k_y * (body_vel_global(1) - vxy_goal_(1));
+                next_step(1) = (vxy_goal_(1) + k_y * (body_vel_global(1) - vxy_goal_(1)))
+                            * (1.0 - wave_generator_->phase_(i)) * t_swing
+                            + vxy_goal_(1) * t_stance / 2.0
+                            + k_y * (body_vel_global(1) - vxy_goal_(1)) * t_swing / 2.0
+                            + k_y * 0.005 * (body_vel_global(1) - vxy_goal_(1));
 
                 // 给速度预测项限幅，防止一步修太猛
                 next_step(0) = saturation(next_step(0), Vec2(-10.135, 10.135));
                 next_step(1) = saturation(next_step(1), Vec2(-10.135, 10.135)); 
                 const double yaw = estimator_->getYaw();
-                const double d_yaw = estimator_->getDYaw();
+                const double d_yaw = trotting_ptr_->force_solver_mode_ == StateTrotting::ForceSolverMode::MPC
+                    ? trotting_ptr_->getFilteredYawRateGlobal()
+                    : estimator_->getDYaw();
 
                 const double k_yaw = 0.005;
                 double next_yaw = d_yaw * (1.0 - wave_generator_->phase_(i)) * t_swing
-                    + d_yaw * t_stance / 2.0
+                    + d_yaw_goal_ * t_stance / 2.0
+                    + (d_yaw - d_yaw_goal_) * t_swing / 2.0
                     + k_yaw * (d_yaw_goal_ - d_yaw);
 
                 // yaw 预测也限一下，防止 cos/sin 的目标点跳太远
                 next_yaw = saturation(next_yaw, Vec2(-0.1, 0.1));
                 
 
-                const double feet_radius =
-                sqrt(pow(nominal_feet_body_(0, i), 2) + pow(nominal_feet_body_(1, i), 2));
+                // 始终使用起步实际布局，保留完整的实时速度/转向修正。
+                const Vec2 feet_layout = startup_feet_yaw_.col(i).head<2>();
+                const double feet_radius = feet_layout.norm();
 
                 const double feet_init_angle =
-                atan2(nominal_feet_body_(1, i), nominal_feet_body_(0, i));
+                atan2(feet_layout(1), feet_layout(0));
 
                 next_step(0) +=
                         feet_radius * cos(yaw + feet_init_angle + next_yaw);
@@ -228,7 +247,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 // // 在 B 系里构造摆动终点：只修 x，y/z 保持当前起点
                 // Vec3 end_body = start_body;
                 // const double alpha = 0.005;   // 先小一点，0.10~0.20 比较稳
-                // end_body(0) = (1.0 - alpha) * start_body(0) + alpha * nominal_feet_body_(0, i);
+                // end_body(0) = (1.0 - alpha) * start_body(0) + alpha * nominal_feet_yaw_(0, i);
 
                 // // 再从 B 系变回当前 generate() 使用的外部系
                 // end_p_.col(i) = pos_ext + B2P * end_body;
@@ -243,12 +262,37 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             // 调用你原有的摆线函数：计算足端轨迹/速度
             feet_pos.col(i) = getFootPos(i);
             feet_vel.col(i) = getFootVel(i);
+            // 修正本步起点，仍落回原实时终点/地面高度；速度与位置修正一致。
+            const double angle = 2.0 * M_PI * wave_generator_->phase_(i);
+            const double blend = (angle - std::sin(angle)) / (2.0 * M_PI);
+            feet_pos.col(i) += (1.0 - blend) * swing_start_offset_.col(i);
+            feet_vel.col(i) -= (1.0 - std::cos(angle)) / wave_generator_->get_t_swing()
+                              * swing_start_offset_.col(i);
+            if (trotting_ptr_ && trotting_ptr_->troting_kalman == 2) {
+                // 从上一目标位置/速度重规划 XY 三次曲线，终点仍逐帧更新。
+                // 末端速度为零，避免直接替换摆线终点导致位置跳变和速度漏项。
+                const double remaining = (1.0 - swing_phase_last_(i))
+                    * wave_generator_->get_t_swing();
+                const double u = (wave_generator_->phase_(i) - swing_phase_last_(i))
+                    / (1.0 - swing_phase_last_(i));
+                const Vec2 delta = end_p_.col(i).head<2>() - swing_pos_.col(i).head<2>();
+                feet_pos.col(i).head<2>() = swing_pos_.col(i).head<2>()
+                    + (3.0 * u * u - 2.0 * u * u * u) * delta
+                    + remaining * u * (1.0 - u) * (1.0 - u) * swing_vel_.col(i).head<2>();
+                feet_vel.col(i).head<2>() = 6.0 * u * (1.0 - u) / remaining * delta
+                    + (1.0 - 4.0 * u + 3.0 * u * u) * swing_vel_.col(i).head<2>();
+                swing_pos_.col(i) = feet_pos.col(i);
+                swing_vel_.col(i) = feet_vel.col(i);
+                swing_phase_last_(i) = wave_generator_->phase_(i);
+            }
         }
     }
+    contact_last_ = wave_generator_->contact_;
 }
 
 void GaitGenerator::restart() {
     first_run_ = true;
+    startup_swing_started_.setZero();
     vxy_goal_.setZero();
     feet_end_calc_.init();
 }

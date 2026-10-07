@@ -8,6 +8,7 @@
 #include <sysu219_guide_controller/control/CtrlComponent.h>
 
 #include "controller_common/CtrlInterfaces.h"
+#include <algorithm>
 #include <cmath>
 #include <sysu219_guide_controller/debug/DebugConfig.h>
 
@@ -197,7 +198,10 @@ void Estimator::update() {
         else 
         {
             // foot contact
-            const double trust = windowFunc(wave_generator_->phase_[i], 0.2);
+            // 加长支撑时保持原接触过渡时长（当前为 0.2 * 0.325 = 65 ms）。
+            const double trust_window = 0.2 * std::min(1.0,
+                wave_generator_->get_t_swing() / wave_generator_->get_t_stance());
+            const double trust = windowFunc(wave_generator_->phase_[i], trust_window);
             Q.block(6 + 3 * i, 6 + 3 * i, 3, 3) =
                     (1 + (1 - trust) * large_variance_) *
                     QInit_.block(6 + 3 * i, 6 + 3 * i, 3, 3);

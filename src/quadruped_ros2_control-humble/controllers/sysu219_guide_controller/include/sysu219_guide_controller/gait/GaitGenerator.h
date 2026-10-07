@@ -6,6 +6,7 @@
 #ifndef GAITGENERATOR_H
 #define GAITGENERATOR_H
 #include <memory>
+#include <vector>
 #include <sysu219_guide_controller/common/mathTypes.h>
 
 #include "FeetEndCalc.h"
@@ -30,7 +31,10 @@ public:
 
     void restart();
 
-    void setNominalSupportCenter(const Vec2& center) { nominal_support_center_ = center; }
+    void setNominalStand(const std::vector<double>& joint_positions, const RotMat& body_to_yaw) {
+        nominal_joint_positions_ = joint_positions;
+        nominal_body_to_yaw_ = body_to_yaw;
+    }
 
     [[nodiscard]] const Vec34& getEndFeetPos() const { return end_p_; } // 获得预期落足点的位置
     [[nodiscard]] const Vec34& getStartFeetPos() const { return start_p_; }
@@ -82,14 +86,21 @@ private:
     double gait_height_{};
     Vec2 vxy_goal_;
     double d_yaw_goal_{};
-    Vec34 start_p_, end_p_, ideal_p_, past_p_;
+    Vec34 start_p_, end_p_;
+    Vec34 swing_pos_, swing_vel_;
+    Vec4 swing_phase_last_ = Vec4::Zero();
+    Vec34 swing_start_offset_ = Vec34::Zero();
+    VecInt4 contact_last_ = VecInt4::Zero();
     bool first_run_;
 
     StateTrotting* trotting_ptr_; // 【新增】保存 StateTrotting 的指针
     CtrlComponent& ctrl_component_; // 新增：引用控制组件，获取robot_model_
 
-    Vec34 nominal_feet_body_; // 新增：足底在身体坐标系下的名义位置（站立时位置）
-    Vec2 nominal_support_center_ = Vec2::Zero(); // 名义足点对角线交点，采用落点公式的 yaw 坐标系。
+    Vec34 nominal_feet_yaw_; // FixStand 名义足点，按固定目标姿态转换到落点公式的 yaw 系。
+    Vec34 startup_feet_yaw_ = Vec34::Zero(); // 首次抬脚时的反馈布局，与落点公式共用 yaw 坐标系。
+    VecInt4 startup_swing_started_ = VecInt4::Zero(); // 仅标记是否已开始摆动，冻结起步布局。
+    std::vector<double> nominal_joint_positions_; // 与 FixStand 共用已有 stand_pos 参数。
+    RotMat nominal_body_to_yaw_ = RotMat::Identity();
 
 };
 

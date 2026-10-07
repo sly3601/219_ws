@@ -40,6 +40,11 @@ public:
     };
     ForceSolverMode force_solver_mode_ = ForceSolverMode::MPC;
 
+    // 与 MPC 共用已有的 20 Hz 滤波角速度，取全局系 z 分量用于落点预测。
+    [[nodiscard]] double getFilteredYawRateGlobal() const {
+        return (B2P_RotMat * gyro_control_B_)(2);
+    }
+
 private:
     void getUserCmd();
 
@@ -76,6 +81,7 @@ private:
 
     // Robot State
     Vec3 pos_body_, vel_body_;
+    Vec3 gyro_control_B_, gyro_x1_, gyro_x2_, gyro_y1_, gyro_y2_;
 
     // P系原点跟随机身中心，但轴方向与G系保持平行，不随机身姿态转动
     // P: 定向本体系（origin at body center, axes parallel to G, no body rotation）
@@ -107,17 +113,17 @@ private:
     // Control Parameters
     double gait_height_;
     Vec3 pos_error_, vel_error_;
-    Mat3 Kpp, Kdp, Kd_w_;
+    Mat3 Kpp, Kdp, Kd_w_; // 仅用于 QP 模式的机身位置/速度、姿态外层 PD；MPC 使用 Q/R 跟踪目标
     double kp_w_; // lost
-    double kp_roll_,kp_pitch_,kp_yaw_;
+    double kp_roll_,kp_pitch_,kp_yaw_; // 仅用于 QP 模式的机身姿态 PD
     Mat3 Kp_swing_, Kd_swing_;
     Vec2 v_x_limit_, v_y_limit_, w_yaw_limit_;
     double tau_ff_scale; 
     double tau_ff_limit_hip;
     double tau_ff_limit_thigh;
     double tau_ff_limit_calf;
-    Vec3 dd_pcb_saturation;
-    Vec3 d_wbd_saturation;
+    Vec3 dd_pcb_saturation; // 仅用于 QP 模式的期望线加速度
+    Vec3 d_wbd_saturation;  // 仅用于 QP 模式的期望角加速度
     Vec3 swing_force_limit;
     double Kp_motor_stance, Kd_motor_stance, Kp_motor_swing, Kd_motor_swing; // 电机增益参数
 

@@ -27,6 +27,17 @@ imu_sensor_broadcaster:
 leg_pd_controller:
   ros__parameters:
     update_rate: 500  # Hz
+    # FR/FL/RR/RL x hip/thigh/calf; match HardwareSysu219's current command limits.
+    effort_limits: [100.0, 100.0, 100.0, 100.0, 100.0, 100.0,
+                    100.0, 100.0, 100.0, 100.0, 100.0, 100.0]
+    velocity_limits: [19.95, 19.95, 20.0, 19.95, 19.95, 20.0,
+                      19.95, 19.95, 20.0, 19.95, 19.95, 20.0]
+    position_min: [-0.638, -0.623, -2.322, -0.638, -0.623, -2.322,
+                   -0.638, -0.623, -2.322, -0.638, -0.623, -2.322]
+    position_max: [0.748, 1.65, -0.672, 0.748, 1.65, -0.672,
+                   0.748, 1.65, -0.672, 0.748, 1.65, -0.672]
+    # Seconds: adjustable actuator assumption (one 250 Hz command interval), NOT identified motor bandwidth.
+    torque_response_time: 0.004
     joints:
       - FR_hip_joint
       - FR_thigh_joint

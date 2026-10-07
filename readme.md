@@ -85,6 +85,19 @@ colcon build \
   --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${HOME}/219_ws/install
 ```
 
+```
+MAKEFLAGS="-j1 -l1" CMAKE_BUILD_PARALLEL_LEVEL=1 \
+colcon build \
+  --executor sequential \
+  --packages-up-to ocs2_core leg_pd_controller sysu219_guide_controller \
+    sysu219_description keyboard_input hardware_sysu219 tools \
+  --symlink-install \
+  --event-handlers console_direct+ \
+  --continue-on-error \
+  --cmake-args \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="${HOME}/219_ws/install"
+```
 
 2. source一下资源目录
 ```

@@ -351,7 +351,8 @@ namespace sysu219_guide_controller
                 ctrl_component_.convex_mpc_ = std::make_shared<ConvexMpcSolver>();
             });
 
-        ctrl_component_.wave_generator_ = std::make_shared<WaveGenerator>(0.65, 0.5, Vec4(0, 0.5, 0.5, 0));
+        // 摆动保持 0.325 s，支撑加倍为 0.650 s；每次对角交接四足支撑 0.1625 s。
+        ctrl_component_.wave_generator_ = std::make_shared<WaveGenerator>(0.975, 2.0 / 3.0, Vec4(0, 0.5, 0.5, 0));
 
         return CallbackReturn::SUCCESS;
     }
@@ -410,11 +411,14 @@ namespace sysu219_guide_controller
         if (quadruped_debug::kLargeDebug) {
             const auto& positions = ctrl_interfaces_.joint_position_state_interface_;
             const auto& velocities = ctrl_interfaces_.joint_velocity_state_interface_;
-            RCLCPP_INFO(get_node()->get_logger(), "[JOINT_DEBUG] position_count=%zu velocity_count=%zu",
-                positions.size(), velocities.size());
-            for (size_t i = 0; i < std::min(positions.size(), velocities.size()); ++i)
-                RCLCPP_INFO(get_node()->get_logger(), "[JOINT_DEBUG] index=%zu position=%s velocity=%s",
-                    i, positions[i].get().get_name().c_str(), velocities[i].get().get_name().c_str());
+            const auto& efforts = ctrl_interfaces_.joint_effort_state_interface_;
+            RCLCPP_INFO(get_node()->get_logger(), "[JOINT_DEBUG] position_count=%zu velocity_count=%zu effort_count=%zu",
+                positions.size(), velocities.size(), efforts.size());
+            for (size_t i = 0; i < std::min(positions.size(), velocities.size()); ++i) {
+                const std::string effort_name = i < efforts.size() ? efforts[i].get().get_name() : "missing";
+                RCLCPP_INFO(get_node()->get_logger(), "[JOINT_DEBUG] index=%zu position=%s velocity=%s effort=%s",
+                    i, positions[i].get().get_name().c_str(), velocities[i].get().get_name().c_str(), effort_name.c_str());
+            }
         }
 
         // Create FSM List

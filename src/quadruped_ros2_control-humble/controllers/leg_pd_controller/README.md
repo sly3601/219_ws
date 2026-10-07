@@ -8,6 +8,16 @@ Tested environment:
 * Ubuntu 22.04
   * ROS2 Humble (Gazebo Classic 11)
 
+The simulated actuator retains the MIT law `tau = tau_ff + kp*(q_ref-q) + kd*(qd_ref-qd)`.
+`position_min`, `position_max`, and `velocity_limits` bound joint references;
+`effort_limits` bounds both feedforward and the combined requested torque.
+KP/KD are restricted to the driver protocol ranges 0..500 and 0..5.
+`torque_response_time` (seconds) implements `T*d(tau_applied)/dt + tau_applied = tau_requested`
+with exact discrete integration; zero disables this actuator lag.
+The SYSU219 Gazebo configuration uses current hardware command limits and a configurable
+4 ms response assumption, not a measured motor time constant or a fitted model.
+This controller is used by Gazebo; real hardware executes PD inside the motor driver.
+
 ## 1. Interfaces
 
 It is a chainable controller: it exports the reference interfaces listed below and consumes the

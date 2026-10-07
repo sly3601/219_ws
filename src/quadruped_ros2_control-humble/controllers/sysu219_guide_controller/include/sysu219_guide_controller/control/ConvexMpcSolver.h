@@ -24,6 +24,7 @@ struct ConvexMpcInput {
   std::vector<std::array<int, 4>> contact;  // contact[k][leg] 表示第 k 个预测步第 leg 条腿是否支撑。顺序是 FR, FL, RR, RL，1 支撑，0 摆动。
   std::vector<std::array<Vec3, 4>> rFeet;   // 力臂r
   Mat3 Iw_inv = Mat3::Identity();           // 世界系下的机身转动惯量逆矩阵
+  Vec4 liftoff_fz_limit = Vec4::Constant(1e19); // 当前控制帧的抬脚前卸载上限。
 };
 
 // MPC 输出
@@ -49,7 +50,7 @@ public:
   [[nodiscard]] int predictionSteps(double prediction_dt, double gait_period) const;
   
     Vec34 solveFromDogWrench(
-      const Vec3& dd_pcd_G,         // 机身期望加速度（世界系）
+      const Vec3& p_ref_G,          // 机身期望位置（世界系）；MPC 不接收 QP 外层 PD 加速度
       const Vec34& foot_hold_G,     // 本次求解前更新的支撑脚 G 系估计位置
       const Vec34& foot_end_G,      // 当前周期摆动腿最终落脚点（G系）
       const VecInt4& contact_now,   // 当前 4 足接触状态，1 支撑，0 摆动
@@ -61,7 +62,10 @@ public:
       const RotMat& R_GB,           // 机身姿态（旋转矩阵）
       const Vec3& gyro_G,           // 机身角速度（世界系）
       const RotMat& Rd_GB,          // 机身期望姿态
-      const Vec3& v_ref_G           // 机身期望速度
+      const Vec3& v_ref_G,          // 机身指令速度（世界系），直接用于参考轨迹
+      const Vec4& liftoff_fz_limit = Vec4::Constant(1e19),
+      const std::vector<Vec3>& p_ref_trajectory_G = {}, // 对齐期间的机身位置参考
+      const std::vector<Vec3>& v_ref_trajectory_G = {}  // 与位置参考一致的速度
   );
 
 private:

@@ -51,6 +51,9 @@ namespace leg_pd_controller {
         std::vector<double> joint_velocities_command_;
         std::vector<double> joint_kp_command_;
         std::vector<double> joint_kd_command_;
+        std::vector<double> effort_limits_, velocity_limits_, position_min_, position_max_;
+        std::vector<double> applied_torque_;
+        double torque_response_time_ = 0.0;
 
         std::vector<std::string> joint_names_;
 

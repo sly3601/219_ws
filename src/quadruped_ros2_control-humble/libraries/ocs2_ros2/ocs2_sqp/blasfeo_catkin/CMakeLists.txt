@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.14)
 project(blasfeo_catkin)
 
-set(CMAKE_ASM_COMPILER "as")
+
+set(CMAKE_ASM_COMPILER "${CMAKE_C_COMPILER}")
 
 find_package(ament_cmake REQUIRED)
 
@@ -17,7 +18,7 @@ file(MAKE_DIRECTORY ${BLASFEO_BUILD_DIR})
 
 # BLASFEO Settings
 set(BUILD_SHARED_LIBS ON CACHE STRING "Build shared libraries" FORCE)
-set(TARGET GENERIC CACHE STRING "Target architecture" FORCE)
+set(TARGET X64_INTEL_HASWELL CACHE STRING "Target architecture" FORCE)
 set(BLASFEO_EXAMPLES OFF CACHE BOOL "Examples enabled")
 set(BLASFEO_TESTING OFF CACHE BOOL "Testing disabled")
 set(BLASFEO_CROSSCOMPILING ON CACHE BOOL "Crosscompiling enabled")

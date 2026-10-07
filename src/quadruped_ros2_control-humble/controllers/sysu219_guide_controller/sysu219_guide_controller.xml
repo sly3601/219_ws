@@ -1,3 +1,4 @@
+<class_libraries>
 <library path="sysu219_guide_controller">
     <class name="sysu219_guide_controller/Sysu219GuideController"
            type="sysu219_guide_controller::Sysu219GuideController"
@@ -7,3 +8,11 @@
         </description>
     </class>
 </library>
+<library path="sysu219_physics_debug">
+    <class name="sysu219_guide_controller/GazeboEncoderSystem"
+           type="sysu219_guide_controller::GazeboEncoderSystem"
+           base_class_type="gazebo_ros2_control::GazeboSystemInterface">
+        <description>Gazebo joint velocity feedback consistent with simulated encoder positions.</description>
+    </class>
+</library>
+</class_libraries>

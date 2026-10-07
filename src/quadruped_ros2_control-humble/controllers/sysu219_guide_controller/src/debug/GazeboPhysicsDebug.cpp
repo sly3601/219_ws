@@ -1,4 +1,4 @@
-// 只读 Gazebo 诊断插件；独立于控制器，不写任何关节/机器人状态。
+// Gazebo 诊断与仿真反馈适配；不写任何关节/机器人物理状态。
 #include "sysu219_guide_controller/debug/DebugConfig.h"
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
@@ -17,6 +17,114 @@
 #include <thread>
 #include <unistd.h>
 #include <vector>
+
+#ifdef SYSU219_GAZEBO_ENCODER_FEEDBACK
+#include <gazebo_ros2_control/gazebo_system_interface.hpp>
+#include <pluginlib/class_loader.hpp>
+#include <pluginlib/class_list_macros.hpp>
+
+namespace sysu219_guide_controller {
+// 只替换仿真硬件的速度反馈；上层估计器、MPC、电机 PD 共用原算法。
+class GazeboEncoderSystem : public gazebo_ros2_control::GazeboSystemInterface {
+public:
+    GazeboEncoderSystem()
+        : loader_("gazebo_ros2_control", "gazebo_ros2_control::GazeboSystemInterface"),
+          system_(loader_.createSharedInstance("gazebo_ros2_control/GazeboSystem")) {}
+
+    hardware_interface::CallbackReturn on_init(const hardware_interface::HardwareInfo& info) override {
+        const auto result = GazeboSystemInterface::on_init(info);
+        return result == hardware_interface::CallbackReturn::SUCCESS ? system_->on_init(info) : result;
+    }
+
+    bool initSim(rclcpp::Node::SharedPtr& node, gazebo::physics::ModelPtr model,
+                 const hardware_interface::HardwareInfo& info, sdf::ElementPtr sdf) override {
+        if (!system_->initSim(node, model, info, sdf)) return false;
+        world_ = model->GetWorld();
+        names_.clear(); joints_.clear();
+        for (const auto& joint : info.joints) {
+            auto simulated_joint = model->GetJoint(joint.name);
+            if (!simulated_joint) return false;
+            names_.push_back(joint.name);
+            joints_.push_back(simulated_joint);
+        }
+        previous_q_.resize(joints_.size());
+        velocities_.assign(joints_.size(), 0.0);
+        RCLCPP_INFO(node->get_logger(),
+            "[GAZEBO_ENCODER] joint velocity feedback uses angle difference / simulation dt");
+        return true;
+    }
+
+    std::vector<hardware_interface::StateInterface> export_state_interfaces() override {
+        const auto original = system_->export_state_interfaces();
+        std::vector<hardware_interface::StateInterface> interfaces;
+        interfaces.reserve(original.size());
+        // Humble 的 StateInterface 不可赋值，按原顺序构造新的接口列表。
+        for (const auto& interface : original) {
+            const auto it = std::find(names_.begin(), names_.end(), interface.get_prefix_name());
+            if (interface.get_interface_name() == "velocity" && it != names_.end())
+                interfaces.emplace_back(*it, "velocity",
+                    &velocities_[static_cast<size_t>(it - names_.begin())]);
+            else
+                interfaces.emplace_back(interface);
+        }
+        return interfaces;
+    }
+
+    hardware_interface::CallbackReturn on_activate(const rclcpp_lifecycle::State& state) override {
+        last_s_ = std::numeric_limits<double>::quiet_NaN();
+        std::fill(velocities_.begin(), velocities_.end(), 0.0);
+        return system_->on_activate(state);
+    }
+
+    hardware_interface::CallbackReturn on_deactivate(const rclcpp_lifecycle::State& state) override {
+        return system_->on_deactivate(state);
+    }
+
+    std::vector<hardware_interface::CommandInterface> export_command_interfaces() override {
+        return system_->export_command_interfaces();
+    }
+
+    hardware_interface::return_type perform_command_mode_switch(
+        const std::vector<std::string>& start, const std::vector<std::string>& stop) override {
+        return system_->perform_command_mode_switch(start, stop);
+    }
+
+    hardware_interface::return_type write(const rclcpp::Time& time,
+                                          const rclcpp::Duration& period) override {
+        return system_->write(time, period);
+    }
+
+    hardware_interface::return_type read(const rclcpp::Time& time,
+                                         const rclcpp::Duration& period) override {
+        const auto result = system_->read(time, period);
+        if (result != hardware_interface::return_type::OK) return result;
+        const double now_s = world_->SimTime().Double();
+        const double dt = now_s - last_s_;
+        // 首帧、暂停或时间重置时重新建立角度基准，避免差分脉冲。
+        for (size_t i = 0; i < joints_.size(); ++i) {
+            const double q = joints_[i]->Position(0);
+            velocities_[i] = std::isfinite(dt) && dt > 0.0 && std::isfinite(previous_q_[i])
+                ? (q - previous_q_[i]) / dt : 0.0;
+            previous_q_[i] = q;
+        }
+        last_s_ = now_s;
+        return result;
+    }
+
+private:
+    // 先声明 loader，使其晚于 system 析构；官方 GazeboSystem 继续负责命令和 IMU。
+    pluginlib::ClassLoader<gazebo_ros2_control::GazeboSystemInterface> loader_;
+    std::shared_ptr<gazebo_ros2_control::GazeboSystemInterface> system_;
+    gazebo::physics::WorldPtr world_;
+    std::vector<std::string> names_;
+    std::vector<gazebo::physics::JointPtr> joints_;
+    std::vector<double> previous_q_, velocities_;
+    double last_s_ = std::numeric_limits<double>::quiet_NaN();
+};
+} // namespace sysu219_guide_controller
+PLUGINLIB_EXPORT_CLASS(sysu219_guide_controller::GazeboEncoderSystem,
+                       gazebo_ros2_control::GazeboSystemInterface)
+#endif
 
 namespace gazebo {
 class GazeboPhysicsDebug : public ModelPlugin {

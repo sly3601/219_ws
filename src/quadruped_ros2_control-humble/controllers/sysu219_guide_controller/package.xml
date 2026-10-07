@@ -31,6 +31,7 @@
     <exec_depend>joint_state_broadcaster</exec_depend>
     <exec_depend>leg_pd_controller</exec_depend>
     <exec_depend>gazebo_plugins</exec_depend>
+    <depend>gazebo_ros2_control</depend>
     <exec_depend>rclpy</exec_depend>
     <exec_depend>nav_msgs</exec_depend>
 

@@ -51,6 +51,16 @@ public:
         Vec34 body_v_from_qd = Vec34::Zero(), body_v_from_position = Vec34::Zero();
         Vec34 goal_v_from_position = Vec34::Zero(), goal_v_error = Vec34::Zero();
         Vec34 end_v_from_position = Vec34::Zero();
+        // effort 为电机反馈估算力矩；缺失接口记 NaN，不能当作零力矩。
+        Vec12 tau_feedback = Vec12::Constant(std::nan(""));
+        Vec12 tau_ff_cmd = Vec12::Zero(), kp_cmd = Vec12::Zero(), kd_cmd = Vec12::Zero();
+        Vec12 tau_p_est = Vec12::Zero(), tau_d_est = Vec12::Zero(), tau_mit_est = Vec12::Zero();
+        // 落地候选仅诊断，严禁用于接触切换；代理力未扣除腿重力、惯性及反馈延迟。
+        Vec4 touchdown_fz_proxy = Vec4::Constant(std::nan(""));
+        Vec4 touchdown_candidate_s = Vec4::Zero();
+        VecInt4 touchdown_gates = VecInt4::Zero(); // 位1末段、2高度、4下降误差、8相对速度、16代理力；全通过=31。
+        VecInt4 touchdown_candidate = VecInt4::Zero();
+        double touchdown_fz_threshold_N = 0.0;
     };
 
     explicit TrottingDebug(double dt)
@@ -135,6 +145,31 @@ public:
                     f.body_v_from_position.col(leg) =
                         -rotation * ((f.feet_B.col(leg) - previous_.feet_B.col(leg)) / ros_dt)
                         - f.gyro_G.cross(relative);
+                }
+                // 用支撑脚的平均高度/速度作比较，公共估计位置/速度在差值中抵消。
+                if (support_count >= 2 && f.meta[MODE] == 1) {
+                    double support_z = 0.0, support_vz = 0.0;
+                    for (int leg = 0; leg < 4; ++leg) if (f.contact(leg) == 1) {
+                        support_z += (rotation * f.feet_B.col(leg))(2);
+                        support_vz += f.feet_v_G(2, leg);
+                    }
+                    support_z /= support_count;
+                    support_vz /= support_count;
+                    for (int leg = 0; leg < 4; ++leg) {
+                        const double height = (rotation * f.feet_B.col(leg))(2) - support_z;
+                        int gates = 0;
+                        if (f.contact(leg) == 0 && f.phase(leg) >= 0.85 && f.phase(leg) < 1.0) gates |= 1;
+                        if (std::isfinite(height) && height >= -0.005 && height <= 0.025) gates |= 2;
+                        if (f.goal_G(2, leg) - f.feet_G(2, leg) < -0.008 && f.vgoal_G(2, leg) < -0.05) gates |= 4;
+                        if (std::isfinite(f.feet_v_G(2, leg)) && std::abs(f.feet_v_G(2, leg) - support_vz) < 0.05) gates |= 8;
+                        if (std::isfinite(f.touchdown_fz_proxy(leg)) && f.touchdown_fz_threshold_N > 0.0 &&
+                            f.touchdown_fz_proxy(leg) >= f.touchdown_fz_threshold_N) gates |= 16;
+                        f.touchdown_gates(leg) = gates;
+                        if (gates == 31 && previous_.contact(leg) == 0 && f.phase(leg) >= previous_.phase(leg))
+                            f.touchdown_candidate_s(leg) = ros_dt + (previous_.touchdown_gates(leg) == 31
+                                ? previous_.touchdown_candidate_s(leg) : 0.0);
+                        f.touchdown_candidate(leg) = f.touchdown_candidate_s(leg) >= 0.012 - 1e-9;
+                    }
                 }
             }
             const double system_dt = f.meta[SYSTEM_S] - previous_.meta[SYSTEM_S];
@@ -222,6 +257,16 @@ private:
         field("end_v_from_position", f.end_v_from_position);
         if (header) out << ",check_dt_s,support_line_distance_m";
         else out << ',' << f.check_dt_s << ',' << f.support_line_distance_m;
+        field("tau_feedback", f.tau_feedback); field("tau_ff_cmd", f.tau_ff_cmd);
+        field("kp_cmd", f.kp_cmd); field("kd_cmd", f.kd_cmd);
+        field("tau_p_est", f.tau_p_est); field("tau_d_est", f.tau_d_est);
+        field("tau_mit_est", f.tau_mit_est);
+        field("touchdown_fz_proxy", f.touchdown_fz_proxy);
+        field("touchdown_gates", f.touchdown_gates);
+        field("touchdown_candidate_s", f.touchdown_candidate_s);
+        field("touchdown_candidate", f.touchdown_candidate);
+        if (header) out << ",touchdown_fz_threshold_N";
+        else out << ',' << f.touchdown_fz_threshold_N;
         out << '\n';
     }
     void writeLoop() {

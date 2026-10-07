@@ -144,7 +144,7 @@ install(
 install(PROGRAMS scripts/gazebo_com_visualizer.py
         DESTINATION lib/${PROJECT_NAME})
 
-# Gazebo 只读诊断单独构建。实机可显式关闭；未安装 Gazebo 时自动跳过。
+# Gazebo 诊断/仿真反馈适配单独构建。实机可关闭；未安装 Gazebo 时自动跳过。
 # 控制器本体没有 Gazebo 头文件、链接依赖或运行依赖。
 option(BUILD_GAZEBO_PHYSICS_DEBUG "Build optional Gazebo physics diagnostic plugin" ON)
 if(BUILD_GAZEBO_PHYSICS_DEBUG)
@@ -159,6 +159,12 @@ if(BUILD_GAZEBO_PHYSICS_DEBUG)
             target_link_directories(sysu219_physics_debug PRIVATE ${GAZEBO_LIBRARY_DIRS})
             target_link_libraries(sysu219_physics_debug ${GAZEBO_LIBRARIES} Threads::Threads)
             ament_target_dependencies(sysu219_physics_debug gazebo_ros rclcpp std_msgs)
+            find_package(gazebo_ros2_control QUIET)
+            if(gazebo_ros2_control_FOUND)
+                target_compile_definitions(sysu219_physics_debug PRIVATE SYSU219_GAZEBO_ENCODER_FEEDBACK)
+                ament_target_dependencies(sysu219_physics_debug gazebo_ros2_control pluginlib)
+                pluginlib_export_plugin_description_file(gazebo_ros2_control sysu219_guide_controller.xml)
+            endif()
             install(TARGETS sysu219_physics_debug LIBRARY DESTINATION lib/${PROJECT_NAME})
         endif()
     endif()
