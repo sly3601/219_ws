@@ -76,6 +76,7 @@ sudo apt-get install ros-humble-gazebo-ros
 
 # 2. 代码运行方式
 1. 编译
+
 在CPU强大的主机上编译：
 ```
 colcon build \
