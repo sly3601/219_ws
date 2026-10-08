@@ -30,7 +30,7 @@ public:
 
     [[nodiscard]] double get_t_stance() const { return period_ * st_ratio_; }
     [[nodiscard]] double get_t_swing() const { return period_ * (1 - st_ratio_); }
-    [[nodiscard]] double get_t() const { return period_; }
+    [[nodiscard]] double getGaitPeriod() const { return period_; }
     [[nodiscard]] const VecInt4& getSwitchStatus() const { return switch_status_; }
     [[nodiscard]] double getPhaseControlTime() const { return control_time_; }
     [[nodiscard]] double getControlDt() const { return control_dt_; }

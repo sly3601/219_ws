@@ -32,8 +32,8 @@ public:
     void restart();
 
     void setNominalStand(const std::vector<double>& joint_positions, const RotMat& body_to_yaw) {
-        nominal_joint_positions_ = joint_positions;
-        nominal_body_to_yaw_ = body_to_yaw;
+        nominal_joint_positions_ = joint_positions;     // 站立关节角数组
+        nominal_body_to_yaw_ = body_to_yaw;             // yaw系，就是“只保留yaw、去掉俯仰和横滚的机身系”。
     }
 
     [[nodiscard]] const Vec34& getEndFeetPos() const { return end_p_; } // 获得预期落足点的位置

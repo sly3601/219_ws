@@ -149,7 +149,7 @@ public:
     }
 
     void Load(physics::ModelPtr model, sdf::ElementPtr sdf) override {
-        if (!quadruped_debug::kLargeDebug) return; // 关闭时无线程/缓冲/订阅。
+        if (!quadruped_debug::Csv_DebugMode) return; // 关闭时无线程/缓冲/订阅。
         model_ = model;
         world_ = model->GetWorld();
         node_ = gazebo_ros::Node::Get(sdf);

@@ -7,7 +7,6 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <std_msgs/msg/int32_multi_array.hpp>
-#include <std_msgs/msg/float64_multi_array.hpp>
 
 class BaseFixedStand : public FSMState
 {

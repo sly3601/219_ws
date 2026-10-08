@@ -148,7 +148,7 @@ void BalanceCtrl::solveQP() {
         ci0[i] = ci0_[i];
     }
 
-    if (quadruped_debug::kLargeDebug) {
+    if (quadruped_debug::Csv_DebugMode) {
         ++debug_id_;
         debug_status_ = -1;
     }
@@ -157,6 +157,6 @@ void BalanceCtrl::solveQP() {
     for (int i = 0; i < n; ++i) {
         F_[i] = x[i];
     }
-    if (quadruped_debug::kLargeDebug)
+    if (quadruped_debug::Csv_DebugMode)
         debug_status_ = std::isfinite(objective) && F_.allFinite() ? 0 : 1;
 }

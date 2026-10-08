@@ -56,7 +56,7 @@ public:
       const VecInt4& contact_now,   // 当前 4 足接触状态，1 支撑，0 摆动
       const std::vector<std::array<int, 4>>& contact_table, // WaveGenerator 给出的未来接触表，第 0 行为当前接触
       double control_dt,            // MPC 预测步长；50 Hz 时为 0.02 s
-      double gait_period,           // wave_generator_->get_t()
+      double gait_period,           // wave_generator_->getGaitPeriod()
       const Vec3& p_body_G,         // 机身位置（世界系）
       const Vec3& v_body_G,         // 机身速度（世界系）
       const RotMat& R_GB,           // 机身姿态（旋转矩阵）

@@ -58,7 +58,7 @@ def launch_setup(context, *args, **kwargs):
         ros = ET.SubElement(plugin, 'ros')
         ET.SubElement(ros, 'namespace').text = '/gazebo'
         robot_description = ET.tostring(root, encoding='unicode')
-        diagnostics_status = '[PHYSICS_DEBUG] plugin available; enabled by kLargeDebug'
+        diagnostics_status = '[PHYSICS_DEBUG] plugin available; enabled by Csv_DebugMode'
 
     rviz_config_file = os.path.join(
         get_package_share_directory(package_description),

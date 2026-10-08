@@ -57,7 +57,7 @@ class GazeboComVisualizer(Node):
     def on_truth(self, msg):
         self.append('gazebo', msg.header.stamp, msg.header.frame_id, msg.pose.pose.position)
         if not self.debug_estimates:
-            return  # kLargeDebug 关闭时没有估计器消息，跳过诊断处理。
+            return  # Csv_DebugMode 关闭时没有估计器消息，跳过诊断处理。
         if msg.header.frame_id.lstrip('/') != 'world':
             return
         stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9

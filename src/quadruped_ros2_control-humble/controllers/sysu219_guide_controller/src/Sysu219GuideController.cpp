@@ -62,9 +62,9 @@ namespace sysu219_guide_controller
     controller_interface::return_type Sysu219GuideController::
     update(const rclcpp::Time& time, const rclcpp::Duration& period)
     {
-        const auto debug_begin = quadruped_debug::kLargeDebug ? std::chrono::steady_clock::now()
+        const auto debug_begin = quadruped_debug::Csv_DebugMode ? std::chrono::steady_clock::now()
             : std::chrono::steady_clock::time_point{};
-        const auto debug_system_begin = quadruped_debug::kLargeDebug ? getSystemTime() : 0LL;
+        const auto debug_system_begin = quadruped_debug::Csv_DebugMode ? getSystemTime() : 0LL;
         bool trotting_ran = false;
         // auto now = std::chrono::steady_clock::now();
         // std::chrono::duration<double> time_diff = now - last_update_time_;
@@ -237,10 +237,10 @@ namespace sysu219_guide_controller
             joint_cmd_pub_->publish(msg);
         }
 
-        if (quadruped_debug::kLargeDebug && trotting_ran)
+        if (quadruped_debug::Csv_DebugMode && trotting_ran)
             state_list_.trotting->recordDebug(time, period, debug_begin, debug_system_begin);
         // 仿真诊断：所有 FSM 状态都可采集；50 Hz，无订阅者时不组装消息。
-        if (quadruped_debug::kLargeDebug && estimator_debug_pub_ &&
+        if (quadruped_debug::Csv_DebugMode && estimator_debug_pub_ &&
             estimator_debug_pub_->get_subscription_count() > 0 &&
             (last_estimator_debug_s_ < 0.0 || time.seconds() < last_estimator_debug_s_ ||
              time.seconds() - last_estimator_debug_s_ >= 0.02 - 1e-9)) {
@@ -360,11 +360,11 @@ namespace sysu219_guide_controller
     controller_interface::CallbackReturn
     Sysu219GuideController::on_activate(const rclcpp_lifecycle::State& /*previous_state*/)
     {
-        // ========== 1. 【关键修改】最先赋值 node 和 debug_pub ==========
+        // ========== 1. 【关键修改】最先赋值 node ==========
         ctrl_interfaces_.node = get_node(); // <-- 移到最前面！
         estimator_debug_pub_.reset();
         last_estimator_debug_s_ = -1.0;
-        if (quadruped_debug::kLargeDebug && get_node()->get_parameter("use_sim_time").as_bool())
+        if (quadruped_debug::Csv_DebugMode && get_node()->get_parameter("use_sim_time").as_bool())
             estimator_debug_pub_ = get_node()->create_publisher<std_msgs::msg::Float64MultiArray>(
                 "/estimator_debug", rclcpp::SensorDataQoS());
         com_estimated_pub_.reset();
@@ -375,7 +375,6 @@ namespace sysu219_guide_controller
                 "/com_estimated", rclcpp::QoS(1));
         }
         ctrl_interfaces_.body_debug_pub = ctrl_interfaces_.node->create_publisher<std_msgs::msg::Float64MultiArray>("/body_debug", 10);
-        ctrl_interfaces_.debug_pub      = ctrl_interfaces_.node->create_publisher<std_msgs::msg::Float64MultiArray>("/trotting_debug", 10);
         joint_cmd_pub_ = ctrl_interfaces_.node->create_publisher<sensor_msgs::msg::JointState>("/joint_cmd_states", 10);
         tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(get_node());
         // clear out vectors in case of restart
@@ -408,7 +407,7 @@ namespace sysu219_guide_controller
             }
         }
 
-        if (quadruped_debug::kLargeDebug) {
+        if (quadruped_debug::Csv_DebugMode) {
             const auto& positions = ctrl_interfaces_.joint_position_state_interface_;
             const auto& velocities = ctrl_interfaces_.joint_velocity_state_interface_;
             const auto& efforts = ctrl_interfaces_.joint_effort_state_interface_;
@@ -440,9 +439,6 @@ namespace sysu219_guide_controller
         mode_ = FSMMode::NORMAL;
 
 
-        // ========== 新增：初始化调试发布器 ==========
-        // get_node() 是 Controller 基类提供的方法
-        // ctrl_interfaces_.debug_pub = get_node()->create_publisher<std_msgs::msg::Float64MultiArray>("/trotting_debug", 10);
         // ctrl_interfaces_.node = get_node(); // 将节点指针传递给 CtrlInterfaces 以供 FSM 状态使用
         return CallbackReturn::SUCCESS;
     }

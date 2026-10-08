@@ -81,7 +81,7 @@ private:
 
     // Robot State
     Vec3 pos_body_, vel_body_;
-    Vec3 gyro_control_B_, gyro_x1_, gyro_x2_, gyro_y1_, gyro_y2_;
+    Vec3 gyro_control_B_, gyro_raw_history1_, gyro_raw_history2_, gyro_filtered_history1_, gyro_filtered_history2_;
 
     // P系原点跟随机身中心，但轴方向与G系保持平行，不随机身姿态转动
     // P: 定向本体系（origin at body center, axes parallel to G, no body rotation）
@@ -91,9 +91,6 @@ private:
 
     // Robot command
     Vec3 pcd_;
-    Vec2 startup_xy_start_ = Vec2::Zero(), startup_xy_target_ = Vec2::Zero();
-    double startup_elapsed_ = 0.0, startup_duration_ = 0.65;
-    bool startup_align_pending_ = true;
     double height_start_ = 0.0, height_target_ = 0.0;
     double height_ramp_elapsed_ = 0.0, height_ramp_duration_ = 0.65;
     Vec3 vel_target_, v_cmd_body_;

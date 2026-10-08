@@ -624,7 +624,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
         // stance
         hpipm_->lg_stage[k].segment(row, rows_per_leg) = lower_bound_stance_;
         hpipm_->ug_stage[k].segment(row, rows_per_leg) = upper_bound_stance_;
-        if (k == 0) hpipm_->ug_stage[k](row + 4) = std::min(fzMax, in.liftoff_fz_limit(leg));
+        if (k == 0) hpipm_->ug_stage[k](row + 4) = std::min(fzMax, in.liftoff_fz_limit(leg));     // 支撑腿的 fz 上界，受 liftoff_fz_limit 限制
       }
     }
   }
@@ -671,9 +671,17 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
   //
   // 当前在论文目标基础上，对真正会执行的 u0 额外加入：
   // (u0 - last_u0)^T S (u0 - last_u0)，其中这个权重系数S代码中是S，不是HPIPM里的状态交叉项SS，完全不同的
-  if (has_last_solution_ && !S.isZero(0)) {
+
+
+  /* 
+    last_u0_：上一次成功算出的四脚力。
+    S：多大程度上要求力变化平缓。
+    R_cost_rate_、r_cost_rate_：给求解器用的两个计算系数，它们不是足底力。
+ 
+  */
+  if (has_last_solution_ && !S.isZero(0)) {         // 已有上次成功求解的力，并且启用了力变化惩罚 S。
     // 上次求解会屏蔽摆动足的代价耦合，每次必须先恢复完整矩阵。
-    R_cost_rate_.noalias() = R_cost_ + 2.0 * S;
+    R_cost_rate_.noalias() = R_cost_ + 2.0 * S;     // 这句是重新计算并覆盖整个矩阵
     // 保留上次所有腿的承重，避免抬脚时把总承重参考也一起减掉。
     r_cost_rate_.noalias() = -2.0 * S * last_u0_; // 这里是计算之后的中间过程项
     hpipm_->RR[0] = R_cost_rate_.data();
@@ -799,11 +807,11 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
 
   // 求解 QP 问题，得到 hpipm_->qpSol 解
   // 新增：测量求解器本身的耗时，不含整个控制周期的其他工作。
-  const auto solve_begin_time = quadruped_debug::kLargeDebug ? std::chrono::steady_clock::now()
+  const auto solve_begin_time = quadruped_debug::Csv_DebugMode ? std::chrono::steady_clock::now()
       : std::chrono::steady_clock::time_point{};
   d_ocp_qp_ipm_solve(&hpipm_->qp, &hpipm_->qpSol, &hpipm_->arg, &hpipm_->workspace);
 
-  const auto solve_end_time = quadruped_debug::kLargeDebug ? std::chrono::steady_clock::now()
+  const auto solve_end_time = quadruped_debug::Csv_DebugMode ? std::chrono::steady_clock::now()
       : std::chrono::steady_clock::time_point{};
   const double solve_ms =
       std::chrono::duration<double, std::milli>(solve_end_time - solve_begin_time).count();
@@ -817,7 +825,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
   // 四个残差依次为：驻点、动力学等式、不等式、互补条件。
   double diag_stat = 0.0, diag_eq = 0.0, diag_ineq = 0.0, diag_comp = 0.0;
   int diag_iter = -1;
-  if (quadruped_debug::kLargeDebug) {
+  if (quadruped_debug::Csv_DebugMode) {
     d_ocp_qp_ipm_get_iter(&hpipm_->workspace, &diag_iter);
     d_ocp_qp_ipm_get_max_res_stat(&hpipm_->workspace, &diag_stat);
     d_ocp_qp_ipm_get_max_res_eq(&hpipm_->workspace, &diag_eq);
@@ -825,14 +833,14 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
     d_ocp_qp_ipm_get_max_res_comp(&hpipm_->workspace, &diag_comp);
   }
   // 每个实际求解结果只统计一次；失败详情不受成功日志的限频影响。
-  const double diag_cache_age_ms = quadruped_debug::kLargeDebug && has_last_solution_ ?
+  const double diag_cache_age_ms = quadruped_debug::Csv_DebugMode && has_last_solution_ ?
       std::chrono::duration<double, std::milli>(
           solve_end_time - hpipm_->last_solution_time).count() : -1.0;
   const bool diag_same_contact = has_last_solution_ &&
       in.contact[0] == hpipm_->last_solution_contact;
   bool reused_last_solution = false;
   auto log_result = [&](const char* action, const char* reason) {
-    if (!quadruped_debug::kLargeDebug) return;
+    if (!quadruped_debug::Csv_DebugMode) return;
     if (hpipm_->diag_id++ == 0) hpipm_->diag_report_begin = solve_begin_time;
     debug_info_ = {hpipm_->diag_id, hpipm_status, diag_iter,
                    !out.success ? 0 : reused_last_solution ? 2 : 1};
@@ -899,7 +907,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
       hpipm_->diag_max_failed_res.setZero();
     }
   };
-  if (quadruped_debug::kLargeDebug) {
+  if (quadruped_debug::Csv_DebugMode) {
     static rclcpp::Clock residual_clock(RCL_STEADY_TIME);
     RCLCPP_INFO_THROTTLE(
         rclcpp::get_logger("ConvexMpcSolver"), residual_clock, 1000,
@@ -914,7 +922,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
         hpipm_status, diag_iter);
   }
 
-  if (quadruped_debug::kLargeDebug && hpipm_verbose) {
+  if (quadruped_debug::Csv_DebugMode && hpipm_verbose) {
     int hpipm_iter = -1;
     d_ocp_qp_ipm_get_iter(&hpipm_->workspace, &hpipm_iter);
 
@@ -970,7 +978,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
       }
     }
     // 新增：只对本次成功解记录接触反力，不把保底力当成 MPC 成功解。
-    if (quadruped_debug::kLargeDebug) {
+    if (quadruped_debug::Csv_DebugMode) {
       double total_fz = 0.0;
       for (int leg = 0; leg < 4; ++leg) {
         total_fz += out.u0(3 * leg + 2);
@@ -1018,7 +1026,7 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   // 新增诊断：只记录原因，不改变原来的保底返回和控制参数。
   // finite 数组中 1 表示数值有限，0 表示该输入含 NaN 或 Inf。
   auto log_fallback_reason = [&](const char* reason) {
-    if (!quadruped_debug::kLargeDebug) return;
+    if (!quadruped_debug::Csv_DebugMode) return;
     static rclcpp::Clock input_clock(RCL_STEADY_TIME);
     RCLCPP_ERROR_THROTTLE(
         rclcpp::get_logger("ConvexMpcSolver"), input_clock, 1000,
@@ -1129,7 +1137,7 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
 
   // 新增：检查刚进入 Trotting 时的高度、竖直速度和参考姿态。
   // first_pending=1 表示尚未有成功解；48 N 不能仅凭总力认定原因。
-  if (quadruped_debug::kLargeDebug) {
+  if (quadruped_debug::Csv_DebugMode) {
     const Vec3 diag_theta_ref = rotMatToRPY(Rd_GB);
     static rclcpp::Clock state_clock(RCL_STEADY_TIME);
     RCLCPP_INFO_THROTTLE(

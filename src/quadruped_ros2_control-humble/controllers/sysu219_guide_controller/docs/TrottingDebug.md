@@ -1,4 +1,4 @@
-统一开关为 `include/sysu219_guide_controller/debug/DebugConfig.h` 中的 `quadruped_debug::kLargeDebug`，当前为 `true`；改动后需要重新编译。
+统一开关为 `include/sysu219_guide_controller/debug/DebugConfig.h` 中的 `quadruped_debug::Csv_DebugMode`，当前为 `true`；改动后需要重新编译。
 关闭时不创建记录线程/缓冲，不采集 CSV，不计算诊断用正解误差/SVD，不输出详细 MPC 日志；原有保底警告保留。
 开启后 QP/MPC 共用 Trotting 诊断。每次进入 trot 无条件保存起步约 10 秒；之后突变触发保存名义前 2 秒、后 1 秒，退出时也保存最后一段。
 后台线程生成 `/tmp/trotting_debug_<pid>_<timestamp>.csv`，终端输出 `[TROT_DEBUG] capture=startup/event saved=...`。
@@ -49,7 +49,7 @@ MPC 的 `solver_status` 为 HPIPM 原状态；QP 为 0=目标值和输出有限�
 
 阈值只决定是否保存数据，不参与控制。起步录制不需要先攒够 2 秒。
 
-仿真估计器对照（同一个 `kLargeDebug` 开关）：控制器仅在 `use_sim_time=true` 时创建 `/estimator_debug`，有订阅者时以 50 Hz 发布，覆盖 fixed stand、trot 等所有 FSM 状态。
+仿真估计器对照（同一个 `Csv_DebugMode` 开关）：控制器仅在 `use_sim_time=true` 时创建 `/estimator_debug`，有订阅者时以 50 Hz 发布，覆盖 fixed stand、trot 等所有 FSM 状态。
 Gazebo 可视化进程用已有 `/gazebo/body_ground_truth`（25 Hz）与时间最近的估计样本配对，时间差超过 25 ms 则跳过，实际时间差写入 `pair_dt_ms`。
 它保存 `/tmp/estimator_debug_<pid>_<timestamp>.csv`，每秒或 FSM 状态改变时输出 `[EST_DEBUG]`，退出时关闭文件。关闭大量 debug 时不创建估计器发布器，Python 不创建这个 CSV。
 
@@ -67,7 +67,7 @@ Gazebo 可视化进程用已有 `/gazebo/body_ground_truth`（25 Hz）与时间�
 - `com_p`：MPC 当前采用的质心近似；`support_line_distance_m`：该点到两条计划支撑足连线的水平距离，非两足支撑时为 -1。
 - `force_sum`：规划合力；`moment_vertical/moment_horizontal`：竖直/水平规划力相对 `com_p` 产生的世界系力矩。均为规划值，绝非实测接触力。
 
-Gazebo 物理步记录：同一 `kLargeDebug` 开关，独立插件在每个物理步结束后只读采样，预分配缓冲和后台导出，不在物理回调写文件或逐帧打印。开启时订阅 Gazebo 原生接触信息，因此会增加接触信息采集开销；`sample_us` 记录插件采样耗时，控制器已有 `update_ms`。不改变物理参数、关节命令和控制算法。
+Gazebo 物理步记录：同一 `Csv_DebugMode` 开关，独立插件在每个物理步结束后只读采样，预分配缓冲和后台导出，不在物理回调写文件或逐帧打印。开启时订阅 Gazebo 原生接触信息，因此会增加接触信息采集开销；`sample_us` 记录插件采样耗时，控制器已有 `update_ms`。不改变物理参数、关节命令和控制算法。
 每次进入 trot 保存之前约 2 秒和之后 10 秒，提前退出/关闭仿真也导出，文件为 `/tmp/physics_debug_<pid>_<timestamp>.csv`，终端有 `[PHYSICS_DEBUG] saved=...`。
 CSV 四腿/关节顺序仍为 FR、FL、RR、RL。包含每物理步的 `q/qd`、真实机身位置/速度/姿态/角速度、按 Gazebo 所有 link 质量加权的真实整机 `com_p/com_v/mass`、四脚球心位置/速度、脚与环境实际接触点数及世界系接触力。脚球心不等于地面接触点，需考虑脚球半径。`contact_available=0` 时不根据零接触点数判断悬空。`sim_s` 为步末仿真时刻，`est_s` 是最近收到的估计器样本时间，不能把它当作每步同步真值。分析需按仿真时间对齐控制记录，并核对 0/±一个物理步的时间偏移。
 容量上限 50000 帧；物理步长极小时可能保不满前 2 秒，使用文件的实际首尾时间。接触状态由 Gazebo 后端报告，仅用于诊断。
@@ -76,4 +76,4 @@ CSV 四腿/关节顺序仍为 FR、FL、RR、RL。包含每物理步的 `q/qd`�
 
 启动时 `[JOINT_DEBUG]` 打印实际位置/速度/力矩接口名称与索引，供实机/仿真核对。后台 `[TROT_CHECK]` 汇总关节积分差、连续摆动中的目标速度差和支撑线距离，阈值不参与控制。`[PHYSICS_CHECK]` 汇总站立段每物理步速度积分与角度净变化的平均差；`stand_s=0` 时没有站立证据，`gaps>0` 时积分证据不完整。`contact_s` 是该步接触记录中的最新后端时间，-1 表示没有接触记录；用它检查接触与位姿的时间偏移。
 
-验证步骤：开启 `kLargeDebug` 后自行编译；进入 fixed stand 停留 5 秒，再进入 trot 运行 12 秒，退出至 fixed stand；再进入一次 trot 运行 12 秒，正常结束。失稳则提前退出也会保存，不必硬撑。提供终端日志和该次进程生成的三类 CSV：`estimator_debug`、`trotting_debug`、`physics_debug`。必须看到 `[PHYSICS_DEBUG] enabled step_ms=...`，若只有 plugin unavailable，则该次没有物理步证据。
+验证步骤：开启 `Csv_DebugMode` 后自行编译；进入 fixed stand 停留 5 秒，再进入 trot 运行 12 秒，退出至 fixed stand；再进入一次 trot 运行 12 秒，正常结束。失稳则提前退出也会保存，不必硬撑。提供终端日志和该次进程生成的三类 CSV：`estimator_debug`、`trotting_debug`、`physics_debug`。必须看到 `[PHYSICS_DEBUG] enabled step_ms=...`，若只有 plugin unavailable，则该次没有物理步证据。

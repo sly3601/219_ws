@@ -6,7 +6,6 @@
 #include <cmath>
 
 #include <functional>
-#include <std_msgs/msg/float64_multi_array.hpp>
 
 BaseFixedStand::BaseFixedStand(CtrlInterfaces& ctrl_interfaces, const std::vector<double>& target_pos,
                                const double kp,
@@ -65,16 +64,6 @@ void BaseFixedStand::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*p
         ctrl_interfaces_.joint_position_command_interface_[i].get().set_value(cmd_pos_[i]);
     }
 
-    if (ctrl_interfaces_.debug_pub)
-    {
-        // 发布当前的关节位置指令到ROS2话题，供调试使用
-        std_msgs::msg::Float64MultiArray msg;
-        for (int i = 0; i < 12; ++i)
-        {
-            msg.data.push_back(offset_pos_[i]); // 发布微调偏移量，方便观察
-        }
-        ctrl_interfaces_.debug_pub->publish(msg);
-    }
 }
 
 void BaseFixedStand::exit()

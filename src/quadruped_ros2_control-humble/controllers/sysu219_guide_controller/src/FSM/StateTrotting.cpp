@@ -87,8 +87,12 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
 
     
     dt_ = 1.0 / ctrl_interfaces_.frequency_;        // 控制周期dt
-    if (quadruped_debug::kLargeDebug)
-        trotting_debug_ = std::make_unique<TrottingDebug>(dt_);
+
+    if (quadruped_debug::Csv_DebugMode)               // 如果开启了输出CSV数据文件的debug模式
+    {
+        trotting_debug_ = std::make_unique<TrottingDebug>(dt_);  // 创建一个 TrottingDebug 对象，把 dt_ 传给它的构造函数，并返回管理该对象的智能指针。
+    }
+    
     // 初始化足底可视化发布器
     foot_marker_pub_ = std::make_unique<quadruped_controller::FootMarkerPublisher>(this->ctrl_interfaces_.node);
 }
@@ -101,46 +105,41 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
 void StateTrotting::enter() {
     if (trotting_debug_) trotting_debug_->reset();
     debug_cycle_ = 0;
-    // 保留进入时的水平站姿；全支撑下等待稳定，不再移向对角足点交点。
-    pcd_ = estimator_->getPosition();                   // 机身期望位置初始化
-    startup_xy_start_ = pcd_.head<2>();
-    startup_xy_target_ = startup_xy_start_;
-    startup_elapsed_ = 0.0;
-    startup_align_pending_ = true;
+    pcd_ = estimator_->getPosition();                   // 机身期望位置初始化，设为当前机身位置
+    height_target_ = pcd_(2);                                                   // 保留原来的最终目标高度
+    height_ramp_elapsed_ = 0.0;                                                 // 累计高度过渡持续的时间，初始化
+    height_ramp_duration_ = std::max(dt_, wave_generator_->getGaitPeriod());            // 高度过渡持续时间，至少为一个控制周期或一个步态周期
 
-    startup_duration_ = std::max(dt_, wave_generator_->get_t());
-    height_target_ = pcd_(2);                           // 保留原来的最终目标高度
-    height_ramp_elapsed_ = 0.0;
-    height_ramp_duration_ = std::max(dt_, wave_generator_->get_t());
     v_cmd_body_.setZero();                              // 机身期望速度初始化
     yaw_cmd_ = estimator_->getYaw();                    // 机身期望yaw角初始化
     const double roll_des = 0.0;                        // 机身期望roll角初始化
-    const double pitch_des = rotMatToRPY(estimator_->getRotation())(1); // 锁存进入时的 FixStand pitch。
-    Rd = rotz(yaw_cmd_) * roty(pitch_des) * rotx(roll_des);
+    const double pitch_des = rotMatToRPY(estimator_->getRotation())(1);         // 目标pitch是进入troting时的 FixStand pitch。
+    Rd = rotz(yaw_cmd_) * roty(pitch_des) * rotx(roll_des);                     // 机身期望姿态初始化，保持进入时的水平站姿
+    
     // 名义关节角与 FixStand 共用 stand_pos；足点只旋转到 yaw 系，不额外平移。
     gait_generator_.setNominalStand(
-        ctrl_interfaces_.node->get_parameter("stand_pos").as_double_array(),
-        rotz(yaw_cmd_).transpose() * Rd);
+        ctrl_interfaces_.node->get_parameter("stand_pos").as_double_array(),    // 获取站立关节角数组
+        rotz(yaw_cmd_).transpose() * Rd);               // 这里是yaw系下的目标yaw，yaw系就是“只保留yaw、去掉俯仰和横滚的机身系”。
     w_cmd_global_.setZero();                            //机身期望角速度初始化
        
     first_run = true; // 标记为第一次进入trotting状态
-    wave_generator_->status_ = WaveStatus::STANCE_ALL;  // 初始化过渡状态：全支撑
+    wave_generator_->status_ = WaveStatus::STANCE_ALL;  // 首个控制周期先建立全支撑
     ctrl_interfaces_.control_inputs_.command = 0;       // 将控制输入指令重置为0（避免残留指令影响）
     gait_generator_.restart();                          // 重启步态生成器
 
-    mpc_foot_hold_G_.setZero();
-    mpc_contact_last_.setZero();
-    mpc_foot_hold_initialized_ = false;
-    mpc_cycle_ = 0;
-    mpc_force_P_.setZero();
-    gyro_control_B_ = estimator_->getGyro();
-    gyro_x1_ = gyro_x2_ = gyro_y1_ = gyro_y2_ = gyro_control_B_;
+    mpc_foot_hold_G_.setZero();                         // 初始化MPC足底支撑点位置（G系）                    
+    mpc_contact_last_.setZero();                        // 初始化MPC上一次足底接触状态
+    mpc_foot_hold_initialized_ = false;                 // 标记MPC足底支撑点位置未初始化
+    mpc_cycle_ = 0;                                     // 初始化MPC循环计数器,外部控制250hz，mpc目前是50hz，mpc_cycle_每5个外部控制周期增加1
+    mpc_force_P_.setZero();                             // 初始化MPC计算的足底力（P系）
+    gyro_control_B_ = estimator_->getGyro();            // 初始化机身角速度（B系）
+
+    // 初始化 角速度滤波器 的历史值，确保第一次运行时不会出现异常
+    // gyro_raw_history1_是上一次的原始角速度，gyro_raw_history2_是上上次的原始角速度
+    // gyro_filtered_history1_是上一次的滤波角速度，gyro_filtered_history2_是上上次的滤波角速度
+    gyro_raw_history1_ = gyro_raw_history2_ = gyro_filtered_history1_ = gyro_filtered_history2_ = gyro_control_B_;
+
     convex_mpc_->reset(); // 清除上次进入 Trotting 的成功解，避免跨状态复用。
-    if (quadruped_debug::kLargeDebug)
-        RCLCPP_INFO(ctrl_interfaces_.node->get_logger(),
-            "[TROT_ALIGN] hold_xy=1 start_xy=[%.4f %.4f] target_xy=[%.4f %.4f] duration_s=%.3f",
-            startup_xy_start_(0), startup_xy_start_(1),
-            startup_xy_target_(0), startup_xy_target_(1), startup_duration_);
 }
 
 /**
@@ -149,12 +148,13 @@ void StateTrotting::enter() {
  * @param period 时间间隔
  */
 void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*period*/) {
-    if (quadruped_debug::kLargeDebug) {
-        debug_frame_ = TrottingDebug::Frame{};
-        debug_frame_.contact = wave_generator_->contact_;
-        debug_frame_.phase = wave_generator_->phase_;
-        debug_frame_.transition = wave_generator_->getSwitchStatus();
-        debug_frame_.meta[TrottingDebug::WAVE] = static_cast<int>(wave_generator_->status_);
+    
+    if (quadruped_debug::Csv_DebugMode) {
+        debug_frame_ = TrottingDebug::Frame{};                          // 初始化debug_frame_为默认构造的Frame对象
+        debug_frame_.contact = wave_generator_->contact_;               // 获取当前足底接触状态
+        debug_frame_.phase = wave_generator_->phase_;                   // 获取当前足底相位
+        debug_frame_.transition = wave_generator_->getSwitchStatus();   // 获取当前足底接触切换状态
+        debug_frame_.meta[TrottingDebug::WAVE] = static_cast<int>(wave_generator_->status_);    // 获取当前步态状态，例如全支撑 STANCE_ALL、正常步态 WAVE_ALL
     }
 
     pos_body_ = estimator_->getPosition();          // 获取当前身体位置（G系）
@@ -162,61 +162,48 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     B2P_RotMat = estimator_->getRotation();         // 获取B2G_RotMat
     P2B_RotMat = B2P_RotMat.transpose();
 
-    // 20 Hz 二阶 Butterworth：在控制频率下滤波，再抽取给 MPC，减轻高频混叠。
-    // 保留低频姿态反馈；不修改估计器或 CSV 中的原始 IMU 数据。
-    if (force_solver_mode_ == ForceSolverMode::MPC) {
-        const Vec3 gyro = estimator_->getGyro();
-        const double k = std::tan(M_PI * 20.0 * dt_);
-        const double a0 = 1.0 + std::sqrt(2.0) * k + k * k;
-        const double b0 = k * k / a0;
-        const double a1 = 2.0 * (k * k - 1.0) / a0;
-        const double a2 = (1.0 - std::sqrt(2.0) * k + k * k) / a0;
-        gyro_control_B_ = b0 * (gyro + 2.0 * gyro_x1_ + gyro_x2_)
-                          - a1 * gyro_y1_ - a2 * gyro_y2_;
-        gyro_x2_ = gyro_x1_;
-        gyro_x1_ = gyro;
-        gyro_y2_ = gyro_y1_;
-        gyro_y1_ = gyro_control_B_;
+    // 20 Hz 二阶 Butterworth：让缓慢变化的角速度通过，减弱快速抖动和高频噪声。
+    // 在控制频率下滤波，再抽取给 MPC，减轻高频混叠。
+    // 保留低频姿态反馈；不修改估计器中的原始 IMU 数据。
+    if (force_solver_mode_ == ForceSolverMode::MPC) 
+    {
+        const Vec3 gyro = estimator_->getGyro();                    // 获取当前机身角速度（B系）
+        const double k = std::tan(M_PI * 20.0 * dt_);               // 计算二阶Butterworth滤波器的截止频率参数k，20.0是截止频率，dt_是控制周期
+        const double a0 = 1.0 + std::sqrt(2.0) * k + k * k;         // 计算二阶Butterworth滤波器的归一化系数a0
+        const double b0 = k * k / a0;                               // 计算二阶Butterworth滤波器的归一化系数b0
+        const double a1 = 2.0 * (k * k - 1.0) / a0;                 // 计算二阶Butterworth滤波器的归一化系数a1
+        const double a2 = (1.0 - std::sqrt(2.0) * k + k * k) / a0;  // 计算二阶Butterworth滤波器的归一化系数a2
+        
+        // 使用二阶Butterworth滤波器对角速度进行滤波，得到滤波后的角速度gyro_control_B_
+        gyro_control_B_ = b0 * (gyro + 2.0 * gyro_raw_history1_ + gyro_raw_history2_)
+                          - a1 * gyro_filtered_history1_ - a2 * gyro_filtered_history2_;
+
+        gyro_raw_history2_ = gyro_raw_history1_;
+        gyro_raw_history1_ = gyro;
+        gyro_filtered_history2_ = gyro_filtered_history1_;
+        gyro_filtered_history1_ = gyro_control_B_;
     }
 
     getUserCmd();                                   // 上位机输入指令
     calcCmd();                                      // 解析上位机指令  
 
-    // 首帧取接触切换后的估计高度，一个步态周期内平滑衔接原目标。
-    if (first_run) height_start_ = pos_body_(2);
-    const double u = std::min(1.0, height_ramp_elapsed_ / height_ramp_duration_);
-    const double blend = u * u * u * (10.0 + u * (-15.0 + 6.0 * u));
-    const double height_delta = height_target_ - height_start_;
-    pcd_(2) = height_start_ + height_delta * blend;
-    // 速度参考与高度曲线一致，起止速度均为零。
-    vel_target_(2) = height_delta * 30.0 * u * u * (1.0 - u) * (1.0 - u)
-        / height_ramp_duration_;
-    height_ramp_elapsed_ = std::min(height_ramp_duration_,
-        height_ramp_elapsed_ + wave_generator_->getControlDt());
 
-    if (startup_align_pending_) {
-        const bool all_stance = wave_generator_->contact_.sum() == 4
-            && wave_generator_->getSwitchStatus().sum() == 0;
-        const double s = std::min(1.0, startup_elapsed_ / startup_duration_);
-        const double b = s * s * s * (10.0 + s * (-15.0 + 6.0 * s));
-        const double db = 30.0 * s * s * (1.0 - s) * (1.0 - s) / startup_duration_;
-        const Vec2 delta = startup_xy_target_ - startup_xy_start_;
-        pcd_.head<2>() = startup_xy_start_ + b * delta;
-        vel_target_.head<2>() = db * delta;
-        if (!all_stance) vel_target_.head<2>().setZero();
-        if (all_stance && s >= 1.0
-            && (startup_xy_target_ - pos_body_.head<2>()).norm() < 0.042
-            && vel_body_.head<2>().norm() < 0.03) {
-            startup_align_pending_ = false;
-            pcd_.head<2>() = startup_xy_target_;
-            vel_target_.head<2>().setZero();
-            if (quadruped_debug::kLargeDebug)
-                RCLCPP_INFO(ctrl_interfaces_.node->get_logger(),
-                    "[TROT_ALIGN] ready=1 xy_error_m=%.4f speed_xy_m_s=%.4f",
-                    (startup_xy_target_ - pos_body_.head<2>()).norm(),
-                    vel_body_.head<2>().norm());
-        }
+    // 以下模块：平滑调整机身高度 z
+    // 首帧取接触切换后的估计高度，一个步态周期内平滑衔接原目标。
+    if (height_ramp_elapsed_ < height_ramp_duration_)
+    {
+        if (first_run) height_start_ = pos_body_(2);
+        const double u = std::min(1.0, height_ramp_elapsed_ / height_ramp_duration_); // 计算高度过渡的归一化时间u，范围在[0,1]之间
+        const double blend = u * u * u * (10.0 + u * (-15.0 + 6.0 * u));              // 计算高度过渡的平滑插值因子blend，使高度平滑变化，起止速度和加速度均为零
+        const double height_delta = height_target_ - height_start_;                   // 计算高度变化量height_delta，即目标高度与起始高度的差值
+        pcd_(2) = height_start_ + height_delta * blend;                               // 计算当前机身期望高度pcd_(2)，根据起始高度、目标高度和插值因子blend进行平滑过渡
+        // 速度参考与高度曲线一致，起止速度均为零。
+        vel_target_(2) = height_delta * 30.0 * u * u * (1.0 - u) * (1.0 - u)          // 计算当前机身期望高度的速度参考vel_target_(2)，由高度曲线求导得到，确保起止速度为零
+            / height_ramp_duration_;
+        height_ramp_elapsed_ = std::min(height_ramp_duration_,                        // 累计高度过渡时间，确保不超过设定的高度过渡持续时间
+            height_ramp_elapsed_ + wave_generator_->getControlDt());
     }
+
 
     /**
      * @brief 步态生成器代码段（核心）
@@ -232,18 +219,14 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     
     calcTau();                                      // 动力学计算总函数（核心）
     calcQQd();                                      // 运动学计算总函数（核心)
-    // 求解后再推进时间，使当前目标与 MPC 预测从同一时刻开始。
-    if (startup_align_pending_ && wave_generator_->contact_.sum() == 4 &&
-        wave_generator_->getSwitchStatus().sum() == 0)
-        startup_elapsed_ = std::min(startup_duration_,
-            startup_elapsed_ + wave_generator_->getControlDt());
-
-    // 起步等待期间保持全支撑，稳定后进入正常步态，不因运动误差反复切换。
-    wave_generator_->status_ = startup_align_pending_ ? WaveStatus::STANCE_ALL : WaveStatus::WAVE_ALL;
+    if (first_run) wave_generator_->status_ = WaveStatus::WAVE_ALL;
     first_run = false;
 
+
+    // 设置关节MIT控制增益，在第一版MPC，支撑相KP值为0，支撑相KD值为4.5，完全依赖MPC计算的力矩来控制支撑相关节。
+    // 摆动相KP值为160，KD值为3.8，保证摆动相关节快速到达目标位置。
+    calcGain();                                     
     
-    calcGain();                                     // 设置关节MIT控制增益
 
     // 更新并发布足底Marker1
     // 发布频率为控制频率的1/10
@@ -261,7 +244,8 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     foot_positions[3].y = pos_feet_goal_G(1,3); 
     foot_positions[3].z = pos_feet_goal_G(2,3); // RL
     publish_counter_++;
-    if (publish_counter_ >= 10) {
+    if (publish_counter_ >= 10) 
+    {
         foot_marker_pub_->update(foot_positions);
         foot_marker_pub_->publish();
         publish_counter_ = 0;
@@ -278,7 +262,7 @@ void StateTrotting::exit() {
 
 void StateTrotting::recordDebug(const rclcpp::Time& time, const rclcpp::Duration& period,
                               std::chrono::steady_clock::time_point update_begin, long long system_begin) {
-    if (!quadruped_debug::kLargeDebug || !trotting_debug_) return;
+    if (!quadruped_debug::Csv_DebugMode || !trotting_debug_) return;
     auto& f = debug_frame_;
     f.meta[TrottingDebug::CYCLE] = debug_cycle_++;
     f.meta[TrottingDebug::ROS_S] = time.seconds();
@@ -472,7 +456,8 @@ void StateTrotting::calcTau() {
     pos_error_ = pcd_ - pos_body_;
     vel_error_ = vel_target_ - vel_body_;
     gyro_global = estimator_->getGyroGlobal();
-    if (force_solver_mode_ == ForceSolverMode::QP) {
+    if (force_solver_mode_ == ForceSolverMode::QP) 
+    {
         dd_pcd = Kpp * pos_error_ + Kdp * vel_error_;
         dd_pcd(0) = saturation(dd_pcd(0), Vec2(-dd_pcb_saturation(0), dd_pcb_saturation(0)));
         dd_pcd(1) = saturation(dd_pcd(1), Vec2(-dd_pcb_saturation(1), dd_pcb_saturation(1)));
@@ -486,16 +471,12 @@ void StateTrotting::calcTau() {
         d_wbd(1) = saturation(d_wbd(1), Vec2(-d_wbd_saturation(1), d_wbd_saturation(1)));
         d_wbd(2) = saturation(d_wbd(2), Vec2(-d_wbd_saturation(2), d_wbd_saturation(2)));
     }
-    if (quadruped_debug::kLargeDebug) {
-        debug_frame_.gyro_G = gyro_global;
-        debug_frame_.a_ref = dd_pcd;       // QP 外层 PD 输出；MPC 模式为零，不作为 MPC 参考
-        debug_frame_.alpha_ref = d_wbd;   // QP 外层 PD 输出；MPC 模式为零
-    }
+
 
     // 获取当前B系足端位置
     feet_frames_body = robot_model_->getFeet2BPositions();
     for (int i = 0; i < 4; ++i) {
-        pos_feet_B.col(i) = Vec3(feet_frames_body[i].p.data);
+        pos_feet_B.col(i) = Vec3(feet_frames_body[i].p.data);    // 获取当前B系足端位置
     }
     
     pos_feet_P = B2P_RotMat * pos_feet_B;       // 得到P系下的足端位置
@@ -505,11 +486,11 @@ void StateTrotting::calcTau() {
     if (!B2P_RotMat.allFinite() || 
     !pos_feet_P.allFinite() || 
     !pos_feet_G.allFinite() || 
-    !vel_feet_G.allFinite()) 
+    !vel_feet_G.allFinite())    // 检查旋转矩阵和足端位置、速度是否为有限值
     {
-        if (quadruped_debug::kLargeDebug) debug_frame_.meta[TrottingDebug::FLAGS] = 1;
+        if (quadruped_debug::Csv_DebugMode) debug_frame_.meta[TrottingDebug::FLAGS] = 1;    // 标记异常状态
         for (int k = 0; k < 12; ++k)
-            ctrl_interfaces_.joint_torque_command_interface_[k].get().set_value(0.0);
+            ctrl_interfaces_.joint_torque_command_interface_[k].get().set_value(0.0);       // 将所有关节力矩命令设置为0，避免异常行为
         return;
     }
 
@@ -518,15 +499,18 @@ void StateTrotting::calcTau() {
     // 初始化 MPC 接触点记忆
     // 第一次进入 trotting 后，直接用当前实际足端 G 系位置初始化
     if (!mpc_foot_hold_initialized_) {
-        mpc_foot_hold_G_ = pos_feet_G;
-        mpc_contact_last_ = wave_generator_->contact_;
-        mpc_foot_hold_initialized_ = true;
+        mpc_foot_hold_G_ = pos_feet_G;                      // 初始化 MPC 足底支撑点位置为当前实际足端 G 系位置
+        mpc_contact_last_ = wave_generator_->contact_;      // 初始化 MPC 上一次足底接触状态为当前接触状态
+        mpc_foot_hold_initialized_ = true;                  // 标记 MPC 足底支撑点位置已初始化
     }
 
-    const bool mpc_contact_changed = (mpc_contact_last_ != wave_generator_->contact_);
+    const bool mpc_contact_changed = (mpc_contact_last_ != wave_generator_->contact_);  // 检查当前接触状态是否与上一次接触状态不同，判断是否发生接触切换
     // 接触切换时，下面会立即额外同步求解，而不是继续复用旧力。
-    if (quadruped_debug::kLargeDebug && force_solver_mode_ == ForceSolverMode::MPC && mpc_cycle_ != 0 &&
-        mpc_contact_changed) {
+
+    // 仅在调试模式下打印MPC接触切换信息，避免频繁打印影响性能
+    if (quadruped_debug::Csv_DebugMode && force_solver_mode_ == ForceSolverMode::MPC && mpc_cycle_ != 0 &&
+        mpc_contact_changed) 
+    {
         static rclcpp::Clock hold_clock(RCL_STEADY_TIME);
         RCLCPP_INFO_THROTTLE(ctrl_interfaces_.node->get_logger(), hold_clock, 200,
             "[MPC_CONTACT_UPDATE] cycle=%d sync_solve=1 "
@@ -557,24 +541,37 @@ void StateTrotting::calcTau() {
      */
     try 
     {
-        Vec4 liftoff_fz_limit = Vec4::Constant(1e19);
-        bool liftoff_pending = false;
+
+
+        // 这段是抬腿前提前卸载：脚即将抬起时，先减小它允许承担的支撑力，让其他腿接过去。
+        Vec4 liftoff_fz_limit = Vec4::Constant(1e19);   // 初始化足底离地前的垂直力限制为一个非常大的值，表示没有限制
+        bool liftoff_pending = false;                   // 标记是否有足底即将离地的情况，初始为false
+        
         // 仅全支撑起步时有其他支撑腿接载；双足交替不能提前卸空当前两腿。
-        if (force_solver_mode_ == ForceSolverMode::MPC && wave_generator_->contact_.sum() == 4) {
+        if (force_solver_mode_ == ForceSolverMode::MPC && wave_generator_->contact_.sum() == 4) 
+        {
             const auto near_contact = wave_generator_->getMpcContactTable(
-                4, wave_generator_->getControlDt());
-            for (int leg = 0; leg < 4; ++leg) {
-                if (wave_generator_->contact_(leg) != 1) continue;
-                for (int tick = 1; tick < static_cast<int>(near_contact.size()); ++tick) {
-                    if (near_contact[tick][leg] != 0) continue;
-                    // 仅离地前3帧额外求解；最后一帧保留1 N，避免零宽摩擦约束。
-                    liftoff_fz_limit(leg) = std::max(1.0,
-                        -mpc_force_P_(2, leg) * static_cast<double>(tick - 1) / tick);
+                4, wave_generator_->getControlDt());    // 获取未来4个控制周期内的接触状态表，判断哪些腿即将离地，getControlDt函数是获取dt_的值，250hz就是0.004秒
+
+            for (int leg = 0; leg < 4; ++leg) 
+            {
+                if (wave_generator_->contact_(leg) != 1) continue;      // 如果当前腿不是接触状态，则跳过该腿
+
+                // 检查未来接触状态表中该腿是否即将离地
+                for (int tick = 1; tick < static_cast<int>(near_contact.size()); ++tick) 
+                {
+                    if (near_contact[tick][leg] != 0) continue;     // 如果未来接触状态表中该腿仍然是接触状态，则继续检查下一个tick
+
+                    // 这句是在计算：第 leg 条腿即将抬起前，允许承担的竖直支撑力上限。
+                    liftoff_fz_limit(leg) = std::max(1.0,           
+                        -mpc_force_P_(2, leg) * static_cast<double>(tick - 1) / tick);      // mpc_force_P_(2, leg)：缓存的上次 MPC 足端力。2 是 z 方向。tick：预测还有几个控制周期，这条腿会进入摆动
                     liftoff_pending = true;
                     break;
                 }
             }
         }
+
+
         if (force_solver_mode_ == ForceSolverMode::QP) 
         {
             // calF函数内部计算出来的是P系下的地面对机身的反作用力，我们需要的是足端对地面的力，所以加负号取反
@@ -582,58 +579,45 @@ void StateTrotting::calcTau() {
         } 
         // 正常每 5 周期同步求解（50 Hz）；接触变化时当周期额外求解。
         else if (force_solver_mode_ == ForceSolverMode::MPC &&
-                 (mpc_cycle_ == 0 || mpc_contact_changed || liftoff_pending))
+                 (mpc_cycle_ == 0 || mpc_contact_changed || liftoff_pending))   // 在 MPC 模式下，如果当前周期是第 0 周期，或者接触状态发生变化，或者有足底即将离地的情况，则进行同步求解
         {
             // 每次求解前刷新当前支撑脚；该次预测内仍按固定支点建模。
             for (int leg = 0; leg < 4; ++leg) {
                 if (wave_generator_->contact_(leg) == 1)
-                    mpc_foot_hold_G_.col(leg) = pos_feet_G.col(leg);
+                    mpc_foot_hold_G_.col(leg) = pos_feet_G.col(leg);    // 如果当前腿是接触状态，则将该腿的 MPC 足底支撑点位置更新为当前实际足端 G 系位置
             }
-            const double gait_period = wave_generator_->get_t();
+            const double gait_period = wave_generator_->getGaitPeriod();        // 获取当前一个步态周期的时间
 
-            const auto mpc_begin = quadruped_debug::kLargeDebug ? std::chrono::steady_clock::now()
+            const auto mpc_begin = quadruped_debug::Csv_DebugMode ? std::chrono::steady_clock::now()
                 : std::chrono::steady_clock::time_point{};
             const double prediction_dt = 5.0 * dt_;
+            
             const auto contact_table = wave_generator_->getMpcContactTable(
-                convex_mpc_->predictionSteps(prediction_dt, gait_period), prediction_dt);
-            std::vector<Vec3> startup_positions, startup_velocities;
-            if (startup_align_pending_) {
-                const Vec2 delta = startup_xy_target_ - startup_xy_start_;
-                for (int k = 0; k <= static_cast<int>(contact_table.size()); ++k) {
-                    const double t = k * prediction_dt;
-                    const double s = std::min(1.0, (startup_elapsed_ + t) / startup_duration_);
-                    const double b = s * s * s * (10.0 + s * (-15.0 + 6.0 * s));
-                    const double db = 30.0 * s * s * (1.0 - s) * (1.0 - s) / startup_duration_;
-                    Vec3 p_ref = pcd_ + vel_target_ * t, v_ref = vel_target_;
-                    p_ref.head<2>() = startup_xy_start_ + b * delta;
-                    v_ref.head<2>() = db * delta;
-                    startup_positions.push_back(p_ref);
-                    startup_velocities.push_back(v_ref);
-                }
-            }
-            // Convex MPC 里动力学方程默认用的是“地面对机身的接触力”，所以下游做 J^T f 时同样需要取负号得到“足端对地的力”
+                convex_mpc_->predictionSteps(prediction_dt, gait_period), prediction_dt);   // predictionSteps函数限制预测时长不超过半个步态周期
+            
+            
+                // Convex MPC 里动力学方程默认用的是“地面对机身的接触力”，所以下游做 J^T f 时同样需要取负号得到“足端对地的力”
             force_feet_P = -convex_mpc_->solveFromDogWrench(
-                pcd_,
-                mpc_foot_hold_G_,
-                gait_generator_.getEndFeetPos(),
-                wave_generator_->contact_,
-                contact_table,
-                prediction_dt, // MPC 每 5 个控制周期更新：预测步长 20 ms（50 Hz）。
-                gait_period,
-                pos_body_,
-                vel_body_,
-                B2P_RotMat,
-                B2P_RotMat * gyro_control_B_,
-                Rd,
-                vel_target_,
-                liftoff_fz_limit,
-                startup_positions,
-                startup_velocities
+                pcd_,                               // 期望机身位置，G 系
+                mpc_foot_hold_G_,                   // MPC 足底支撑点位置，G 系
+                gait_generator_.getEndFeetPos(),    // 预测期望足端位置，G 系
+                wave_generator_->contact_,          // 当前接触状态，0 或 1
+                contact_table,                      // 当前及未来预测接触状态表，0 或 1
+                prediction_dt,                      // MPC 每 5 个控制周期更新：预测步长 20 ms（50 Hz）。
+                gait_period,                        // 当前完整步态周期，单位秒
+                pos_body_,                          // 当前机身位置，G 系
+                vel_body_,                          // 当前机身速度，G 系
+                B2P_RotMat,                         // B 系到 P 系的旋转矩阵
+                B2P_RotMat * gyro_control_B_,       // 当前机身角速度，P 系
+                Rd,                                 // 期望机身姿态，G 系   
+                vel_target_,                        // 期望机身速度，G 系
+                liftoff_fz_limit                    // 四脚当前允许的竖直支撑力上限，单位 N，用于离地前卸载
             );
 
             // 完整 MPC 调用耗时；每次调用都统计，每秒输出一次，避免漏掉尖峰。
             // 包含准备、求解及保底返回；不包含估计器、IK、硬件 read/write。
-            if (quadruped_debug::kLargeDebug) {
+            if (quadruped_debug::Csv_DebugMode) 
+            {
                 const auto mpc_end = std::chrono::steady_clock::now();
                 const double total_ms =
                     std::chrono::duration<double, std::milli>(mpc_end - mpc_begin).count();
@@ -646,6 +630,7 @@ void StateTrotting::calcTau() {
                 ++samples;
                 if (total_ms > dt_ * 1000.0) ++over_budget;
 
+                // 统计MPC求解耗时，每秒输出一次平均值、最大值和超预算次数，便于性能分析和调优。
                 if (mpc_end - report_begin >= std::chrono::seconds(1)) {
                     RCLCPP_INFO(
                         ctrl_interfaces_.node->get_logger(),
@@ -658,24 +643,26 @@ void StateTrotting::calcTau() {
                     samples = over_budget = 0;
                 }
             }
-            mpc_force_P_ = force_feet_P;
+            mpc_force_P_ = force_feet_P;            // 缓存 MPC 求解得到的 P 系下的足底反力，用于下一周期的力分配和离地前卸载
         }
-        if (force_solver_mode_ == ForceSolverMode::MPC) {
-            force_feet_P = mpc_force_P_;
+        if (force_solver_mode_ == ForceSolverMode::MPC) 
+        {
+            force_feet_P = mpc_force_P_;            // 在非MPC执行周期中，使用缓存的 MPC 求解得到的 P 系下的足底反力，避免频繁调用 MPC 求解器
             mpc_cycle_ = (mpc_cycle_ + 1) % 5;
         }
 
     }
-    catch (...) 
+    catch (...)     // 这是前面 try 代码抛出异常时的处理：
     {
-        if (quadruped_debug::kLargeDebug) debug_frame_.meta[TrottingDebug::FLAGS] = 2;
+        if (quadruped_debug::Csv_DebugMode) debug_frame_.meta[TrottingDebug::FLAGS] = 2;
         for (int k = 0; k < 12; ++k) 
             ctrl_interfaces_.joint_torque_command_interface_[k].get().set_value(0.0); 
         return; 
     }
 
-    if (quadruped_debug::kLargeDebug)
-        debug_frame_.ground_force_P = -force_feet_P; // 在摆腿 PD 覆盖之前记录规划接触力。
+    if (quadruped_debug::Csv_DebugMode)
+        debug_frame_.ground_force_P = -force_feet_P; // 在摆腿 PD 覆盖之前记录规划接触力。把当前求解器输出保存到调试记录。取负号后，记录的是地面对机器人的支撑力。
+
 
     // 摆动腿跟随闭环PD控制
     for (int i = 0; i < 4; ++i)
@@ -699,17 +686,24 @@ void StateTrotting::calcTau() {
     force_feet_B = P2B_RotMat * force_feet_P;
 
     // 遍历4条腿，计算每条腿的关节力矩并赋值给控制接口
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 4; i++) 
+    {
         KDL::JntArray torque = robot_model_->getTorque(force_feet_B.col(i), i);  // 逆解
         for (int j = 0; j < 3; j++) 
         {
             double tau_cmd = tau_ff_scale * torque(j);
 
-            if (j == 0) {
+            if (j == 0) 
+            {
                 tau_cmd = saturation(tau_cmd, Vec2(-tau_ff_limit_hip, tau_ff_limit_hip));
-            } else if (j == 1) {
+            } 
+            
+            else if (j == 1) 
+            {
                 tau_cmd = saturation(tau_cmd, Vec2(-tau_ff_limit_thigh, tau_ff_limit_thigh));
-            } else {
+            } 
+            else 
+            {
                 tau_cmd = saturation(tau_cmd, Vec2(-tau_ff_limit_calf, tau_ff_limit_calf));
             }
             ctrl_interfaces_.joint_torque_command_interface_[i * 3 + j].get().set_value(tau_cmd);
@@ -717,22 +711,6 @@ void StateTrotting::calcTau() {
     }
 
     
-    // 发布调试信息
-    if (ctrl_interfaces_.debug_pub) {
-        std_msgs::msg::Float64MultiArray msg;
-
-        // 0: 高度误差 pos_error_z
-        msg.data.push_back(pos_error_(2));
-        // 1-6: QP 外层 PD 的线/角加速度输出；MPC 模式为零。
-        msg.data.push_back(dd_pcd(0));
-        msg.data.push_back(dd_pcd(1));
-        msg.data.push_back(dd_pcd(2));
-        msg.data.push_back(d_wbd(0));     // 4: roll方向目标角加速度项
-        msg.data.push_back(d_wbd(1));     // 5: pitch方向目标角加速度项
-        msg.data.push_back(d_wbd(2));     // 6: yaw方向目标角加速度项
-
-        ctrl_interfaces_.debug_pub->publish(msg);
-    }
 }
 
 /**
@@ -746,7 +724,7 @@ void StateTrotting::calcQQd() {
     qd_goal.setZero();
 
     Vec34 pos_feet_target_B, vel_feet_target_B;
-    const Vec3 omega_B = force_solver_mode_ == ForceSolverMode::MPC
+    const Vec3 omega_B = force_solver_mode_ == ForceSolverMode::MPC     // MPC模式下，使用滤波后的机身角速度作为角速度反馈，增强稳定性
         ? gyro_control_B_ : estimator_->getGyro();
 
     // 将足端目标位置和速度从G系转换为B系
@@ -756,18 +734,18 @@ void StateTrotting::calcQQd() {
         vel_feet_target_B.col(i) = P2B_RotMat * (vel_feet_goal_G.col(i) - vel_body_)
                                  - omega_B.cross(pos_feet_target_B.col(i));
     }
-    const bool debug = quadruped_debug::kLargeDebug;
+    const bool debug = quadruped_debug::Csv_DebugMode;
     q_goal = robot_model_->getQ(pos_feet_target_B,
         debug ? &debug_frame_.ik_q : nullptr, debug ? &debug_frame_.fk_q : nullptr);
-    if (debug) {
-        debug_frame_.goal_B = pos_feet_target_B;
-        debug_frame_.vgoal_B = vel_feet_target_B;
-        debug_frame_.q_raw = q_goal;
-    }
+    const Vec12 debug_q_raw = q_goal;
+    const Vec34 debug_vgoal_B = vel_feet_target_B;
 
+
+    // 关节边界检查和速度限幅
     Vec12 lower = robot_model_->joint_lower_, upper = robot_model_->joint_upper_;
     Vec12 velocity_limit = robot_model_->joint_velocity_limit_;
-    for (int leg = 0; leg < 4; ++leg) {
+    for (int leg = 0; leg < 4; ++leg) 
+    {
         const int hip = 3 * leg;
         lower(hip) = std::max(lower(hip), -hip_q_range);
         upper(hip) = std::min(upper(hip), hip_q_range);
@@ -786,8 +764,26 @@ void StateTrotting::calcQQd() {
     // 速度使用同一组限位后的角度，避免重复 IK 把膝关节推向伸直奇异点。
     qd_goal = robot_model_->getQd(q_goal, vel_feet_target_B,
         debug ? &debug_frame_.sigma_qd : nullptr);
+    const Vec12 debug_qd_raw = qd_goal;
+
+    // 速度限幅和关节边界检查
+    for (int j = 0; j < 12; ++j) {
+        qd_goal(j) = std::clamp(qd_goal(j), -velocity_limit(j), velocity_limit(j));
+        if ((q_goal(j) <= lower(j) && qd_goal(j) < 0.0) ||
+            (q_goal(j) >= upper(j) && qd_goal(j) > 0.0)) qd_goal(j) = 0.0;
+    }
+    q_goal_debug = q_goal;
+    // 将关节目标位置和速度赋值给控制接口
+    for (int i = 0; i < 12; i++) {
+        ctrl_interfaces_.joint_position_command_interface_[i].get().set_value(q_goal(i));
+        ctrl_interfaces_.joint_velocity_command_interface_[i].get().set_value(qd_goal(i));
+    }
+
     if (debug) {
-        debug_frame_.qd_raw = qd_goal;
+        debug_frame_.goal_B = pos_feet_target_B;
+        debug_frame_.vgoal_B = debug_vgoal_B;
+        debug_frame_.q_raw = debug_q_raw;
+        debug_frame_.qd_raw = debug_qd_raw;
         // 保留 CSV 列名：此处不再有第二次 IK，记录实际用于速度求解的 q 的误差。
         debug_frame_.ik_qd = debug_frame_.ik_q;
         for (int leg = 0; leg < 4; ++leg) {
@@ -796,31 +792,21 @@ void StateTrotting::calcQQd() {
             const auto foot = robot_model_->calcPEe2B_four_feet(leg, leg_q);
             debug_frame_.fk_qd(leg) = (Vec3(foot.p.data) - pos_feet_target_B.col(leg)).norm();
         }
-    }
-    for (int j = 0; j < 12; ++j) {
-        qd_goal(j) = std::clamp(qd_goal(j), -velocity_limit(j), velocity_limit(j));
-        if ((q_goal(j) <= lower(j) && qd_goal(j) < 0.0) ||
-            (q_goal(j) >= upper(j) && qd_goal(j) > 0.0)) qd_goal(j) = 0.0;
-    }
-    if (debug) {
         debug_frame_.q_cmd = q_goal;
         debug_frame_.qd_cmd = qd_goal;
     }
-    q_goal_debug = q_goal;
-    // 将关节目标位置和速度赋值给控制接口
-    for (int i = 0; i < 12; i++) {
-        ctrl_interfaces_.joint_position_command_interface_[i].get().set_value(q_goal(i));
-        ctrl_interfaces_.joint_velocity_command_interface_[i].get().set_value(qd_goal(i));
-    }
+
 }
 
 /**
  * @brief 设置关节MIT kp kd增益
  */
 void StateTrotting::calcGain() const {
-    for (int i(0); i < 4; ++i) {
+    for (int i(0); i < 4; ++i) 
+    {
         // 大腿和小腿
-        for (int j = 1; j < 3; j++) {
+        for (int j = 1; j < 3; j++) 
+        {
             if (wave_generator_->contact_(i) == 0) {
                 // ================= 摆动相 =================
                 ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(Kp_motor_swing);
