@@ -1019,9 +1019,7 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
     const Vec3& gyro_G,          // 当前机身角速度，G 系表达。对应论文状态里的 omega。
     const RotMat& Rd_GB,         // 期望机身姿态旋转矩阵，B 系到 G 系。用于生成参考姿态 theta_ref。
     const Vec3& v_ref_G,         // 期望机身/质心线速度，G 系表达。用于生成参考速度和参考位置轨迹。
-    const Vec4& liftoff_fz_limit,
-    const std::vector<Vec3>& p_ref_trajectory_G,
-    const std::vector<Vec3>& v_ref_trajectory_G
+    const Vec4& liftoff_fz_limit
     ) {
   // 新增诊断：只记录原因，不改变原来的保底返回和控制参数。
   // finite 数组中 1 表示数值有限，0 表示该输入含 NaN 或 Inf。
@@ -1119,7 +1117,7 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
     }
   }
 
-  // ====== x0 = [Theta, p_com, omega, v_com, g_z] ======
+  // ====== 计算：x0 = [Theta, p_com, omega, v_com, g_z] ======
   //
   // 论文状态顺序：
   // x = [Theta(3), p_com(3), omega(3), v_com(3), g_z(1)]
@@ -1149,33 +1147,27 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
         diag_theta_ref(0), diag_theta_ref(1));
   }
 
-  // ====== xRef (N + 1) ======
-  const bool has_trajectory = !p_ref_trajectory_G.empty() || !v_ref_trajectory_G.empty();
-  if (has_trajectory && (p_ref_trajectory_G.size() != static_cast<size_t>(in.N + 1) ||
-                         v_ref_trajectory_G.size() != static_cast<size_t>(in.N + 1))) {
-    log_fallback_reason("invalid_reference_trajectory_size");
-    return makeFallbackForces(contact_now);
-  }
-  in.xRef.resize(in.N + 1);
+  // ====== xRef (N + 1) ====== 计算N+1个时刻之后的期望状态值
+  in.xRef.resize(in.N + 1); // 生成 N+1 个未来期望状态。
 
   const Vec3 theta_ref = rotMatToRPY(Rd_GB);
   const Vec3 p_com_ref_G = p_ref_G + Rd_GB * pcb_B;
 
-  for (int k = 0; k <= in.N; ++k) {
+  for (int k = 0; k <= in.N; ++k)
+  {
     const double t_k = static_cast<double>(k) * in.dt;
 
     in.xRef[k].setZero();
 
     in.xRef[k].segment<3>(0) = theta_ref;
 
-    // 对齐时使用完整的减速轨迹；迈步后仍按期望位置和指令速度生成参考。
-    in.xRef[k].segment<3>(3) = has_trajectory
-        ? (p_ref_trajectory_G[k] + Rd_GB * pcb_B).eval()
-        : (p_com_ref_G + v_ref_G * t_k).eval();
+    // 从当前质心参考位置出发，按指令速度生成未来各节点的位置参考。
+    in.xRef[k].segment<3>(3) = (p_com_ref_G + v_ref_G * t_k).eval();    // 考虑当前位置加上速度乘以时间的线性预测，作为未来的质心位置参考。
+    // 这里的 eval() 是 Eigen 的一个函数，用于强制计算表达式并返回一个新的对象，避免延迟计算带来的潜在问题。
 
     in.xRef[k].segment<3>(6) << 0.0, 0.0, 0.0;
 
-    in.xRef[k].segment<3>(9) = has_trajectory ? v_ref_trajectory_G[k] : v_ref_G;
+    in.xRef[k].segment<3>(9) = v_ref_G;
     if (!in.xRef[k].allFinite()) {
       log_fallback_reason("nonfinite_reference_trajectory");
       return makeFallbackForces(contact_now);
@@ -1186,7 +1178,7 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
 
   // ====== contact schedule (N) ======
   // 直接使用步态生成器的预测，包含全支撑/全摆动和状态切换。
-  in.contact = contact_table;
+  in.contact = contact_table; // 预测将来的接触状态表，N 步长。
 
   // ====== rFeet schedule (N) ======
   //
@@ -1204,12 +1196,15 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
 
   in.rFeet.resize(in.N);
 
-  const Mat3 Iw = R_GB * Ib * R_GB.transpose(); // 计算G系下的惯性矩阵
-  const Eigen::LDLT<Mat3> ldlt(Iw); // LDLT 是一种矩阵分解方法
+  const Mat3 Iw = R_GB * Ib * R_GB.transpose();           // 计算G系下的惯性矩阵
+  const Eigen::LDLT<Mat3> ldlt(Iw);                       // LDLT 是一种矩阵分解方法
 
-  if (ldlt.info() == Eigen::Success) {
-    in.Iw_inv = ldlt.solve(Mat3::Identity()); // 求逆矩阵
-  } else {
+  if (ldlt.info() == Eigen::Success) 
+  {
+    in.Iw_inv = ldlt.solve(Mat3::Identity());             // 求解 Iw 的逆矩阵
+  } 
+  else 
+  {
     log_fallback_reason("inertia_factorization_failed");
     return makeFallbackForces(contact_now);
   }
@@ -1225,9 +1220,9 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
 
     for (int leg = 0; leg < 4; ++leg) {
       if (contact_now(leg) == 1) {
-        rk[leg] = foot_hold_G.col(leg) - p_com_G;
+        rk[leg] = foot_hold_G.col(leg) - p_com_G;       // 计算支撑腿力臂
       } else {
-        rk[leg] = foot_end_G.col(leg) - p_com_G;
+        rk[leg] = foot_end_G.col(leg) - p_com_G;        // 摆动腿使用预期落点计算力臂
       }
     }
 

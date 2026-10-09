@@ -63,9 +63,7 @@ public:
       const Vec3& gyro_G,           // 机身角速度（世界系）
       const RotMat& Rd_GB,          // 机身期望姿态
       const Vec3& v_ref_G,          // 机身指令速度（世界系），直接用于参考轨迹
-      const Vec4& liftoff_fz_limit = Vec4::Constant(1e19),
-      const std::vector<Vec3>& p_ref_trajectory_G = {}, // 对齐期间的机身位置参考
-      const std::vector<Vec3>& v_ref_trajectory_G = {}  // 与位置参考一致的速度
+      const Vec4& liftoff_fz_limit = Vec4::Constant(1e19)
   );
 
 private:
