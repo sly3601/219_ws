@@ -104,7 +104,7 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     // 两组权重分别惩罚基座加速度修正和足底力修正，按当前设置协调两者。
     sysu219::wbc::RelaxationSettings relaxation_settings;
     relaxation_settings.Q_WBC = 1 * Mat6::Identity();
-    relaxation_settings.Q_MPC = 1e4 * Mat12::Identity();
+    relaxation_settings.Q_MPC = 1e3 * Mat12::Identity();    // 1e2 是基准
     relaxation_ = std::make_unique<sysu219::wbc::MpcWbcRelaxation>(relaxation_settings);
 
     if (quadruped_debug::Csv_DebugMode)               // 如果开启了输出CSV数据文件的debug模式

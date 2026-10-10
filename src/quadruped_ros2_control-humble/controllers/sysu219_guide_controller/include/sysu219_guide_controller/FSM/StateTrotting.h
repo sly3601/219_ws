@@ -44,7 +44,7 @@ public:
     // 初次调试先应用5%的WBC关节参考和逆动力学力矩；设0可精确回到已有MPC输出。
     // Q_MPC只保护足底力，这个比例另外控制关节输出变化，逐步提高到1才是完整WBC。
     bool wbc_enabled_ = true;
-    double wbc_command_blend_ = 1;
+    double wbc_command_blend_ = 1.0;
 
     // 与 MPC 共用已有的 20 Hz 滤波角速度，取全局系 z 分量用于落点预测。
     [[nodiscard]] double getFilteredYawRateGlobal() const {
