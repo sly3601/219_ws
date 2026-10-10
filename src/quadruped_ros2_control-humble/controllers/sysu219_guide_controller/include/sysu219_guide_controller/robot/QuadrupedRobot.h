@@ -6,10 +6,12 @@
 #ifndef QUADRUPEDROBOT_H
 #define QUADRUPEDROBOT_H
 #include <string>
+#include <memory>
 #include <kdl_parser/kdl_parser.hpp>
 #include <sysu219_guide_controller/common/mathTypes.h>
 
 #include "RobotLeg.h"
+#include "sysu219_guide_controller/robot/FloatingBaseModel.h"
 
 
 struct CtrlInterfaces;
@@ -91,6 +93,9 @@ public:
     std::vector<KDL::JntArray> current_joint_pos_;
     std::vector<KDL::JntArray> current_joint_vel_;
     Vec12 joint_lower_, joint_upper_, joint_velocity_limit_;
+
+    // 新增：WBC使用的完整浮动基模型，初始化失败时为空，原MPC仍可运行。
+    std::unique_ptr<sysu219::wbc::FloatingBaseModel> wbc_model_;
 
     void update();
 

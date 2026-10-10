@@ -58,11 +58,14 @@ add_library(${PROJECT_NAME} SHARED
 
         src/robot/QuadrupedRobot.cpp
         src/robot/RobotLeg.cpp
+        src/robot/FloatingBaseModel.cpp
 
         src/control/Estimator.cpp
         src/control/LowPassFilter.cpp
         src/control/BalanceCtrl.cpp
         src/control/ConvexMpcSolver.cpp
+        src/control/WbcController.cpp
+        src/control/MpcWbcRelaxation.cpp
 
         src/quadProgpp/Array.cc
         src/quadProgpp/QuadProg++.cc
@@ -84,6 +87,7 @@ target_include_directories(${PROJECT_NAME}
         ${BLASFEO_INCLUDE_DIR}
         PRIVATE
         src)
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 ament_target_dependencies(
         ${PROJECT_NAME} PUBLIC
         ${CONTROLLER_INCLUDE_DEPENDS}

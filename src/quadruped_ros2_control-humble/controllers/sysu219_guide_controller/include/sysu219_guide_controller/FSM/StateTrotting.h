@@ -7,6 +7,7 @@
 #include <sysu219_guide_controller/control/BalanceCtrl.h>
 #include <sysu219_guide_controller/gait/GaitGenerator.h>
 #include <sysu219_guide_controller/control/ConvexMpcSolver.h>
+#include <sysu219_guide_controller/control/MpcWbcRelaxation.h>
 
 #include "controller_common/FSM/FSMState.h"
 // marker array可视化插件
@@ -39,6 +40,11 @@ public:
         MPC = 1    // 走 Convex MPC
     };
     ForceSolverMode force_solver_mode_ = ForceSolverMode::MPC;
+
+    // 初次调试先应用5%的WBC关节参考和逆动力学力矩；设0可精确回到已有MPC输出。
+    // Q_MPC只保护足底力，这个比例另外控制关节输出变化，逐步提高到1才是完整WBC。
+    bool wbc_enabled_ = true;
+    double wbc_command_blend_ = 1;
 
     // 与 MPC 共用已有的 20 Hz 滤波角速度，取全局系 z 分量用于落点预测。
     [[nodiscard]] double getFilteredYawRateGlobal() const {
@@ -149,6 +155,17 @@ private:
     // 250 Hz 控制中，每 5 周期同步求解 1 次 MPC（50 Hz）。
     int mpc_cycle_ = 0;
     Vec34 mpc_force_P_ = Vec34::Zero(); // 仅缓存 MPC 力，不包含摆动腿 PD。
+
+    // 新增：控制器与输入缓存只创建一次，calcQQd求WBC，run再做松弛和统一输出。
+    std::unique_ptr<sysu219::wbc::WbcController> wbc_;
+    std::unique_ptr<sysu219::wbc::MpcWbcRelaxation> relaxation_;
+    sysu219::wbc::WbcInput wbc_input_;
+    sysu219::wbc::WbcOutput wbc_output_;
+    sysu219::wbc::RelaxationInput relaxation_input_;
+    Vec12 legacy_q_ = Vec12::Zero(), legacy_qd_ = Vec12::Zero();
+    Vec12 legacy_tau_ = Vec12::Zero();
+    bool mpc_frame_valid_ = false; // 本周期calcTau成功才允许WBC覆盖原输出。
+
     TrottingDebug::Frame debug_frame_;
     uint64_t debug_cycle_ = 0;
     std::unique_ptr<TrottingDebug> trotting_debug_;

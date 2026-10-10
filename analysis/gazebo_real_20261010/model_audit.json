@@ -1,0 +1,42 @@
+{
+  "scope": "Current source model only; not proof of configuration used in historical logs",
+  "mass_kg": 40.50097199999999,
+  "feet": [
+    {
+      "link": "FL_calf",
+      "collision": "FL_calf_fixed_joint_lump__FL_foot_collision_1",
+      "radius_m": 0.02,
+      "kp": 1000000.0,
+      "kd": 1.0,
+      "mu": 0.6,
+      "mu2": 0.6
+    },
+    {
+      "link": "FR_calf",
+      "collision": "FR_calf_fixed_joint_lump__FR_foot_collision_1",
+      "radius_m": 0.02,
+      "kp": 1000000.0,
+      "kd": 1.0,
+      "mu": 0.6,
+      "mu2": 0.6
+    },
+    {
+      "link": "RL_calf",
+      "collision": "RL_calf_fixed_joint_lump__RL_foot_collision_1",
+      "radius_m": 0.02,
+      "kp": 1000000.0,
+      "kd": 1.0,
+      "mu": 0.6,
+      "mu2": 0.6
+    },
+    {
+      "link": "RR_calf",
+      "collision": "RR_calf_fixed_joint_lump__RR_foot_collision_1",
+      "radius_m": 0.02,
+      "kp": 1000000.0,
+      "kd": 1.0,
+      "mu": 0.6,
+      "mu2": 0.6
+    }
+  ]
+}

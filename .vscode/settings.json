@@ -1,3 +1,21 @@
 {
-    "cmake.sourceDirectory": "/home/yzz/219_ws/build/control_input_msgs/control_input_msgs__py"
+    "cmake.sourceDirectory": "/home/yzz/219_ws/build/control_input_msgs/control_input_msgs__py",
+    "editor.selectionHighlight": true,
+    "editor.occurrencesHighlight": "singleFile",
+    "editor.minimap.enabled": true,
+    "editor.overviewRulerLanes": 3,
+    "[cpp]": {
+        "editor.selectionHighlight": true,
+        "editor.occurrencesHighlight": "off",
+        "editor.minimap.enabled": true,
+        "editor.overviewRulerLanes": 3
+    },
+    "workbench.colorCustomizations": {
+        "minimap.selectionHighlight": "#FFFFFFAA",
+        "minimap.selectionOccurrenceHighlight": "#FFFFFFAA",
+        "editorOverviewRuler.selectionHighlightForeground": "#FFFFFFAA",
+        "editorOverviewRuler.wordHighlightForeground": "#FFFFFFAA",
+        "editorOverviewRuler.wordHighlightStrongForeground": "#FFFFFFAA",
+        "editorOverviewRuler.wordHighlightTextForeground": "#FFFFFFAA"
+    }
 }

@@ -40,6 +40,10 @@ public:
 
   void reset();
   const Vec3& comOffsetBody() const { return pcb_B; }
+  // WBC松弛优化读取同一组力界，避免两级优化使用不同摩擦参数。
+  double frictionCoefficient() const { return mu; }
+  double normalForceMin() const { return fzMin; }
+  double normalForceMax() const { return fzMax; }
   struct DebugInfo {
     size_t id = 0;
     int status = -1, iter = -1, result = -1; // result: 1新解、2缓存、0保底。

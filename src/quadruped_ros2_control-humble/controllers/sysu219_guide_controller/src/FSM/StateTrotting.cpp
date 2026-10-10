@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <stdexcept>
 #include "sysu219_guide_controller/debug/DebugConfig.h"
 
 /* 
@@ -88,6 +89,24 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     
     dt_ = 1.0 / ctrl_interfaces_.frequency_;        // 控制周期dt
 
+    // 新增：WBC采用较温和的任务PD，电机原有MIT增益仍由calcGain管理。
+    sysu219::wbc::WbcSettings wbc_settings;
+    wbc_settings.kp_orientation = Vec3(40.0, 40.0, 20.0);
+    wbc_settings.kd_orientation = Vec3(8.0, 8.0, 4.0);
+    wbc_settings.kp_body_position = Vec3(16.0, 16.0, 40.0);
+    wbc_settings.kd_body_position = Vec3(8.0, 8.0, 12.0);
+    wbc_settings.kp_swing = Vec3(80.0, 80.0, 100.0);
+    wbc_settings.kd_swing = Vec3(12.0, 12.0, 16.0);
+    wbc_settings.svd_absolute_tolerance = 1e-8;
+    wbc_settings.svd_relative_tolerance = 1e-6;
+    wbc_ = std::make_unique<sysu219::wbc::WbcController>(wbc_settings);
+
+    // 两组权重分别惩罚基座加速度修正和足底力修正，按当前设置协调两者。
+    sysu219::wbc::RelaxationSettings relaxation_settings;
+    relaxation_settings.Q_WBC = 1 * Mat6::Identity();
+    relaxation_settings.Q_MPC = 1e4 * Mat12::Identity();
+    relaxation_ = std::make_unique<sysu219::wbc::MpcWbcRelaxation>(relaxation_settings);
+
     if (quadruped_debug::Csv_DebugMode)               // 如果开启了输出CSV数据文件的debug模式
     {
         trotting_debug_ = std::make_unique<TrottingDebug>(dt_);  // 创建一个 TrottingDebug 对象，把 dt_ 传给它的构造函数，并返回管理该对象的智能指针。
@@ -132,6 +151,8 @@ void StateTrotting::enter() {
     mpc_foot_hold_initialized_ = false;                 // 标记MPC足底支撑点位置未初始化
     mpc_cycle_ = 0;                                     // 初始化MPC循环计数器,外部控制250hz，mpc目前是50hz，mpc_cycle_每5个外部控制周期增加1
     mpc_force_P_.setZero();                             // 初始化MPC计算的足底力（P系）
+    mpc_frame_valid_ = false;
+    wbc_output_ = sysu219::wbc::WbcOutput{};
     gyro_control_B_ = estimator_->getGyro();            // 初始化机身角速度（B系）
 
     // 初始化 角速度滤波器 的历史值，确保第一次运行时不会出现异常
@@ -219,6 +240,114 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     
     calcTau();                                      // 动力学计算总函数（核心）
     calcQQd();                                      // 运动学计算总函数（核心)
+
+    if (quadruped_debug::Csv_DebugMode)
+    {
+        auto& sample = debug_frame_.wbc;
+        sample.blend = static_cast<float>(wbc_command_blend_);
+        if (wbc_enabled_) sample.flags |= TrottingDebug::WBC_ENABLED;
+        if (mpc_frame_valid_) sample.flags |= TrottingDebug::MPC_FRAME_VALID;
+        if (robot_model_->wbc_model_) sample.flags |= TrottingDebug::MODEL_READY;
+        if (std::isfinite(wbc_command_blend_) && wbc_command_blend_ > 0.0 && wbc_command_blend_ <= 1.0)
+            sample.flags |= TrottingDebug::BLEND_VALID;
+    }
+
+    // 新增：MPC和WBC均已完成，本周期再协调加速度和接触力。
+    // calcTau/calcQQd已写好旧输出；只有整条新链路成功，才一起替换位置、速度和力矩。
+    if (wbc_enabled_ && force_solver_mode_ == ForceSolverMode::MPC && mpc_frame_valid_ &&
+        wbc_output_.success && std::isfinite(wbc_command_blend_) && wbc_command_blend_ > 0.0 &&
+        wbc_command_blend_ <= 1.0)
+    {
+        relaxation_input_.qddot_cmd = wbc_output_.qddot_d;
+        relaxation_input_.contact = wbc_input_.contact;
+        relaxation_input_.J_f_O = wbc_input_.J_f_O;
+        relaxation_input_.Jdot_f_qdot_O = wbc_input_.Jdot_f_qdot_O;
+        // 电机内部已做MIT PD，这里只输出逆动力学前馈，避免再次叠加PD力矩。
+        relaxation_input_.tau_PD_j.setZero();
+        const auto relaxation_begin = quadruped_debug::Csv_DebugMode ?
+            std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
+        if (quadruped_debug::Csv_DebugMode) debug_frame_.wbc.flags |= TrottingDebug::RELAX_ATTEMPT;
+        const auto result = relaxation_->solve(relaxation_input_);
+        if (quadruped_debug::Csv_DebugMode)
+        {
+            auto& sample = debug_frame_.wbc;
+            sample.relaxation_ms = std::chrono::duration<float, std::milli>(
+                std::chrono::steady_clock::now() - relaxation_begin).count();
+            if (result.success)
+            {
+                sample.flags |= TrottingDebug::RELAX_OK;
+                sample.delta_qddot = result.delta_qddot.cast<float>();
+                sample.delta_force = Eigen::Map<const Vec12>(result.delta_f_O.data()).cast<float>();
+                sample.stance_acceleration = Eigen::Map<const Vec12>(result.stance_acceleration_residual_O.data()).cast<float>();
+                sample.equality_residual = static_cast<float>(result.equality_residual_inf);
+                sample.inequality_margin = static_cast<float>(result.minimum_inequality_margin);
+                sample.candidate_tau_delta = (tau_ff_scale * result.tau_j - legacy_tau_).cast<float>();
+            }
+        }
+
+        // 力修正量仅用于日志，不再作为接入回退门槛。
+        const double force_change = result.delta_f_O.cwiseAbs().maxCoeff();
+        bool accept = result.success;
+        const Vec12 wbc_tau = tau_ff_scale * result.tau_j;
+        for (int joint = 0; accept && joint < 12; ++joint)
+        {
+            const double limit = joint % 3 == 0 ? tau_ff_limit_hip :
+                (joint % 3 == 1 ? tau_ff_limit_thigh : tau_ff_limit_calf);
+            // 超过前馈限幅时整帧回退，避免裁剪逆动力学力矩后仍使用新关节目标。
+            accept = std::isfinite(wbc_tau(joint)) && std::abs(wbc_tau(joint)) <= limit;
+        }
+
+        static rclcpp::Clock wbc_clock(RCL_STEADY_TIME);
+        if (accept)
+        {
+            // [调试过渡] 小比例混合用于从已有稳定控制逐步切到完整WBC，不属于论文QP。
+            // 比例为1才完全采用WBC/逆动力学；混合期间不宣称执行力矩严格满足新模型动力学。
+            Vec12 q = legacy_q_ + wbc_command_blend_ * (wbc_output_.q_j_d - legacy_q_);
+            Vec12 qd = legacy_qd_ + wbc_command_blend_ * (wbc_output_.qdot_j_d - legacy_qd_);
+            const Vec12 tau = legacy_tau_ + wbc_command_blend_ * (wbc_tau - legacy_tau_);
+            for (int joint = 0; joint < 12; ++joint)
+            {
+                double lower = robot_model_->joint_lower_(joint);
+                double upper = robot_model_->joint_upper_(joint);
+                double velocity = robot_model_->joint_velocity_limit_(joint);
+                if (joint % 3 == 0)
+                {
+                    lower = std::max(lower, -hip_q_range);
+                    upper = std::min(upper, hip_q_range);
+                    velocity = std::min(velocity, hip_qd_range);
+                }
+                const double sampled_q = q(joint), sampled_qd = qd(joint);
+                q(joint) = std::clamp(q(joint), lower, upper);
+                qd(joint) = std::clamp(qd(joint), -velocity, velocity);
+                if ((q(joint) <= lower && qd(joint) < 0.0) ||
+                    (q(joint) >= upper && qd(joint) > 0.0)) qd(joint) = 0.0;
+                if (quadruped_debug::Csv_DebugMode && (q(joint) != sampled_q || qd(joint) != sampled_qd))
+                    debug_frame_.wbc.flags |= TrottingDebug::COMMAND_CLAMPED;
+                ctrl_interfaces_.joint_position_command_interface_[joint].get().set_value(q(joint));
+                ctrl_interfaces_.joint_velocity_command_interface_[joint].get().set_value(qd(joint));
+                ctrl_interfaces_.joint_torque_command_interface_[joint].get().set_value(tau(joint));
+            }
+            q_goal_debug = q;
+            if (quadruped_debug::Csv_DebugMode)
+            {
+                debug_frame_.wbc.flags |= TrottingDebug::WBC_APPLIED;
+                debug_frame_.q_cmd = q;
+                debug_frame_.qd_cmd = qd;
+                RCLCPP_INFO_THROTTLE(ctrl_interfaces_.node->get_logger(), wbc_clock, 10000,
+                    "[MPC_WBC] 本帧采用WBC，混合比例=%.2f，最大力修正=%.3e N，基座残差=%.2e，支撑足加速度残差=%.2f m/s²",
+                    wbc_command_blend_, force_change, result.floating_base_dynamics_residual.norm(),
+                    result.stance_acceleration_residual_O.norm());
+            }
+        }
+        else
+        {
+            if (quadruped_debug::Csv_DebugMode && result.success)
+                debug_frame_.wbc.flags |= TrottingDebug::TORQUE_REJECTED;
+            RCLCPP_WARN_THROTTLE(ctrl_interfaces_.node->get_logger(), wbc_clock, 10000,
+                "[MPC_WBC] 本帧沿用原控制输出：%s",
+                result.success ? "前馈力矩无效或超过关节前馈限值" : result.message.c_str());
+        }
+    }
     if (first_run) wave_generator_->status_ = WaveStatus::WAVE_ALL;
     first_run = false;
 
@@ -280,6 +409,14 @@ void StateTrotting::recordDebug(const rclcpp::Time& time, const rclcpp::Duration
     for (int i = 0; i < 10; ++i) f.imu(i) = ctrl_interfaces_.imu_state_interface_[i].get().get_value();
     f.rpy = rotMatToRPY(B2P_RotMat);
     f.rpy_ref = rotMatToRPY(Rd);
+    f.gyro_G = B2P_RotMat * (mpc ? gyro_control_B_ : estimator_->getGyro());
+    // WBC成功时记录其实际使用的角速度，包含姿态副本的微小归一化修正。
+    if (f.wbc.flags & TrottingDebug::WBC_OK)
+        f.gyro_G = wbc_input_.R_OB * wbc_input_.qdot.head<3>();
+    f.wbc.omega_d = w_cmd_global_.cast<float>();
+    f.wbc.legacy_q = legacy_q_.cast<float>();
+    f.wbc.legacy_qd = legacy_qd_.cast<float>();
+    f.wbc.legacy_tau = legacy_tau_.cast<float>();
     f.p = pos_body_; f.v = vel_body_; f.p_ref = pcd_; f.v_ref = vel_target_;
     f.com_p = pos_body_ + B2P_RotMat * convex_mpc_->comOffsetBody();
     f.feet_G = estimator_->getFeetPos();
@@ -301,10 +438,7 @@ void StateTrotting::recordDebug(const rclcpp::Time& time, const rclcpp::Duration
         f.tau_ff_cmd(j) = ctrl_interfaces_.joint_torque_command_interface_[j].get().get_value();
         f.kp_cmd(j) = ctrl_interfaces_.joint_kp_command_interface_[j].get().get_value();
         f.kd_cmd(j) = ctrl_interfaces_.joint_kd_command_interface_[j].get().get_value();
-        // 控制器接口处的 MIT 力矩估算，尚未经过硬件限幅/量化；绝非实测足底力。
-        f.tau_p_est(j) = f.kp_cmd(j) * (f.q_cmd(j) - f.q(j));
-        f.tau_d_est(j) = f.kd_cmd(j) * (f.qd_cmd(j) - f.qd(j));
-        f.tau_mit_est(j) = f.tau_ff_cmd(j) + f.tau_p_est(j) + f.tau_d_est(j);
+        // 保留实际发送的前馈、增益和目标；MIT力矩及相对原输出的变化可离线重算。
     }
     // 仅记录电机反馈力矩对应的力代理，不能当作实测接触力或用于提前分配支撑力。
     f.touchdown_fz_threshold_N = 0.15 * robot_model_->mass_ * 9.81;
@@ -422,6 +556,7 @@ void StateTrotting::calcCmd() {
  */
 
 void StateTrotting::calcTau() {
+    mpc_frame_valid_ = false; // 不允许异常周期使用上一周期的WBC/松弛结果。
     // 运动学/动力学参数
     Vec3 dd_pcd;                                // 期望机身xyz加速度（m/s²）
     dd_pcd.setZero();
@@ -649,6 +784,13 @@ void StateTrotting::calcTau() {
         {
             force_feet_P = mpc_force_P_;            // 在非MPC执行周期中，使用缓存的 MPC 求解得到的 P 系下的足底反力，避免频繁调用 MPC 求解器
             mpc_cycle_ = (mpc_cycle_ + 1) % 5;
+            for (int leg = 0; leg < 4; ++leg)
+            {
+                auto& limits = relaxation_input_.force_limits[leg];
+                limits.mu = convex_mpc_->frictionCoefficient();
+                limits.f_z_min = convex_mpc_->normalForceMin();
+                limits.f_z_max = std::min(convex_mpc_->normalForceMax(), liftoff_fz_limit(leg));
+            }
         }
 
     }
@@ -662,6 +804,10 @@ void StateTrotting::calcTau() {
 
     if (quadruped_debug::Csv_DebugMode)
         debug_frame_.ground_force_P = -force_feet_P; // 在摆腿 PD 覆盖之前记录规划接触力。把当前求解器输出保存到调试记录。取负号后，记录的是地面对机器人的支撑力。
+
+    // 新增：此处的force_feet_P已取过负号；松弛模块要地面对机器人的反力，必须转回正号。
+    // 在摆动腿PD覆盖前保存，且不改写原MPC缓存或下一次MPC的变化率参考。
+    relaxation_input_.f_MPC_O = -force_feet_P;
 
 
     // 摆动腿跟随闭环PD控制
@@ -707,16 +853,18 @@ void StateTrotting::calcTau() {
                 tau_cmd = saturation(tau_cmd, Vec2(-tau_ff_limit_calf, tau_ff_limit_calf));
             }
             ctrl_interfaces_.joint_torque_command_interface_[i * 3 + j].get().set_value(tau_cmd);
+            legacy_tau_(i * 3 + j) = tau_cmd;
         }
     }
 
-    
+    mpc_frame_valid_ = true;
 }
 
 /**
  * @brief 运动学计算总函数
  */
 void StateTrotting::calcQQd() {
+    wbc_output_ = sysu219::wbc::WbcOutput{}; // 每周期清除成功标志，禁止复用旧接触状态的解。
     // 逆运动学准备
     Vec12 q_goal;
     Vec12 qd_goal;
@@ -773,6 +921,8 @@ void StateTrotting::calcQQd() {
             (q_goal(j) >= upper(j) && qd_goal(j) > 0.0)) qd_goal(j) = 0.0;
     }
     q_goal_debug = q_goal;
+    legacy_q_ = q_goal;
+    legacy_qd_ = qd_goal;
     // 将关节目标位置和速度赋值给控制接口
     for (int i = 0; i < 12; i++) {
         ctrl_interfaces_.joint_position_command_interface_[i].get().set_value(q_goal(i));
@@ -794,6 +944,81 @@ void StateTrotting::calcQQd() {
         }
         debug_frame_.q_cmd = q_goal;
         debug_frame_.qd_cmd = qd_goal;
+    }
+
+    // 新增：先保留上面的原IK输出作为回退，再在总运动学函数内计算完整WBC。
+    // 新关节目标暂不写电机，等run的松弛优化成功后与新力矩一起应用。
+    if (wbc_enabled_ && force_solver_mode_ == ForceSolverMode::MPC && mpc_frame_valid_ &&
+        robot_model_->wbc_model_)
+    {
+        auto& input = wbc_input_;
+        input.R_OB = B2P_RotMat;
+        input.Theta_d = rotMatToRPY(Rd);
+        input.p_com_O = pos_body_;
+        input.p_com_d_O = pcd_;
+        input.pdot_com_d_O = vel_target_;
+        input.omega_d_O = w_cmd_global_;
+        input.pddot_com_d_O.setZero();
+        input.alpha_d_O.setZero();
+        input.qdot.head<3>() = omega_B;
+        input.x_f_d_O = pos_feet_goal_G;
+        input.xdot_f_d_O = vel_feet_goal_G;
+        input.xddot_f_d_O.setZero(); // 当前步态接口未输出加速度，沿用论文的零前馈入口。
+        for (int leg = 0; leg < 4; ++leg)
+        {
+            input.q_j.segment<3>(3 * leg) = robot_model_->current_joint_pos_[leg].data;
+            input.qdot.segment<3>(6 + 3 * leg) = robot_model_->current_joint_vel_[leg].data;
+            input.contact[leg] = wave_generator_->contact_(leg);
+        }
+        const auto model_wbc_begin = quadruped_debug::Csv_DebugMode ?
+            std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
+        if (quadruped_debug::Csv_DebugMode) debug_frame_.wbc.flags |= TrottingDebug::WBC_ATTEMPT;
+        try
+        {
+            // 仅修正WBC输入副本的微小正交误差，不修改估计器、主控制和MPC姿态。
+            // 明显错误仍回退；归一化后同步欧拉角和B系线速度，供模型与任务共同使用。
+            if (!input.R_OB.allFinite() ||
+                (input.R_OB.transpose() * input.R_OB - Mat3::Identity()).norm() > 1e-5 ||
+                std::abs(input.R_OB.determinant() - 1.0) > 1e-5)
+                throw std::invalid_argument("WBC输入姿态不是有效旋转，误差超过微小修正范围");
+            Eigen::Quaterniond orientation(input.R_OB);
+            orientation.normalize();
+            input.R_OB = orientation.toRotationMatrix();
+            input.Theta = rotMatToRPY(input.R_OB);
+            input.qdot.segment<3>(3) = input.R_OB.transpose() * vel_body_;
+            robot_model_->wbc_model_->update(input, relaxation_input_.M, relaxation_input_.C);
+            wbc_->updateInput(input);
+            wbc_output_ = wbc_->solve();
+        }
+        catch (const std::exception& error)
+        {
+            wbc_output_.message = error.what();
+        }
+        if (quadruped_debug::Csv_DebugMode)
+        {
+            auto& sample = debug_frame_.wbc;
+            sample.model_wbc_ms = std::chrono::duration<float, std::milli>(
+                std::chrono::steady_clock::now() - model_wbc_begin).count();
+            if (wbc_output_.success)
+            {
+                sample.flags |= TrottingDebug::WBC_OK;
+                sample.qddot = wbc_output_.qddot_d.cast<float>();
+                for (int task = 0; task < 4; ++task)
+                {
+                    const auto& diagnostic = wbc_output_.tasks[task];
+                    sample.rank(task) = diagnostic.projected_rank;
+                    sample.position_residual(task) = static_cast<float>(diagnostic.position_residual);
+                    sample.velocity_residual(task) = static_cast<float>(diagnostic.velocity_residual);
+                    sample.acceleration_residual(task) = static_cast<float>(diagnostic.acceleration_residual);
+                }
+            }
+        }
+        if (!wbc_output_.success)
+        {
+            static rclcpp::Clock wbc_clock(RCL_STEADY_TIME);
+            RCLCPP_WARN_THROTTLE(ctrl_interfaces_.node->get_logger(), wbc_clock, 10000,
+                "[WBC] 本帧沿用原控制输出：%s", wbc_output_.message.c_str());
+        }
     }
 
 }

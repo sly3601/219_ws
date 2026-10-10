@@ -24,6 +24,12 @@ QuadrupedRobot::QuadrupedRobot(CtrlInterfaces &ctrl_interfaces, const std::strin
     urdf::Model model;
     if (!model.initString(robot_description))
         throw std::runtime_error("Cannot read joint limits from robot_description");
+    try {
+        wbc_model_ = std::make_unique<sysu219::wbc::FloatingBaseModel>(
+            robot_description, base_name, feet_names);
+    } catch (const std::exception& error) {
+        std::cerr << "[WBC_MODEL] disabled: " << error.what() << std::endl;
+    }
     const KDL::Chain* chains[] = {&fr_chain_, &fl_chain_, &rr_chain_, &rl_chain_};
     for (int leg = 0; leg < 4; ++leg) {
         int joint_index = 0;

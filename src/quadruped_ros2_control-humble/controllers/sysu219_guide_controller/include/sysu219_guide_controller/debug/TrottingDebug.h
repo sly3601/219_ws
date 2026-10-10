@@ -21,6 +21,34 @@ public:
     enum Meta { CYCLE, ROS_S, STEADY_S, SYSTEM_S, PHASE_CONTROL_S, PERIOD_S,
                 WALL_DT_MS, UPDATE_MS, MODE, WAVE, FLAGS, EVENT,
                 SOLVER_ID, SOLVER_STATUS, SOLVER_ITER, SOLVER_RESULT, MPC_TOTAL_MS, META_COUNT };
+    // wbc_flags为位标志，可同时成立；只按成功位读取对应数据，未执行项记NaN。
+    enum WbcFlags { WBC_ATTEMPT = 1, WBC_OK = 2, RELAX_ATTEMPT = 4, RELAX_OK = 8,
+                    WBC_APPLIED = 16, TORQUE_REJECTED = 32, COMMAND_CLAMPED = 64,
+                    WBC_ENABLED = 128, MPC_FRAME_VALID = 256, MODEL_READY = 512,
+                    BLEND_VALID = 1024 };
+    template<int N> using Samples = Eigen::Matrix<float, N, 1>;
+    // 只保存诊断用float，不回写控制；固定容量，不缓存M或雅可比等大矩阵。
+    struct WbcSample {
+        unsigned flags = 0;
+        float blend = 0.0f, model_wbc_ms = 0.0f, relaxation_ms = 0.0f;
+        float equality_residual = std::nanf(""), inequality_margin = std::nanf("");
+        Eigen::Matrix<int, 4, 1> rank = Eigen::Matrix<int, 4, 1>::Constant(-1);
+        // 四级顺序：支撑足、机身转动、机身平动、摆动足；误差为各任务向量的范数。
+        Samples<4> position_residual = Samples<4>::Constant(std::nanf(""));
+        Samples<4> velocity_residual = Samples<4>::Constant(std::nanf(""));
+        Samples<4> acceleration_residual = Samples<4>::Constant(std::nanf(""));
+        Samples<18> qddot = Samples<18>::Constant(std::nanf(""));
+        Samples<6> delta_qddot = Samples<6>::Constant(std::nanf(""));
+        Samples<12> delta_force = Samples<12>::Constant(std::nanf(""));
+        Samples<12> stance_acceleration = Samples<12>::Constant(std::nanf(""));
+        // 原控制已限幅的参考，用于与实际发送的q_cmd/qd_cmd/tau_ff_cmd逐关节比较。
+        Samples<12> legacy_q = Samples<12>::Constant(std::nanf(""));
+        Samples<12> legacy_qd = Samples<12>::Constant(std::nanf(""));
+        Samples<12> legacy_tau = Samples<12>::Constant(std::nanf(""));
+        // 完整逆动力学前馈相对原前馈的差值；被回退时也保留，不代表实际发送。
+        Samples<12> candidate_tau_delta = Samples<12>::Constant(std::nanf(""));
+        Samples<3> omega_d = Samples<3>::Constant(std::nanf(""));
+    };
     // event 位：1时间、2估计、4足端目标、8关节目标、16运动学、32姿态、64非法值/异常、128相位、256退出、512起步、1024接触切换。
     struct Frame {
         std::array<double, META_COUNT> meta{};
@@ -44,17 +72,13 @@ public:
         Vec4 fk_q = Vec4::Zero(), fk_qd = Vec4::Zero(), sigma_qd = Vec4::Zero();
         // 全部只用于诊断，不回写状态估计/控制目标。差分使用实际 ROS 时间间隔。
         double check_dt_s = 0.0, support_line_distance_m = -1.0;
-        Vec3 com_p = Vec3::Zero(), force_sum = Vec3::Zero();
-        Vec3 moment_vertical = Vec3::Zero(), moment_horizontal = Vec3::Zero();
-        Vec12 qd_from_position = Vec12::Zero(), qd_error = Vec12::Zero();
-        Vec12 q_delta = Vec12::Zero(), qd_integral = Vec12::Zero();
-        Vec34 body_v_from_qd = Vec34::Zero(), body_v_from_position = Vec34::Zero();
-        Vec34 goal_v_from_position = Vec34::Zero(), goal_v_error = Vec34::Zero();
-        Vec34 end_v_from_position = Vec34::Zero();
+        Vec3 com_p = Vec3::Zero();
+        // 差分、积分、力矩分解改为离线计算，避免同一信息重复占用缓存和CSV。
+        WbcSample wbc;
+
         // effort 为电机反馈估算力矩；缺失接口记 NaN，不能当作零力矩。
         Vec12 tau_feedback = Vec12::Constant(std::nan(""));
         Vec12 tau_ff_cmd = Vec12::Zero(), kp_cmd = Vec12::Zero(), kd_cmd = Vec12::Zero();
-        Vec12 tau_p_est = Vec12::Zero(), tau_d_est = Vec12::Zero(), tau_mit_est = Vec12::Zero();
         // 落地候选仅诊断，严禁用于接触切换；代理力未扣除腿重力、惯性及反馈延迟。
         Vec4 touchdown_fz_proxy = Vec4::Constant(std::nan(""));
         Vec4 touchdown_candidate_s = Vec4::Zero();
@@ -92,12 +116,6 @@ public:
         int support_count = 0;
         std::array<int, 2> support_legs{};
         for (int leg = 0; leg < 4; ++leg) {
-            f.body_v_from_qd.col(leg) = f.v - f.feet_v_G.col(leg);
-            f.force_sum += f.ground_force_P.col(leg);
-            const Vec3 arm = f.hold_G.col(leg) - f.com_p;
-            const Vec3 force = f.ground_force_P.col(leg);
-            f.moment_vertical += arm.cross(Vec3(0.0, 0.0, force(2)));
-            f.moment_horizontal += arm.cross(Vec3(force(0), force(1), 0.0));
             if (f.contact(leg) == 1) {
                 if (support_count < 2) support_legs[support_count] = leg;
                 ++support_count;
@@ -121,7 +139,11 @@ public:
             f.gyro_G.allFinite() && f.a_ref.allFinite() && f.alpha_ref.allFinite() &&
             f.feet_v_G.allFinite() && f.ground_force_P.allFinite() &&
             f.v_predicted.allFinite() && f.v_unfiltered.allFinite() && f.acc_G.allFinite();
-        const unsigned bad = (!finite || f.meta[FLAGS] != 0 ? 64u : 0u) |
+        // 新链路失败也按异常沿触发留档，持续失败不重复刷文件；未执行不算失败。
+        const bool wbc_failed = ((f.wbc.flags & WBC_ATTEMPT) && !(f.wbc.flags & WBC_OK)) ||
+            ((f.wbc.flags & RELAX_ATTEMPT) && !(f.wbc.flags & RELAX_OK)) ||
+            (f.wbc.flags & TORQUE_REJECTED);
+        const unsigned bad = (!finite || wbc_failed || f.meta[FLAGS] != 0 ? 64u : 0u) |
             (f.fk_q.maxCoeff() > 0.01 || f.fk_qd.maxCoeff() > 0.01 ||
              f.sigma_qd.minCoeff() < 1e-3 ? 16u : 0u) |
             (std::abs(f.rpy(0)) > 0.12 || std::abs(f.rpy(1)) > 0.20 ? 32u : 0u);
@@ -132,20 +154,6 @@ public:
             // 跨回退/大间断不做差分；第一帧 check_dt_s=0 表示不可用。
             if (std::isfinite(ros_dt) && ros_dt > 0.0 && ros_dt <= 3.0 * dt_) {
                 f.check_dt_s = ros_dt;
-                const Vec12 delta_q = f.q - previous_.q;
-                f.qd_from_position = delta_q / ros_dt;
-                f.qd_error = 0.5 * (f.qd + previous_.qd) - f.qd_from_position;
-                f.q_delta = previous_.q_delta + delta_q;
-                f.qd_integral = previous_.qd_integral + 0.5 * (f.qd + previous_.qd) * ros_dt;
-                f.goal_v_from_position = (f.goal_G - previous_.goal_G) / ros_dt;
-                f.goal_v_error = f.goal_v_from_position - 0.5 * (f.vgoal_G + previous_.vgoal_G);
-                f.end_v_from_position = (f.end_G - previous_.end_G) / ros_dt;
-                for (int leg = 0; leg < 4; ++leg) {
-                    const Vec3 relative = rotation * f.feet_B.col(leg);
-                    f.body_v_from_position.col(leg) =
-                        -rotation * ((f.feet_B.col(leg) - previous_.feet_B.col(leg)) / ros_dt)
-                        - f.gyro_G.cross(relative);
-                }
                 // 用支撑脚的平均高度/速度作比较，公共估计位置/速度在差值中抵消。
                 if (support_count >= 2 && f.meta[MODE] == 1) {
                     double support_z = 0.0, support_vz = 0.0;
@@ -248,26 +256,40 @@ private:
         field("q_cmd", f.q_cmd); field("qd_cmd", f.qd_cmd);
         field("ik_q", f.ik_q); field("ik_qd", f.ik_qd);
         field("fk_q", f.fk_q); field("fk_qd", f.fk_qd); field("sigma_qd", f.sigma_qd);
-        field("com_p", f.com_p); field("force_sum", f.force_sum);
-        field("moment_vertical", f.moment_vertical); field("moment_horizontal", f.moment_horizontal);
-        field("qd_from_position", f.qd_from_position); field("qd_error", f.qd_error);
-        field("q_delta", f.q_delta); field("qd_integral", f.qd_integral);
-        field("body_v_from_qd", f.body_v_from_qd); field("body_v_from_position", f.body_v_from_position);
-        field("goal_v_from_position", f.goal_v_from_position); field("goal_v_error", f.goal_v_error);
-        field("end_v_from_position", f.end_v_from_position);
+        field("com_p", f.com_p);
         if (header) out << ",check_dt_s,support_line_distance_m";
         else out << ',' << f.check_dt_s << ',' << f.support_line_distance_m;
         field("tau_feedback", f.tau_feedback); field("tau_ff_cmd", f.tau_ff_cmd);
         field("kp_cmd", f.kp_cmd); field("kd_cmd", f.kd_cmd);
-        field("tau_p_est", f.tau_p_est); field("tau_d_est", f.tau_d_est);
-        field("tau_mit_est", f.tau_mit_est);
         field("touchdown_fz_proxy", f.touchdown_fz_proxy);
         field("touchdown_gates", f.touchdown_gates);
         field("touchdown_candidate_s", f.touchdown_candidate_s);
         field("touchdown_candidate", f.touchdown_candidate);
         if (header) out << ",touchdown_fz_threshold_N";
         else out << ',' << f.touchdown_fz_threshold_N;
-        out << '\n';
+        // 新字段保留有符号修正和实际输出基准；仅有范数无法判断反馈方向。
+        auto scalar = [&](const char* name, auto value) {
+            out << ',';
+            if (header) out << name; else out << value;
+        };
+        const auto& w = f.wbc;
+        // float诊断保留9位有效数字，足以往返恢复；原double字段仍用17位。
+        out << std::setprecision(9);
+        scalar("wbc_flags", w.flags); scalar("wbc_blend", w.blend);
+        scalar("model_wbc_ms", w.model_wbc_ms); scalar("relaxation_ms", w.relaxation_ms);
+        scalar("relax_equality_residual", w.equality_residual);
+        scalar("relax_inequality_margin", w.inequality_margin);
+        field("wbc_rank", w.rank);
+        field("wbc_position_residual", w.position_residual);
+        field("wbc_velocity_residual", w.velocity_residual);
+        field("wbc_acceleration_residual", w.acceleration_residual);
+        field("wbc_qddot", w.qddot); field("relax_delta_qddot", w.delta_qddot);
+        field("relax_delta_force", w.delta_force);
+        field("relax_stance_acceleration", w.stance_acceleration);
+        field("legacy_q", w.legacy_q); field("legacy_qd", w.legacy_qd);
+        field("legacy_tau", w.legacy_tau); field("wbc_candidate_tau_delta", w.candidate_tau_delta);
+        field("wbc_omega_d_O", w.omega_d);
+        out << std::setprecision(17) << '\n';
     }
     void writeLoop() {
         while (!stop_.load() || ready_.load(std::memory_order_acquire)) {
@@ -286,28 +308,22 @@ private:
                 row(out, ring_[begin], true);
                 for (size_t i = 0; i < count_; ++i) row(out, ring_[(begin + i) % ring_.size()], false);
                 out.close();
-                double max_q_integral_error = 0.0, max_swing_v_error = 0.0, max_support_distance = 0.0;
+                size_t wbc_success = 0, relax_success = 0, applied = 0, rejected = 0;
                 for (size_t i = 0; i < count_; ++i) {
-                    const auto& f = ring_[(begin + i) % ring_.size()];
-                    max_q_integral_error = std::max(max_q_integral_error,
-                        (f.qd_integral - f.q_delta).cwiseAbs().maxCoeff());
-                    max_support_distance = std::max(max_support_distance, f.support_line_distance_m);
-                    if (i == 0 || f.check_dt_s <= 0.0) continue;
-                    const auto& previous = ring_[(begin + i - 1) % ring_.size()];
-                    for (int leg = 0; leg < 4; ++leg)
-                        if (f.contact(leg) == 0 && previous.contact(leg) == 0)
-                            max_swing_v_error = std::max(max_swing_v_error, f.goal_v_error.col(leg).head<2>().norm());
+                    const auto flags = ring_[(begin + i) % ring_.size()].wbc.flags;
+                    wbc_success += !!(flags & WBC_OK);
+                    relax_success += !!(flags & RELAX_OK);
+                    applied += !!(flags & WBC_APPLIED);
+                    rejected += !!(flags & TORQUE_REJECTED);
                 }
                 RCLCPP_INFO(rclcpp::get_logger("TrottingDebug"),
-                    "[TROT_CHECK] max_q_integral_error_rad=%.4f max_swing_xy_v_error_m_s=%.4f max_support_line_distance_m=%.4f",
-                    max_q_integral_error, max_swing_v_error, max_support_distance);
-                RCLCPP_INFO(rclcpp::get_logger("TrottingDebug"),
-                    "[TROT_DEBUG] capture=%s saved=%s frames=%zu cycles=%.0f..%.0f",
-                    (static_cast<unsigned>(ring_[begin].meta[EVENT]) & 512u) ? "startup" : "event",
+                    "[TROT_DEBUG] %s采样已保存：%s，共%zu帧，周期%.0f..%.0f；WBC成功%zu，松弛成功%zu，采用%zu，力矩回退%zu",
+                    (static_cast<unsigned>(ring_[begin].meta[EVENT]) & 512u) ? "起步" : "事件",
                     path.c_str(), count_, ring_[begin].meta[CYCLE],
-                    ring_[(head_ + ring_.size() - 1) % ring_.size()].meta[CYCLE]);
+                    ring_[(head_ + ring_.size() - 1) % ring_.size()].meta[CYCLE],
+                    wbc_success, relax_success, applied, rejected);
             } catch (const std::exception& e) {
-                RCLCPP_ERROR(rclcpp::get_logger("TrottingDebug"), "[TROT_DEBUG] write failed: %s", e.what());
+                RCLCPP_ERROR(rclcpp::get_logger("TrottingDebug"), "[TROT_DEBUG] CSV保存失败：%s", e.what());
             }
             ready_.store(false, std::memory_order_release);
         }
