@@ -33,7 +33,7 @@ constexpr double keyboard_timeout = 2.0;
 constexpr double ready_hold_seconds = 0.5;
 // Preserve the validated arrival criteria independently of the enlarged excitation.
 constexpr Vec ready_position_error{0.03, 0.12, 0.12};
-constexpr Vec ready_velocity{0.0075, 0.03, 0.03};
+constexpr Vec ready_velocity{0.03, 0.03, 0.03};
 constexpr Vec velocity_limit{0.5, 2.0, 2.0};
 constexpr Vec acceleration_limit{4.0, 15.0, 15.0};
 // Copied from HardwareSysu219::on_init, read only. The hardware files are untouched.
