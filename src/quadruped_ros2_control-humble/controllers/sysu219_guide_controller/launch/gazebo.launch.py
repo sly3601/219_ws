@@ -1,5 +1,6 @@
 import os
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import xacro
 from ament_index_python.packages import get_package_prefix, get_package_share_directory
@@ -7,6 +8,7 @@ from ament_index_python.packages import get_package_prefix, get_package_share_di
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
+    ExecuteProcess,
     OpaqueFunction,
     LogInfo,
     IncludeLaunchDescription,
@@ -20,6 +22,22 @@ from launch_ros.substitutions import FindPackageShare
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 
+def cpu_monitor_actions():
+    prefix = Path(get_package_prefix('sysu219_guide_controller'))
+    executable = prefix / 'lib' / 'sysu219_guide_controller' / 'sysu219_cpu_monitor'
+    workspace = next((str(path.parent) for path in (prefix, *prefix.parents)
+                      if path.name == 'install'), '')
+    if not executable.is_file() or not os.environ.get('DISPLAY') or not workspace:
+        return [LogInfo(msg='处理器监视：无图形桌面或监视程序不可用，已跳过窗口。')]
+    return [ExecuteProcess(
+        cmd=[str(executable), '--workspace', workspace, '--launch-pid', str(os.getpid())],
+        name='sysu219_cpu_monitor',
+        output='log',
+        sigterm_timeout='2',
+        sigkill_timeout='2',
+    )]
+
+
 def prepend_env_value(name, value):
     current_value = os.environ.get(name, "")
     if not current_value:
@@ -27,6 +45,14 @@ def prepend_env_value(name, value):
     if value in current_value.split(os.pathsep):
         return current_value
     return value + os.pathsep + current_value
+
+
+def on_success(*actions):
+    def on_exit(event, context):
+        if event.returncode != 0:
+            return [LogInfo(msg=f'Gazebo 启动步骤失败（退出码 {event.returncode}），停止后续初始化。')]
+        return list(actions)
+    return on_exit
 
 
 def launch_setup(context, *args, **kwargs):
@@ -89,7 +115,13 @@ def launch_setup(context, *args, **kwargs):
         arguments=[
             '-topic', 'robot_description',
             '-entity', 'sysu219',
+            '-reference_frame', 'world',
+            '-x', '0.0',
+            '-y', '0.0',
             '-z', init_height,
+            '-R', '0.0',
+            '-P', '0.0',
+            '-Y', '0.0',
         ],
     )
 
@@ -148,8 +180,23 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
+    # 与界面 Reset Model Poses 相同的模型复位；控制器启动成功后只调用一次。
+    # 不重置仿真时钟，不在控制循环中复位，不添加常驻进程。
+    reset_model_poses = ExecuteProcess(
+        cmd=['timeout', '--kill-after=2s', '15s',
+             'ros2', 'service', 'call', '/reset_world', 'std_srvs/srv/Empty', '{}'],
+        name='reset_model_poses',
+        output='screen',
+    )
+
+    def report_reset_result(event, context):
+        if event.returncode == 0:
+            return [LogInfo(msg='Gazebo 启动复位完成：已执行一次 Reset Model Poses。')]
+        return [LogInfo(msg=f'Gazebo 启动复位失败（退出码 {event.returncode}），请查看复位服务输出。')]
+
     return [
         LogInfo(msg=diagnostics_status),
+        LogInfo(msg=f'Gazebo 生成位置：world，x=0，y=0，z={init_height}，姿态角均为 0。'),
         SetEnvironmentVariable(
             'AMENT_PREFIX_PATH',
             prepend_env_value('AMENT_PREFIX_PATH', leg_pd_prefix),
@@ -185,28 +232,45 @@ def launch_setup(context, *args, **kwargs):
         RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=gz_spawn_entity,
-                on_exit=[joint_state_publisher],
+                on_exit=on_success(joint_state_publisher),
             )
         ),
 
         RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=joint_state_publisher,
-                on_exit=[imu_sensor_broadcaster],
+                on_exit=on_success(imu_sensor_broadcaster),
             )
         ),
 
         RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=imu_sensor_broadcaster,
-                on_exit=[leg_pd_controller],
+                on_exit=on_success(leg_pd_controller),
             )
         ),
 
         RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=leg_pd_controller,
-                on_exit=[sysu219_guide_controller],
+                on_exit=on_success(sysu219_guide_controller),
+            )
+        ),
+
+        RegisterEventHandler(
+            event_handler=OnProcessExit(
+                target_action=sysu219_guide_controller,
+                on_exit=on_success(
+                    LogInfo(msg='Gazebo 控制器已启动，执行一次模型位姿复位。'),
+                    reset_model_poses,
+                ),
+            )
+        ),
+
+        RegisterEventHandler(
+            event_handler=OnProcessExit(
+                target_action=reset_model_poses,
+                on_exit=report_reset_result,
             )
         ),
     ]
@@ -221,14 +285,16 @@ def generate_launch_description():
 
     height = DeclareLaunchArgument(
         'height',
-        default_value='0.5',
-        description='Init height in simulation',
+        # 零角几何的脚底在 base 下方 0.587 m；保留约 6 cm 离地间隙。
+        default_value='0.65',
+        description='Spawn height in simulation; sysu219 zero-angle geometry needs more than 0.587 m',
     )
 
     return LaunchDescription(
         [
             pkg_description,
             height,
+            *cpu_monitor_actions(),
             DeclareLaunchArgument(
                 'com_history_seconds', default_value='10.0',
                 description='Duration of COM comparison traces in simulation seconds'),

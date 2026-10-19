@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+  <world name="default">
+    <!-- 沿用 Gazebo 空场景的重力和物理设置，仅省略 ground_plane。 -->
+    <include>
+      <uri>model://sun</uri>
+    </include>
+  </world>
+</sdf>

@@ -40,4 +40,8 @@ install(TARGETS
         fixedstand_offset_keyboard
         DESTINATION lib/${PROJECT_NAME})
 
+add_executable(leg_identification_keyboard src/LegIdentificationKeyboard.cpp)
+ament_target_dependencies(leg_identification_keyboard rclcpp std_msgs)
+install(TARGETS leg_identification_keyboard DESTINATION lib/${PROJECT_NAME})
+
 ament_package()

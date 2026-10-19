@@ -19,6 +19,7 @@ enum class FSMStateName
     SWINGTEST,
     BALANCETEST,
     RLWALK,
+    LEGIDENTIFICATION,
 };
 
 enum class FSMMode

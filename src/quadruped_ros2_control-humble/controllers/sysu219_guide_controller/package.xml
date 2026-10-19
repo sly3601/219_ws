@@ -8,6 +8,8 @@
     <license>Apache-2.0</license>
 
     <buildtool_depend>ament_cmake</buildtool_depend>
+    <build_depend>libx11-dev</build_depend>
+    <build_depend>libxft-dev</build_depend>
 
     <depend>backward_ros</depend>
     <depend>controller_interface</depend>
@@ -33,6 +35,8 @@
     <exec_depend>gazebo_plugins</exec_depend>
     <depend>gazebo_ros2_control</depend>
     <exec_depend>rclpy</exec_depend>
+    <exec_depend>ros2service</exec_depend>
+    <exec_depend>std_srvs</exec_depend>
     <exec_depend>nav_msgs</exec_depend>
 
     <test_depend>ament_lint_auto</test_depend>

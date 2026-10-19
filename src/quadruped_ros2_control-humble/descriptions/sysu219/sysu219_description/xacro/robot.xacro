@@ -58,7 +58,7 @@
 
 	<link name="trunk">
 		<visual>
-			<origin rpy="0 0 0" xyz="0 0 0"/>
+			<origin rpy="${PI} 0 0" xyz="0 0 0"/>
 			<geometry>
 				<mesh filename="file://$(find sysu219_description)/meshes/trunk.dae" scale="0.001 0.001 0.001"/>
 			</geometry>

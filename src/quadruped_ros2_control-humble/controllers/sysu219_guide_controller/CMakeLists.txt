@@ -37,6 +37,7 @@ find_package(ocs2_core REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system filesystem log log_setup)
 find_package(blasfeo REQUIRED)
 find_package(hpipm REQUIRED)
+find_package(Threads REQUIRED)
 
 set(ONNXRUNTIME_ROOT /opt/onnxruntime)
 include_directories(${ONNXRUNTIME_ROOT}/include)
@@ -49,6 +50,8 @@ endforeach ()
 add_library(${PROJECT_NAME} SHARED
 
         src/Sysu219GuideController.cpp
+        src/dynamics_identification/StateLegIdentification.cpp
+        src/dynamics_identification/CsvRecorder.cpp
 
         src/FSM/StateFixedStand.cpp
         src/FSM/StateSwingTest.cpp
@@ -103,6 +106,7 @@ ament_target_dependencies(
 #   防止链接器因为当前库没有直接调用 blasfeo 符号，就把 libblasfeo.so 依赖裁掉。
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
+        Threads::Threads
         "-Wl,--disable-new-dtags"
         "-Wl,--no-as-needed"
         PUBLIC
@@ -147,7 +151,26 @@ install(
 
 install(PROGRAMS scripts/gazebo_com_visualizer.py
         DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY dynamics_identification/
+        DESTINATION share/${PROJECT_NAME}/dynamics_identification
+        PATTERN "__pycache__" EXCLUDE)
 
+# Independent desktop process; never link this target into the controller plugin.
+option(BUILD_CPU_MONITOR "Build independent lightweight X11 CPU text window" ON)
+if(BUILD_CPU_MONITOR)
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(CPU_MONITOR_XFT QUIET IMPORTED_TARGET x11 xft)
+    endif()
+    if(CPU_MONITOR_XFT_FOUND)
+        add_executable(sysu219_cpu_monitor src/debug/CpuMonitor.cpp)
+        target_compile_features(sysu219_cpu_monitor PRIVATE cxx_std_17)
+        target_link_libraries(sysu219_cpu_monitor PRIVATE PkgConfig::CPU_MONITOR_XFT)
+        install(TARGETS sysu219_cpu_monitor RUNTIME DESTINATION lib/${PROJECT_NAME})
+    else()
+        message(WARNING "CPU text window skipped: install libx11-dev and libxft-dev to enable it")
+    endif()
+endif()
 # Gazebo 诊断/仿真反馈适配单独构建。实机可关闭；未安装 Gazebo 时自动跳过。
 # 控制器本体没有 Gazebo 头文件、链接依赖或运行依赖。
 option(BUILD_GAZEBO_PHYSICS_DEBUG "Build optional Gazebo physics diagnostic plugin" ON)

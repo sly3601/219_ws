@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gazebo 专用：比较真实机身位置和当前 MPC 的估计质心近似。"""
+"""Gazebo 专用：显示 MPC 估计质心，保留估计器真值对比的 CSV 诊断。"""
 
 from collections import deque
 import csv
@@ -22,7 +22,7 @@ class GazeboComVisualizer(Node):
         self.history_seconds = float(self.declare_parameter('history_seconds', 10.0).value)
         if not math.isfinite(self.history_seconds) or self.history_seconds <= 0.0:
             raise ValueError('history_seconds must be finite and positive')
-        self.histories = {name: deque(maxlen=2000) for name in ('gazebo', 'estimated')}
+        self.histories = {'estimated': deque(maxlen=2000)}
         self.last_clock = None
         self.publisher = self.create_publisher(MarkerArray, '/com_markers', 1)
         self.truth_sub = self.create_subscription(
@@ -47,7 +47,7 @@ class GazeboComVisualizer(Node):
         seconds = stamp.sec + stamp.nanosec * 1e-9
         history = self.histories[name]
         if history and seconds < history[-1][0] - 0.2:
-            # Gazebo reset：两种数据都清空，避免连接到上一次仿真轨迹。
+            # Gazebo reset：清空估计轨迹，避免连接到上一次仿真轨迹。
             for samples in self.histories.values():
                 samples.clear()
         if history and seconds <= history[-1][0]:
@@ -55,7 +55,7 @@ class GazeboComVisualizer(Node):
         history.append((seconds, point))
 
     def on_truth(self, msg):
-        self.append('gazebo', msg.header.stamp, msg.header.frame_id, msg.pose.pose.position)
+        # 真值仅用于 CSV 诊断，不生成位置球、轨迹或可视化历史。
         if not self.debug_estimates:
             return  # Csv_DebugMode 关闭时没有估计器消息，跳过诊断处理。
         if msg.header.frame_id.lstrip('/') != 'world':
@@ -115,15 +115,9 @@ class GazeboComVisualizer(Node):
                 header.extend(f'phase_{leg}' for leg in ('FR', 'FL', 'RR', 'RL'))
                 header.extend(('estimator_dt_s', 'fsm_mode', 'pair_dt_ms'))
                 self.debug_writer.writerow(header)
-                self.get_logger().info(f'[EST_DEBUG] saved={path}')
             pair_dt_ms = (estimate[0] - stamp) * 1000.0
             self.debug_writer.writerow((stamp, *truth, *estimate, pair_dt_ms))
             if stamp - self.debug_last_log >= 1.0 or estimate[1] != self.debug_last_state:
-                state = {4: 'FIXEDSTAND', 6: 'TROTTING'}.get(estimate[1], str(estimate[1]))
-                self.get_logger().info(
-                    f'[EST_DEBUG] state={state} z[true,est]=[{truth[2]:.4f},{estimate[5]:.4f}] '
-                    f'vz[true,pred,raw,filt]=[{truth[5]:.4f},{estimate[11]:.4f},'
-                    f'{estimate[14]:.4f},{estimate[8]:.4f}] pair_dt_ms={pair_dt_ms:.1f}')
                 self.debug_file.flush()
                 self.debug_last_log, self.debug_last_state = stamp, estimate[1]
 
@@ -139,7 +133,7 @@ class GazeboComVisualizer(Node):
                 samples.clear()
         self.last_clock = now
         markers = MarkerArray()
-        colors = {'gazebo': (1.0, 0.45, 0.0), 'estimated': (0.0, 1.0, 1.0)}
+        colors = {'estimated': (0.0, 1.0, 1.0)}
         for name, samples in self.histories.items():
             while samples and samples[0][0] < now - self.history_seconds:
                 samples.popleft()

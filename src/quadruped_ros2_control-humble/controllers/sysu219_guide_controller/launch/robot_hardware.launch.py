@@ -1,19 +1,37 @@
 import os
+from pathlib import Path
 
 import xacro
-from ament_index_python.packages import get_package_share_directory
+from ament_index_python.packages import get_package_prefix, get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument, 
     OpaqueFunction, 
     RegisterEventHandler,
     TimerAction,
+    LogInfo,
     ExecuteProcess
 )
 from launch.event_handlers import OnProcessExit
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+
+
+def cpu_monitor_actions():
+    prefix = Path(get_package_prefix('sysu219_guide_controller'))
+    executable = prefix / 'lib' / 'sysu219_guide_controller' / 'sysu219_cpu_monitor'
+    workspace = next((str(path.parent) for path in (prefix, *prefix.parents)
+                      if path.name == 'install'), '')
+    if not executable.is_file() or not os.environ.get('DISPLAY') or not workspace:
+        return [LogInfo(msg='处理器监视：无图形桌面或监视程序不可用，已跳过窗口。')]
+    return [ExecuteProcess(
+        cmd=[str(executable), '--workspace', workspace, '--launch-pid', str(os.getpid())],
+        name='sysu219_cpu_monitor',
+        output='log',
+        sigterm_timeout='2',
+        sigkill_timeout='2',
+    )]
 
 
 def launch_setup(context, *args, **kwargs):
@@ -125,5 +143,6 @@ def generate_launch_description():
 
     return LaunchDescription([
         pkg_description,
+        *cpu_monitor_actions(),
         OpaqueFunction(function=launch_setup),
     ])

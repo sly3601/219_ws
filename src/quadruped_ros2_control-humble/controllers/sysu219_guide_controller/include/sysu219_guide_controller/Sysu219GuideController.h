@@ -22,6 +22,7 @@
 #include "FSM/StateSwingTest.h"
 #include "FSM/StateTrotting.h"
 #include "FSM/StateRLWalk.h"
+#include "dynamics_identification/StateLegIdentification.h"
 
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -40,6 +41,7 @@ namespace sysu219_guide_controller {
         std::shared_ptr<StateSwingTest> swingTest;
         std::shared_ptr<StateBalanceTest> balanceTest;
         std::shared_ptr<StateRLWalk> rlWalk;
+        std::shared_ptr<StateLegIdentification> legIdentification;
     };
 
     class Sysu219GuideController final : public controller_interface::ControllerInterface {

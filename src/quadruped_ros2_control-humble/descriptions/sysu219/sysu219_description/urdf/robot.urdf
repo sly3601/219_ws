@@ -208,7 +208,7 @@
   </joint>
   <link name="trunk">
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="3.141592653589793 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="file:///home/yzz/219_ws/install/sysu219_description/share/sysu219_description/meshes/trunk.dae" scale="0.001 0.001 0.001"/>
       </geometry>

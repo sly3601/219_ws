@@ -191,7 +191,10 @@ namespace sysu219_guide_controller
         // 2026.04.28关键修改：把状态机的更新放在最后，否则会漏掉一拍新状态
         if (mode_ == FSMMode::NORMAL)
         {
-            next_state_name_ = current_state_->checkChange();
+            const bool enter_identification = state_list_.legIdentification &&
+                state_list_.legIdentification->consumeEntryRequest();
+            next_state_name_ = enter_identification && current_state_ == state_list_.passive
+                ? FSMStateName::LEGIDENTIFICATION : current_state_->checkChange();
 
             if (next_state_name_ != current_state_->state_name)
             {
@@ -430,6 +433,15 @@ namespace sysu219_guide_controller
         state_list_.balanceTest = std::make_shared<StateBalanceTest>(ctrl_interfaces_, ctrl_component_);
         state_list_.trotting = std::make_shared<StateTrotting>(ctrl_interfaces_, ctrl_component_);
         state_list_.rlWalk = std::make_shared<StateRLWalk>(ctrl_interfaces_, ctrl_component_);
+        // Identification initialization must not prevent the existing FSM from starting.
+        try {
+            state_list_.legIdentification = std::make_shared<StateLegIdentification>(
+                ctrl_interfaces_, joint_names_, stand_pos_, stand_kp_, stand_kd_);
+        } catch (const std::exception& e) {
+            state_list_.legIdentification.reset();
+            RCLCPP_ERROR(get_node()->get_logger(),
+                "[LEG_ID] 辨识模块初始化失败，已停用该模块，原有FSM继续启动：%s", e.what());
+        }
 
         // Initialize FSM
         current_state_ = state_list_.passive;
@@ -446,6 +458,7 @@ namespace sysu219_guide_controller
     controller_interface::CallbackReturn Sysu219GuideController::on_deactivate(
         const rclcpp_lifecycle::State& /*previous_state*/)
     {
+        if (current_state_ == state_list_.legIdentification && current_state_) current_state_->exit();
         estimator_debug_pub_.reset();
         com_estimated_pub_.reset();
         release_interfaces();
@@ -478,6 +491,8 @@ namespace sysu219_guide_controller
             return state_list_.invalid;
         case FSMStateName::PASSIVE:
             return state_list_.passive;
+        case FSMStateName::LEGIDENTIFICATION:
+            return state_list_.legIdentification;
         case FSMStateName::FIXEDPRONE:
             return state_list_.fixedProne;
         case FSMStateName::FIXEDDOWN:
