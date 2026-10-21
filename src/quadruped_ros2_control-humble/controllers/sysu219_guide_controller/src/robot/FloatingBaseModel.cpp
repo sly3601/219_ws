@@ -1,6 +1,8 @@
 #include "sysu219_guide_controller/robot/FloatingBaseModel.h"
 
 #include <urdf/model.h>
+#include <rclcpp/logging.hpp>
+#include <tinyxml2.h>
 #include <algorithm>
 #include <cmath>
 #include <functional>
@@ -58,6 +60,45 @@ FloatingBaseModel::FloatingBaseModel(const std::string& urdf, const std::string&
         throw std::invalid_argument("WBC leg paths must have independent joints");
   }
 
+  // B/Fc使用标准URDF字段，Ja使用工程扩展字段；全部以输出轴关节坐标表达。
+  // xacro property本身不会留在robot_description中，因此从展开后的joint读取Ja。
+  // XML解析、名称查找和有效性检查只发生在初始化阶段。
+  tinyxml2::XMLDocument document;
+  if (document.Parse(urdf.c_str()) != tinyxml2::XML_SUCCESS)
+    throw std::invalid_argument("Cannot parse identified joint dynamics XML");
+  const auto* robot = document.FirstChildElement("robot");
+  if (!robot) throw std::invalid_argument("Missing robot element for identified dynamics");
+  std::array<bool, 12> dynamics_loaded{};
+  for (const auto* element = robot->FirstChildElement("joint"); element;
+       element = element->NextSiblingElement("joint"))
+  {
+    const char* name = element->Attribute("name");
+    if (!name) continue;
+    const auto index = joint_indices.find(name);
+    if (index == joint_indices.end()) continue;
+    const auto joint = model.getJoint(name);
+    const auto* dynamics = element->FirstChildElement("dynamics");
+    const auto* identified = element->FirstChildElement("identified_dynamics");
+    if (dynamics_loaded[index->second] || !joint || !joint->dynamics ||
+        !dynamics || !dynamics->Attribute("damping") || !dynamics->Attribute("friction") ||
+        dynamics->NextSiblingElement("dynamics") || !identified ||
+        identified->NextSiblingElement("identified_dynamics"))
+      throw std::invalid_argument(std::string("Missing/duplicate identified dynamics: ") + name);
+
+    auto& parameters = joint_dynamics_[index->second];
+    parameters.B = joint->dynamics->damping;
+    parameters.Fc = joint->dynamics->friction;
+    if (identified->QueryDoubleAttribute("Ja", &parameters.Ja) != tinyxml2::XML_SUCCESS ||
+        !std::isfinite(parameters.B) || parameters.B < 0.0 ||
+        !std::isfinite(parameters.Fc) || parameters.Fc < 0.0 ||
+        !std::isfinite(parameters.Ja) || parameters.Ja < 0.0)
+      throw std::invalid_argument(std::string("Invalid output-side B/Fc/Ja: ") + name);
+    dynamics_loaded[index->second] = true;
+  }
+  for (const auto& [name, index] : joint_indices)
+    if (!dynamics_loaded[index])
+      throw std::invalid_argument("Missing identified dynamics for joint: " + name);
+
   // 保存所有连杆，包括不在足端路径上的固定转子外壳、IMU等附件，避免漏算质量。
   // std::map/std::function只在初始化使用，不进入控制周期。
   links_.reserve(model.links_.size());
@@ -109,6 +150,13 @@ FloatingBaseModel::FloatingBaseModel(const std::string& urdf, const std::string&
   append(model.getLink(base_name), -1);
   for (int leg = 0; leg < 4; ++leg) feet_[leg] = link_indices.at(feet_names[leg]);
   states_.resize(links_.size());
+  for (const auto& [name, index] : joint_indices)
+  {
+    const auto& parameters = joint_dynamics_[index];
+    RCLCPP_INFO(rclcpp::get_logger("sysu219_identified_dynamics"),
+                "[IDENTIFIED_DYNAMICS] joint=%s velocity_index=%d B=%.17g Fc=%.17g Ja=%.17g (URDF/output-side)",
+                name.c_str(), 6 + index, parameters.B, parameters.Fc, parameters.Ja);
+  }
 }
 
 
@@ -184,7 +232,22 @@ void FloatingBaseModel::update(WbcInput& input, Mat18& M, Vec18& C)
     }
   }
 
-  // 3. 同一模型生成WBC足端任务数据，避免拼接来自不同模型的M、J和偏置。
+  // 3. 将冻结的关节附加项加入同一套M/C，供现有逆动力学调用者统一使用。
+  // qdot已由硬件转换为URDF关节坐标；不再乘mirror/front_hind/direction或减速比。
+  // B/Fc/Ja在反向坐标变换下保持非负，符号分别由实测dq和调用者的ddq决定。
+  // 需求侧摩擦用加号；sign(0)=0，无额外速度阈值。此处不改变测得的effort。
+  // M/C每周期已清零重建，下面只加一次；不得在最终tau或硬件write中再次补偿。
+  for (int joint = 0; joint < 12; ++joint)
+  {
+    const auto& parameters = joint_dynamics_[joint];
+    const int velocity_index = 6 + joint;
+    const double dq = input.qdot(velocity_index);
+    const double direction = (dq > 0.0) - (dq < 0.0);
+    M(velocity_index, velocity_index) += parameters.Ja;
+    C(velocity_index) += parameters.B * dq + parameters.Fc * direction;
+  }
+
+  // 4. 同一模型生成WBC足端任务数据，避免拼接来自不同模型的M、J和偏置。
   for (int leg = 0; leg < 4; ++leg)
   {
     const auto& foot = states_[feet_[leg]];

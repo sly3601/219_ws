@@ -121,7 +121,8 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
 /**
  * @brief 进入Trotting状态时的初始化操作
  */
-void StateTrotting::enter() {
+void StateTrotting::enter() 
+{
     if (trotting_debug_) trotting_debug_->reset();
     debug_cycle_ = 0;
     pcd_ = estimator_->getPosition();                   // 机身期望位置初始化，设为当前机身位置

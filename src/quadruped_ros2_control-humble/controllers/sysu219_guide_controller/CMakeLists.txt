@@ -38,6 +38,8 @@ find_package(Boost REQUIRED COMPONENTS system filesystem log log_setup)
 find_package(blasfeo REQUIRED)
 find_package(hpipm REQUIRED)
 find_package(Threads REQUIRED)
+find_package(tinyxml2_vendor REQUIRED)
+find_package(TinyXML2 REQUIRED)
 
 set(ONNXRUNTIME_ROOT /opt/onnxruntime)
 include_directories(${ONNXRUNTIME_ROOT}/include)
@@ -107,6 +109,7 @@ ament_target_dependencies(
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
         Threads::Threads
+        tinyxml2::tinyxml2
         "-Wl,--disable-new-dtags"
         "-Wl,--no-as-needed"
         PUBLIC

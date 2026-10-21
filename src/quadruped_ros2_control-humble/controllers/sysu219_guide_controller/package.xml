@@ -18,6 +18,7 @@
     <depend>control_input_msgs</depend>
     <depend>kdl_parser</depend>
     <depend>urdf</depend>
+    <depend>tinyxml2_vendor</depend>
     
     <depend>rclcpp</depend>
     <depend>visualization_msgs</depend>

@@ -28,8 +28,8 @@
 
 	<!-- <xacro:stairs stairs="15" xpos="0" ypos="0" zpos="0" /> -->
 
-	<!-- Rotor related joint and link is only for demonstrate location. -->
-	<!-- Actually, the rotor will rotate and the joint is not fixed. Reduction ratio should be considered. -->
+	<!-- Rotor/foot geometry retained; fixed inertias absorbed into parent links. -->
+	<!-- Output-side B/Fc/Ja are defined in const.xacro and emitted by leg.xacro. -->
 
 	<!-- Debug mode will hung up the robot, use "true" or "false" to switch it. -->
 	<xacro:if value="$(arg DEBUG)">

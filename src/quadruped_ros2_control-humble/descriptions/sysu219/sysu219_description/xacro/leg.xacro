@@ -22,7 +22,8 @@
       <parent link="trunk"/>
       <child link="${name}_hip"/>
       <axis xyz="1 0 0"/>
-      <dynamics damping="${damping}" friction="${friction}"/>
+      <dynamics damping="${hip_identified_B}" friction="${hip_identified_Fc}"/>
+      <identified_dynamics Ja="${hip_identified_Ja}"/>
       <xacro:if value="${(mirror_dae == True)}">
         <limit effort="${hip_torque_max}" velocity="${hip_velocity_max}" lower="${hip_position_min}"
                upper="${hip_position_max}"/>
@@ -93,14 +94,6 @@
         </geometry>
         <material name="light-grey"/>
       </visual>
-      <inertial>
-        <origin rpy="0 0 0" xyz="${hip_rotor_com_x} ${hip_rotor_com_y} ${hip_rotor_com_z}"/>
-        <mass value="${hip_rotor_mass}"/>
-        <inertia
-            ixx="${hip_rotor_ixx}" ixy="${hip_rotor_ixy}" ixz="${hip_rotor_ixz}"
-            iyy="${hip_rotor_iyy}" iyz="${hip_rotor_iyz}"
-            izz="${hip_rotor_izz}"/>
-      </inertial>
     </link>
 
     <joint name="${name}_thigh_joint" type="revolute">
@@ -108,7 +101,8 @@
       <parent link="${name}_hip"/>
       <child link="${name}_thigh"/>
       <axis xyz="0 1 0"/>
-      <dynamics damping="${damping}" friction="${friction}"/>
+      <dynamics damping="${thigh_identified_B}" friction="${thigh_identified_Fc}"/>
+      <identified_dynamics Ja="${thigh_identified_Ja}"/>
       <limit effort="${thigh_torque_max}" velocity="${thigh_velocity_max}" lower="${thigh_position_min}"
              upper="${thigh_position_max}"/>
     </joint>
@@ -156,14 +150,6 @@
         </geometry>
         <material name="light-grey"/>
       </visual>
-      <inertial>
-        <origin rpy="0 0 0" xyz="${thigh_rotor_com_x} ${thigh_rotor_com_y} ${thigh_rotor_com_z}"/>
-        <mass value="${thigh_rotor_mass}"/>
-        <inertia
-            ixx="${thigh_rotor_ixx}" ixy="${thigh_rotor_ixy}" ixz="${thigh_rotor_ixz}"
-            iyy="${thigh_rotor_iyy}" iyz="${thigh_rotor_iyz}"
-            izz="${thigh_rotor_izz}"/>
-      </inertial>
     </link>
 
     <joint name="${name}_calf_joint" type="revolute">
@@ -171,7 +157,8 @@
       <parent link="${name}_thigh"/>
       <child link="${name}_calf"/>
       <axis xyz="0 1 0"/>
-      <dynamics damping="${damping}" friction="${friction}"/>
+      <dynamics damping="${calf_identified_B}" friction="${calf_identified_Fc}"/>
+      <identified_dynamics Ja="${calf_identified_Ja}"/>
       <limit effort="${calf_torque_max}" velocity="${calf_velocity_max}" lower="${calf_position_min}"
              upper="${calf_position_max}"/>
     </joint>
@@ -197,11 +184,11 @@
         </geometry>
       </collision>
       <inertial>
-        <origin rpy="0 0 0" xyz="${calf_com_x} ${calf_com_y} ${calf_com_z}"/>
+        <origin rpy="0 0 0" xyz="${calf_com_x} ${calf_com_y*mirror} ${calf_com_z}"/>
         <mass value="${calf_mass}"/>
         <inertia
-            ixx="${calf_ixx}" ixy="${calf_ixy}" ixz="${calf_ixz}"
-            iyy="${calf_iyy}" iyz="${calf_iyz}"
+            ixx="${calf_ixx}" ixy="${calf_ixy*mirror}" ixz="${calf_ixz}"
+            iyy="${calf_iyy}" iyz="${calf_iyz*mirror}"
             izz="${calf_izz}"/>
       </inertial>
     </link>
@@ -214,14 +201,6 @@
         </geometry>
         <material name="light-grey"/>
       </visual>
-      <inertial>
-        <origin rpy="0 0 0" xyz="${calf_rotor_com_x} ${calf_rotor_com_y} ${calf_rotor_com_z}"/>
-        <mass value="${calf_rotor_mass}"/>
-        <inertia
-            ixx="${calf_rotor_ixx}" ixy="${calf_rotor_ixy}" ixz="${calf_rotor_ixz}"
-            iyy="${calf_rotor_iyy}" iyz="${calf_rotor_iyz}"
-            izz="${calf_rotor_izz}"/>
-      </inertial>
     </link>
 
     <joint name="${name}_foot_fixed" type="fixed">
@@ -243,13 +222,6 @@
           <sphere radius="${foot_radius}"/>
         </geometry>
       </collision>
-      <inertial>
-        <mass value="${foot_mass}"/>
-        <inertia
-            ixx="${(2*foot_mass)/5.0*(foot_radius*foot_radius)}" ixy="0.0" ixz="0.0"
-            iyy="${(2*foot_mass)/5.0*(foot_radius*foot_radius)}" iyz="0.0"
-            izz="${(2*foot_mass)/5.0*(foot_radius*foot_radius)}"/>
-      </inertial>
     </link>
 
     <gazebo reference="{name}_hip">
