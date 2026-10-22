@@ -82,7 +82,7 @@ struct WbcInput {
   // 当前实测速度：先机身B系角速度，再机身B系线速度，最后12个关节速度。
   Vec18 qdot = Vec18::Constant(kUnset);
   Contact contact{{1, 1, 1, 1}};  // 1支撑、0摆动，与松弛模块使用同一时刻的接触状态。
-  Eigen::Vector4d swing_phase = Eigen::Vector4d::Constant(0.5); // 摆动进度0～1，用于髋回零任务的平滑启停。
+  Eigen::Vector4d swing_phase = Eigen::Vector4d::Constant(0.5); // 保留摆动进度接口；髋回零不再依赖相位。
   Feet x_f_O = Feet::Constant(kUnset);  // 当前各足世界系位置，单位m。
   Feet x_f_d_O = Feet::Constant(kUnset);  // 摆动足期望位置，支撑足不使用。
   Feet xdot_f_d_O = Feet::Zero();  // 摆动足期望世界系线速度。
@@ -111,7 +111,7 @@ struct WbcSettings {
   Vec3 kp_swing = Vec3::Zero();          // 摆动足位置纠偏增益，四腿共用。
   Vec3 kd_swing = Vec3::Zero();          // 摆动足线速度阻尼增益，四腿共用。
   // 与摆足轨迹同级加权；单位m/rad，用来比较足端米制误差与髋角误差。
-  // 0关闭新任务；不是关节角限幅。支撑腿不加入此任务。
+  // 0关闭；四髋全相位参与，服从高级任务，不保证硬限幅。
   double swing_hip_posture_weight = 0.0;
   double kp_swing_hip_posture = 0.0;    // 髋关节回零加速度反馈，单位s^-2。
   double kd_swing_hip_posture = 0.0;    // 髋关节速度反馈，单位s^-1。
@@ -176,7 +176,7 @@ class WbcController {
   void buildOrientationTask(const WbcInput& input, WbcTask& task) const;  // 机身转动任务。
   void buildBodyPositionTask(const WbcInput& input, WbcTask& task) const; // 机身平动任务。
   void buildSwingTask(const WbcInput& input, WbcTask& task) const;        // 摆动足任务。
-  void buildSwingHipPostureTask(const WbcInput& input, WbcTask& task) const; // 摆动髋回零软任务。
+  void buildSwingHipPostureTask(const WbcInput& input, WbcTask& task) const; // 四髋全相位回零软任务，保留原函数名。
 
   // mutable仅用于更新计算缓存，控制参数仍保持只读。
   mutable std::array<WbcTask, kWbcTaskCount> tasks_;

@@ -91,14 +91,14 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
 
     // 仿真整组试调：配套设置机身任务回正和阻尼；电机MIT增益仍由calcGain管理。
     sysu219::wbc::WbcSettings wbc_settings;
-    wbc_settings.kp_orientation = Vec3(60.0, 80.0, 20.0); // 滑地仿真试调：降低横滚、俯仰、偏航纠偏强度。
-    wbc_settings.kd_orientation = Vec3(14.0, 16.0, 8.0);  // 配套降低角速度反馈，减少力矩波动。
-    wbc_settings.kp_body_position = Vec3(12.0, 12.0, 180.0); // 减弱水平回位，保留高度支撑增益。
-    wbc_settings.kd_body_position = Vec3(6.0, 6.0, 28.0); // 减弱水平速度反馈，保留已降低的竖直阻尼。
+    wbc_settings.kp_orientation = Vec3(110.0, 180.0, 20.0); // 横滚回正90→110；俯仰/偏航保持不变。
+    wbc_settings.kd_orientation = Vec3(18.0, 24.0, 8.0);   // 俯仰阻尼20→24，与俯仰回正增益配套调整。
+    wbc_settings.kp_body_position = Vec3(27.0, 27.0, 270.0); // 增强水平回位，保留高度回正增益。
+    wbc_settings.kd_body_position = Vec3(12.0, 12.0, 34.0); // 配套增强水平阻尼，保留竖直阻尼。
     wbc_settings.kp_swing = Vec3(80.0, 80.0, 100.0); // 加大摆腿任务增益的仿真试验失败，恢复基准
     wbc_settings.kd_swing = Vec3(12.0, 12.0, 16.0);  // 与摆腿位置增益一起恢复
-    wbc_settings.swing_hip_posture_weight = 3.30; // 摆动髋回零软任务权重，m/rad；0关闭，首尾平滑减弱。
-    wbc_settings.kp_swing_hip_posture = 20.0;     // 摆动髋回零加速度反馈。
+    wbc_settings.swing_hip_posture_weight = 3.30; // 四髋全时刻回零软任务权重，m/rad；0关闭，不是硬限幅。
+    wbc_settings.kp_swing_hip_posture = 20.0;     // 四髋回零加速度反馈。
     wbc_settings.kd_swing_hip_posture = 6.0;      // 摆动髋角速度阻尼。
     wbc_settings.svd_absolute_tolerance = 1e-8;
     wbc_settings.svd_relative_tolerance = 1e-6;
@@ -108,7 +108,7 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     sysu219::wbc::RelaxationSettings relaxation_settings;
     // Q_WBC越大越保留WBC加速度；Q_MPC越大越保留MPC力。单位不同，同数值不是同等保留。
     // 单轴示例：40.5 kg、两足均分，1 m/s²对应每足20.25 N，同权重代价比约820；不是通用倍率。
-    relaxation_settings.Q_WBC = 1e1; // 统一控制基座6维和关节12维加速度修正。
+    relaxation_settings.Q_WBC = 1e2; // 统一控制基座6维和关节12维加速度修正。
     relaxation_settings.Q_MPC = 1e1; // 统一控制各支撑足xyz力修正。
     relaxation_ = std::make_unique<sysu219::wbc::MpcWbcRelaxation>(relaxation_settings);
 
@@ -794,7 +794,7 @@ void StateTrotting::calcTau() {
             for (int leg = 0; leg < 4; ++leg)
             {
                 auto& limits = relaxation_input_.force_limits[leg];
-                limits.mu = 0.2; // WBC最终足力的摩擦系数；MPC规划摩擦系数保持0.35。
+                limits.mu = 0.35; // 最终足力摩擦系数与MPC规划的0.35对齐。
                 limits.f_z_min = convex_mpc_->normalForceMin();
                 limits.f_z_max = std::min(convex_mpc_->normalForceMax(), liftoff_fz_limit(leg));
             }

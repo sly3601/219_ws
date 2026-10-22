@@ -352,25 +352,19 @@ void WbcController::buildSwingTask(const WbcInput& in, WbcTask& task) const
 
 void WbcController::buildSwingHipPostureTask(const WbcInput& in, WbcTask& task) const
 {
-  int swing_count = 0;
-  for (int contact : in.contact) swing_count += (contact == 0);
-  resetTask(task, swing_count);
-  int row = 0;
+  // 沿用原任务入口与参数：四髋在支撑、摆动及换相首尾始终参与，不再按相位淡出。
+  // 这是软抑制；仍服从更高优先级的接触与机身任务，不宣称保证关节硬限位。
+  resetTask(task, 4);
+  const double weight = settings_.swing_hip_posture_weight;
   for (int leg = 0; leg < 4; ++leg)
   {
-    if (in.contact[leg] == 1) continue;
     const int hip = 3 * leg;
-    // sin²在摆动首尾的值和一阶导数均为零，避免换相时突然追加回零指令。
-    const double envelope = std::sin(std::acos(-1.0) * in.swing_phase(leg));
-    const double weight = settings_.swing_hip_posture_weight * envelope * envelope;
-    // weight是最小二乘残差的行权重，不是新的物理运动坐标。
-    task.J(row, 6 + hip) = weight;
-    task.e(row) = -weight * in.q_j(hip);
-    task.xddot_cmd(row) = -weight *
+    task.J(leg, 6 + hip) = weight;
+    task.e(leg) = -weight * in.q_j(hip);
+    task.xddot_cmd(leg) = -weight *
         (settings_.kp_swing_hip_posture * in.q_j(hip) +
          settings_.kd_swing_hip_posture * in.qdot(6 + hip));
-    // 期望髋角速度为零；选取关节坐标的物理雅可比为常数，偏置为零。
-    ++row;
+    // 期望髋角速度为零；关节雅可比为常数，因此偏置也为零。
   }
 }
 
