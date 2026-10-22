@@ -32,11 +32,12 @@ public:
         unsigned flags = 0;
         float blend = 0.0f, model_wbc_ms = 0.0f, relaxation_ms = 0.0f;
         float equality_residual = std::nanf(""), inequality_margin = std::nanf("");
-        Eigen::Matrix<int, 4, 1> rank = Eigen::Matrix<int, 4, 1>::Constant(-1);
-        // 四级顺序：支撑足、机身转动、机身平动、摆动足；误差为各任务向量的范数。
-        Samples<4> position_residual = Samples<4>::Constant(std::nanf(""));
-        Samples<4> velocity_residual = Samples<4>::Constant(std::nanf(""));
-        Samples<4> acceleration_residual = Samples<4>::Constant(std::nanf(""));
+        Eigen::Matrix<int, 5, 1> rank = Eigen::Matrix<int, 5, 1>::Constant(-1);
+        // 支撑足、机身转动、机身平动、摆动足、摆动髋回零；最后两者同级。
+        // 髋回零残差包含任务行权重；其余残差定义保持不变。
+        Samples<5> position_residual = Samples<5>::Constant(std::nanf(""));
+        Samples<5> velocity_residual = Samples<5>::Constant(std::nanf(""));
+        Samples<5> acceleration_residual = Samples<5>::Constant(std::nanf(""));
         Samples<18> qddot = Samples<18>::Constant(std::nanf(""));
         Samples<6> delta_qddot = Samples<6>::Constant(std::nanf(""));
         Samples<12> delta_force = Samples<12>::Constant(std::nanf(""));

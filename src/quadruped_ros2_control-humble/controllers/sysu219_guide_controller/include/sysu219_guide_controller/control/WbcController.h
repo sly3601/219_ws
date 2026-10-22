@@ -25,6 +25,7 @@ using Mat18 = Eigen::Matrix<double, 18, 18>;       // 完整浮动基质量矩�
 using FootJacobian = Eigen::Matrix<double, 3, 18>; // 单足雅可比：输出xyz，输入18维广义量。
 using Feet = Eigen::Matrix<double, 3, 4>;          // 每列是一只脚，三行依次是xyz。
 using Contact = std::array<int, 4>;               // 四足当前接触状态。
+constexpr int kWbcTaskCount = 5;
 constexpr double kUnset = std::numeric_limits<double>::quiet_NaN();  // kUnset是double类型的常量NaN，表示未设置或无效值。
 
 // 实时存储：尺寸可以变化，但数据空间随对象一次性预留，不向堆申请内存。
@@ -81,6 +82,7 @@ struct WbcInput {
   // 当前实测速度：先机身B系角速度，再机身B系线速度，最后12个关节速度。
   Vec18 qdot = Vec18::Constant(kUnset);
   Contact contact{{1, 1, 1, 1}};  // 1支撑、0摆动，与松弛模块使用同一时刻的接触状态。
+  Eigen::Vector4d swing_phase = Eigen::Vector4d::Constant(0.5); // 摆动进度0～1，用于髋回零任务的平滑启停。
   Feet x_f_O = Feet::Constant(kUnset);  // 当前各足世界系位置，单位m。
   Feet x_f_d_O = Feet::Constant(kUnset);  // 摆动足期望位置，支撑足不使用。
   Feet xdot_f_d_O = Feet::Zero();  // 摆动足期望世界系线速度。
@@ -108,15 +110,20 @@ struct WbcSettings {
   Vec3 kd_body_position = Vec3::Zero();  // 平动任务的线速度阻尼增益。
   Vec3 kp_swing = Vec3::Zero();          // 摆动足位置纠偏增益，四腿共用。
   Vec3 kd_swing = Vec3::Zero();          // 摆动足线速度阻尼增益，四腿共用。
+  // 与摆足轨迹同级加权；单位m/rad，用来比较足端米制误差与髋角误差。
+  // 0关闭新任务；不是关节角限幅。支撑腿不加入此任务。
+  double swing_hip_posture_weight = 0.0;
+  double kp_swing_hip_posture = 0.0;    // 髋关节回零加速度反馈，单位s^-2。
+  double kd_swing_hip_posture = 0.0;    // 髋关节速度反馈，单位s^-1。
   // 截断微小奇异值，避免放大噪声；阈值需按模型尺度校核。
   double svd_absolute_tolerance = 1e-10;  // 不随矩阵大小改变的奇异值下限。
   double svd_relative_tolerance = 1e-9;   // 相对于最大奇异值的舍弃比例。小于等于最大奇异值十亿分之一的奇异值，被舍弃。
 };
 
 struct WbcTask {
-  // 优先级从高到低：支撑足、机身转动、机身平动、摆动足。
+  // 支撑足、机身转动、机身平动依次优先；摆动足与摆动髋回零同级加权。
   // 足端任务的行数随足数量变化，因此这里使用动态尺寸矩阵和向量。
-  std::string_view name;          // 任务名，用于辨认四个任务。
+  std::string_view name;          // 任务名；髋回零任务的各行已经乘残差权重。
   WbcTaskMatrix J;                // 18列，描述广义运动对任务的作用。
   WbcTaskVector e;                // 位置级目标误差；支撑任务保持零。
   WbcTaskVector xdot_d;           // 期望任务速度；支撑任务保持零。
@@ -141,15 +148,15 @@ struct WbcOutput {
   Vec18 qddot_d = Vec18::Zero();  // 交给松弛优化的广义加速度。
   Vec12 q_j_d = Vec12::Zero();  // 当前关节角加局部增量，供关节位置控制。
   Vec12 qdot_j_d = Vec12::Zero();  // 广义速度参考的关节部分。
-  std::array<WbcTaskDiagnostics, 4> tasks{};  // 按四级优先级顺序保存诊断信息。
+  std::array<WbcTaskDiagnostics, kWbcTaskCount> tasks{}; // 原四任务后追加摆动髋回零；最后两者同级。
 };
 
 class WbcController {
  public:
   explicit WbcController(WbcSettings settings = {});  // 保存并检查配置；默认使用零任务增益。
-  // 构造四级任务；没有支撑足或摆动足时，对应任务为空。
+  // 构造五个任务；没有支撑足或摆动足时，对应任务为空。
   // 返回内部任务缓存的只读引用；下一次调用会覆盖内容，同一实例仅供一个控制线程使用。
-  const std::array<WbcTask, 4>& buildTasks(const WbcInput& input) const;
+  const std::array<WbcTask, kWbcTaskCount>& buildTasks(const WbcInput& input) const;
   // 分别递推位置增量、速度和加速度；失败时返回原因，不产生控制接口写入。
   // 正常求解路径无需堆分配；无效输入保留原异常机制，不保证异常路径无分配。
   WbcOutput solve(const WbcInput& input) const;
@@ -169,14 +176,20 @@ class WbcController {
   void buildOrientationTask(const WbcInput& input, WbcTask& task) const;  // 机身转动任务。
   void buildBodyPositionTask(const WbcInput& input, WbcTask& task) const; // 机身平动任务。
   void buildSwingTask(const WbcInput& input, WbcTask& task) const;        // 摆动足任务。
+  void buildSwingHipPostureTask(const WbcInput& input, WbcTask& task) const; // 摆动髋回零软任务。
 
   // mutable仅用于更新计算缓存，控制参数仍保持只读。
-  mutable std::array<WbcTask, 4> tasks_;
+  mutable std::array<WbcTask, kWbcTaskCount> tasks_;
   struct Workspace {
     WbcWorkMatrix J_A{0, 18};             // 已处理任务的堆叠雅可比。
     Mat18 N_A = Mat18::Identity();        // 已处理任务的共同零空间投影。
     WbcWorkMatrix J_i_N_A{0, 18};         // 当前任务雅可比乘高级任务零空间投影。
     WbcWorkMatrix J_i_N_A_pinv{18, 0};    // 上一项的伪逆。
+    WbcWorkMatrix swing_and_hip_J{0, 18}; // 最多12行摆足任务＋4行髋任务，共16行。
+    WbcWorkVector swing_and_hip_e{0};
+    WbcWorkVector swing_and_hip_xdot{0};
+    WbcWorkVector swing_and_hip_xddot{0};
+    WbcWorkVector swing_and_hip_bias{0};
     WbcSvdWorkspace svd;
   };
   mutable Workspace workspace_;

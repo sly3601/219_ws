@@ -222,7 +222,10 @@ def launch_setup(context, *args, **kwargs):
                     )
                 ]
             ),
-            launch_arguments={'verbose': 'true'}.items(),
+            launch_arguments={
+                'verbose': 'true',
+                'world': str(Path(__file__).resolve().with_name('slippery_ground.world')),
+            }.items(),
         ),
 
         robot_state_publisher,

@@ -98,6 +98,13 @@ WbcController::WbcController(WbcSettings settings) : settings_(std::move(setting
     require(gain->allFinite() && (gain->array() >= 0.0).all(),    // require函数检查条件是否满足，如果不满足就抛出异常
             "WBC增益必须有限且非负");
   }
+  require(std::isfinite(settings_.swing_hip_posture_weight) &&
+              settings_.swing_hip_posture_weight >= 0.0 &&
+              std::isfinite(settings_.kp_swing_hip_posture) &&
+              settings_.kp_swing_hip_posture >= 0.0 &&
+              std::isfinite(settings_.kd_swing_hip_posture) &&
+              settings_.kd_swing_hip_posture >= 0.0,
+          "WBC摆动髋回零任务参数必须有限且非负");
   // 两个阈值都必须有限且为正，相对阈值还必须小于1。
   // 否则可能放大接近零的奇异值，或把所有有效方向都舍弃。
   require(std::isfinite(settings_.svd_absolute_tolerance) &&
@@ -109,14 +116,15 @@ WbcController::WbcController(WbcSettings settings) : settings_(std::move(setting
 
 
   constexpr int stance_count = 4; // 构造时无法知道支撑足数量，先按最大值分配空间，后续buildTasks会根据实际接触状态调整任务行数。
-  // 新建4个任务
+  // 新建5个任务；最后两个任务共同求解。
   tasks_ =
   {
     {
       emptyTask("stance", 3 * stance_count),          // 支撑足任务，行数随支撑足数量变化
       emptyTask("orientation", 3),                    // 机身转动任务，固定3行    
       emptyTask("body_position", 3),                  // 机身平动任务，固定3行      
-      emptyTask("swing", 3 * (4 - stance_count))      // 摆动足任务，行数随摆动足数量变化
+      emptyTask("swing", 3 * (4 - stance_count)),     // 摆动足任务，行数随摆动足数量变化
+      emptyTask("swing_hip_posture", 0)              // 摆动腿髋关节回零软任务
     }
   };
 }
@@ -144,6 +152,7 @@ void WbcController::updateInput(const WbcInput& input)
   input_.q_j = input.q_j;            // 当前12个关节角。
   input_.qdot = input.qdot;          // 机身角速度、机身线速度、12个关节速度。
   input_.contact = input.contact;    // 四足接触状态：1支撑，0摆动。
+  input_.swing_phase = input.swing_phase;
 
   // 足端状态与摆动轨迹；每个矩阵的四列依次对应FR、FL、RR、RL。
   input_.x_f_O = input.x_f_O;                // 当前足端世界系位置。
@@ -205,6 +214,8 @@ void WbcController::validate(const WbcInput& in) const
     // 支撑脚没有一个位置目标，所以中文论文的支撑足任务不加位置PD，因此只检查摆动足轨迹。
     if (in.contact[leg] == 0) 
     {
+      require(std::isfinite(in.swing_phase(leg)) && in.swing_phase(leg) >= 0.0 &&
+                  in.swing_phase(leg) <= 1.0, "WBC摆动进度必须在0到1之间");
       require(in.x_f_O.col(leg).allFinite() &&
                   in.x_f_d_O.col(leg).allFinite() &&
                   in.xdot_f_d_O.col(leg).allFinite() &&
@@ -216,18 +227,19 @@ void WbcController::validate(const WbcInput& in) const
 
 
 
-const std::array<WbcTask, 4>& WbcController::buildTasks(const WbcInput& in) const 
+const std::array<WbcTask, kWbcTaskCount>& WbcController::buildTasks(const WbcInput& in) const
 {
   // 先检查输入，再根据本周期接触状态决定两个足端任务的大小。
   validate(in);
-  // 下标0到3固定对应四级优先级。每足提供xyz三个任务分量，机身任务各三维。
+  // 下标0到2对应高级任务，3和4分别为同级的摆动足与摆动髋回零任务。
   // 实时优化：初始化已移到构造函数，这里只清空缓存并更新各任务的有效尺寸。
   auto& tasks = tasks_;
-  // 四个任务独立构造；这里只组织优先级，不混合各任务的计算。
+  // 各任务独立构造，最后两个任务在solve中加权求解。
   buildStanceTask(in, tasks[0]);
   buildOrientationTask(in, tasks[1]);
   buildBodyPositionTask(in, tasks[2]);
   buildSwingTask(in, tasks[3]);
+  buildSwingHipPostureTask(in, tasks[4]);
   return tasks;
 }
 
@@ -338,6 +350,30 @@ void WbcController::buildSwingTask(const WbcInput& in, WbcTask& task) const
   }
 }
 
+void WbcController::buildSwingHipPostureTask(const WbcInput& in, WbcTask& task) const
+{
+  int swing_count = 0;
+  for (int contact : in.contact) swing_count += (contact == 0);
+  resetTask(task, swing_count);
+  int row = 0;
+  for (int leg = 0; leg < 4; ++leg)
+  {
+    if (in.contact[leg] == 1) continue;
+    const int hip = 3 * leg;
+    // sin²在摆动首尾的值和一阶导数均为零，避免换相时突然追加回零指令。
+    const double envelope = std::sin(std::acos(-1.0) * in.swing_phase(leg));
+    const double weight = settings_.swing_hip_posture_weight * envelope * envelope;
+    // weight是最小二乘残差的行权重，不是新的物理运动坐标。
+    task.J(row, 6 + hip) = weight;
+    task.e(row) = -weight * in.q_j(hip);
+    task.xddot_cmd(row) = -weight *
+        (settings_.kp_swing_hip_posture * in.q_j(hip) +
+         settings_.kd_swing_hip_posture * in.qdot(6 + hip));
+    // 期望髋角速度为零；选取关节坐标的物理雅可比为常数，偏置为零。
+    ++row;
+  }
+}
+
 // 完整求解入口：构造任务，按优先级递推，再提取关节参考并计算残差。
 // 此处生成的是松弛优化之前的运动学结果，不负责求接触力或电机力矩。
 WbcOutput WbcController::solve(const WbcInput& in) const 
@@ -346,8 +382,7 @@ WbcOutput WbcController::solve(const WbcInput& in) const
   WbcOutput out;
   try 
   {
-    // 四个任务。
-    const auto& tasks = buildTasks(in);  // 先检查输入并构造四级任务，失败时抛异常。
+    const auto& tasks = buildTasks(in);  // 先检查输入并构造任务，失败时抛异常。
 
     // 论文式(4.36)：任务1单独初始化，位置增量和速度指令均为零。
     out.delta_q.setZero();
@@ -363,8 +398,8 @@ WbcOutput WbcController::solve(const WbcInput& in) const
     J_A.resize(0, 18);
     auto& N_A = workspace_.N_A;
 
-    // i沿用论文任务编号2、3、4；数组下标对应i-1。
-    for (int i = 2; i <= 4; ++i) 
+    // 原有机身转动、平动递推保持不变；摆动相关的两个任务随后共同求解。
+    for (int i = 2; i <= 3; ++i)
     {
       const auto& previous_task = tasks[i - 2];
       const Eigen::Index old_rows = J_A.rows();
@@ -394,6 +429,52 @@ WbcOutput WbcController::solve(const WbcInput& in) const
            task.J * out.qddot_d);
     }
 
+    // 保留支撑、机身转动和机身平动已完成的结果，在它们的共同零空间中
+    // 权衡摆足轨迹与髋角回零。不能把新任务排在摆足任务之后，否则常无剩余自由度。
+    const Eigen::Index old_rows = J_A.rows();
+    J_A.conservativeResize(old_rows + tasks[2].J.rows(), 18);
+    J_A.bottomRows(tasks[2].J.rows()) = tasks[2].J;
+    N_A.noalias() = Mat18::Identity() -
+        pseudoInverse(J_A, settings_, workspace_.svd) * J_A;
+
+    const auto& swing = tasks[3];
+    const auto& hip = tasks[4];
+    const Eigen::Index swing_rows = swing.J.rows();
+    const Eigen::Index hip_rows = hip.J.rows();
+    const Eigen::Index combined_rows = swing_rows + hip_rows;
+    auto& J = workspace_.swing_and_hip_J;
+    auto& e = workspace_.swing_and_hip_e;
+    auto& xdot = workspace_.swing_and_hip_xdot;
+    auto& xddot = workspace_.swing_and_hip_xddot;
+    auto& bias = workspace_.swing_and_hip_bias;
+    J.resize(combined_rows, 18);
+    J.topRows(swing_rows) = swing.J;
+    J.bottomRows(hip_rows) = hip.J;
+    e.resize(combined_rows);
+    e.head(swing_rows) = swing.e;
+    e.tail(hip_rows) = hip.e;
+    xdot.resize(combined_rows);
+    xdot.head(swing_rows) = swing.xdot_d;
+    xdot.tail(hip_rows) = hip.xdot_d;
+    xddot.resize(combined_rows);
+    xddot.head(swing_rows) = swing.xddot_cmd;
+    xddot.tail(hip_rows) = hip.xddot_cmd;
+    bias.resize(combined_rows);
+    bias.head(swing_rows) = swing.Jdot_qdot;
+    bias.tail(hip_rows) = hip.Jdot_qdot;
+
+    // 两个同级任务各自的可用秩，只用于诊断；最终修正来自拼接后的加权最小二乘。
+    auto& projected = workspace_.J_i_N_A;
+    projected.noalias() = swing.J * N_A;
+    pseudoInverse(projected, settings_, workspace_.svd, &out.tasks[3].projected_rank);
+    projected.noalias() = hip.J * N_A;
+    pseudoInverse(projected, settings_, workspace_.svd, &out.tasks[4].projected_rank);
+    projected.noalias() = J * N_A;
+    const auto& combined_pinv = pseudoInverse(projected, settings_, workspace_.svd);
+    out.delta_q += combined_pinv * (e - J * out.delta_q);
+    out.qdot_d += combined_pinv * (xdot - J * out.qdot_d);
+    out.qddot_d += combined_pinv * (xddot - bias - J * out.qddot_d);
+
     // 数值异常立即返回失败，防止将溢出或NaN当成正常参考值。
     require(out.delta_q.allFinite() && out.qdot_d.allFinite() &&
                 out.qddot_d.allFinite(), "WBC递推结果含无效数值");
@@ -403,7 +484,7 @@ WbcOutput WbcController::solve(const WbcInput& in) const
     out.qdot_j_d = out.qdot_d.tail<12>();
     require(out.q_j_d.allFinite(), "WBC关节位置目标含无效数值");
     // 全部低优先级任务处理完后，再回头检查每一级最终实际实现的效果。
-    for (int i = 0; i < 4; ++i) 
+    for (int i = 0; i < kWbcTaskCount; ++i)
     {
       const auto& task = tasks[i];
       // 三种残差分别对应位置、速度、加速度；norm得到该任务整体误差的大小。
