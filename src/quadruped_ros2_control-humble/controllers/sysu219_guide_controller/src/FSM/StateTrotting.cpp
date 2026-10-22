@@ -104,12 +104,12 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     wbc_settings.svd_relative_tolerance = 1e-6;
     wbc_ = std::make_unique<sysu219::wbc::WbcController>(wbc_settings);
 
-    // 两组权重分别惩罚基座加速度修正和足底力修正，按当前设置协调两者。
+    // 两个标量分别控制全身加速度修正和支撑足力修正。
     sysu219::wbc::RelaxationSettings relaxation_settings;
-    // B系加速度修正权重，依次为角x/y/z、平动x/y/z；坐标轴随机身转动。
-    relaxation_settings.Q_WBC =
-        (sysu219::wbc::Vec6() << 1e1, 1e1, 1e1, 1e1, 1e1, 1e1).finished().asDiagonal();
-    relaxation_settings.Q_MPC = 1e1 * Mat12::Identity();    // 1e2 是基准
+    // Q_WBC越大越保留WBC加速度；Q_MPC越大越保留MPC力。单位不同，同数值不是同等保留。
+    // 单轴示例：40.5 kg、两足均分，1 m/s²对应每足20.25 N，同权重代价比约820；不是通用倍率。
+    relaxation_settings.Q_WBC = 1e1; // 统一控制基座6维和关节12维加速度修正。
+    relaxation_settings.Q_MPC = 1e1; // 统一控制各支撑足xyz力修正。
     relaxation_ = std::make_unique<sysu219::wbc::MpcWbcRelaxation>(relaxation_settings);
 
     if (quadruped_debug::Csv_DebugMode)               // 如果开启了输出CSV数据文件的debug模式

@@ -31,8 +31,8 @@ bool positiveDefinite(const MatrixType& matrix)
   return llt.info() == Eigen::Success;
 }
 
-// 六条基座动力学等式中的最大绝对分量，用于判断最坏误差。
-double infNorm(const Vec6& vector)
+// 动力学与固定支撑等式中的最大绝对分量。
+double infNorm(const RelaxationVector& vector)
 {
   return vector.lpNorm<Eigen::Infinity>();
 }
@@ -43,9 +43,10 @@ double infNorm(const Vec6& vector)
 MpcWbcRelaxation::MpcWbcRelaxation(RelaxationSettings settings)
     : settings_(std::move(settings))
 {
-  // Q_WBC、Q_MPC保持正定，使QuadProg++得到严格凸的二次目标。
-  require(positiveDefinite(settings_.Q_WBC) && positiveDefinite(settings_.Q_MPC), // Q_WBC是WBC的权重，Q_MPC是MPC的权重
-          "松弛优化权重必须对称正定");
+  // 两个标量权重均为正，使QuadProg++得到严格凸的二次目标。
+  require(std::isfinite(settings_.Q_WBC) && settings_.Q_WBC > 0.0 &&
+              std::isfinite(settings_.Q_MPC) && settings_.Q_MPC > 0.0,
+          "松弛优化权重必须有限且大于零");
   require(std::isfinite(settings_.absolute_feasibility_tolerance) &&
               settings_.absolute_feasibility_tolerance > 0.0 &&
               std::isfinite(settings_.relative_feasibility_tolerance) &&
@@ -111,7 +112,7 @@ const RelaxationQp& MpcWbcRelaxation::buildQp(const RelaxationInput& in) const
   }
 
   const int n_f = 3 * qp.n_c;       // 每只支撑足的xyz三个力分量。
-  const int n_X = 6 + n_f;          // 前6项修正基座加速度，其余修正支撑足力。
+  const int n_X = 18 + n_f;         // 全部18维加速度均可修正，其余修正支撑足力。
   qp.J_c.setZero(n_f, 18);
   qp.f_MPC_O.setZero(n_f);
   qp.C_A.setZero(5 * qp.n_c, n_f);
@@ -142,19 +143,11 @@ const RelaxationQp& MpcWbcRelaxation::buildQp(const RelaxationInput& in) const
   }
 
 
-  // 2. 论文式(4.44)～(4.46)：惩罚两类松弛量，默认Q_WBC为I，Q_MPC为0.005I。
+  // 2. 两个标量分别作用于18维加速度修正和当前支撑足的力修正。
   // 论文和QuadProg++的标准目标都有半系数，因此G的两个对角块均取两倍权重。
   qp.G.setZero(n_X, n_X);
-  qp.G.topLeftCorner<6, 6>() = 2.0 * settings_.Q_WBC;
-  for (int i = 0; i < qp.n_c; ++i)
-  {
-    for (int j = 0; j < qp.n_c; ++j)
-    {
-      // Q_MPC按四足保存，按当前支撑编号选块；非对角块也保留，支持力修正之间的耦合。
-      qp.G.block(6 + 3 * i, 6 + 3 * j, 3, 3) =
-          2.0 * settings_.Q_MPC.block(3 * qp.stance_legs[i], 3 * qp.stance_legs[j], 3, 3);
-    }
-  }
+  qp.G.topLeftCorner<18, 18>().diagonal().setConstant(2.0 * settings_.Q_WBC);
+  qp.G.bottomRightCorner(n_f, n_f).diagonal().setConstant(2.0 * settings_.Q_MPC);
 
 
   // 3. 论文式(4.47)～(4.50)：基座受力与修正后的运动必须满足动力学。
@@ -164,12 +157,16 @@ const RelaxationQp& MpcWbcRelaxation::buildQp(const RelaxationInput& in) const
   const auto J_cf_T = qp.J_c.leftCols(6).transpose(); // 接触力对基座的作用，6×n_f。
 
   // 式(4.48)的缩写存在维度歧义，这里从式(4.47)展开：
-  // 常量部分保留完整18维qddot_cmd；只有前6维加速度允许修正。
-  // C_E按列存储，前6行对应加速度修正，其余行对应力修正。
-  qp.C_E.setZero(n_X, 6);
-  qp.C_E.topRows<6>() = M_f.leftCols<6>().transpose();
-  qp.C_E.bottomRows(n_f) = -qp.J_c.leftCols(6);
-  qp.c_e.noalias() = M_f * in.qddot_cmd + C_f - J_cf_T * qp.f_MPC_O;
+  // 前6列为基座动力学，其余列硬约束J_c*(qddot_cmd+delta_qddot)+Jdot_c*qdot=0。
+  qp.C_E.setZero(n_X, 6 + n_f);
+  qp.C_E.block(0, 0, 18, 6) = M_f.transpose();
+  qp.C_E.block(18, 0, n_f, 6) = -qp.J_c.leftCols(6);
+  qp.c_e.setZero(6 + n_f);
+  qp.c_e.head<6>() = M_f * in.qddot_cmd + C_f - J_cf_T * qp.f_MPC_O;
+  qp.C_E.block(0, 6, 18, n_f) = qp.J_c.transpose();
+  qp.c_e.tail(n_f) = qp.J_c * in.qddot_cmd;
+  for (int i = 0; i < qp.n_c; ++i)
+    qp.c_e.segment(6 + 3 * i, 3) += in.Jdot_f_qdot_O.col(qp.stance_legs[i]);
 
 
   // 4. 论文式(4.52)～(4.57)：将足底力上下界改写为对松弛量的不等式。
@@ -208,9 +205,9 @@ const RelaxationQp& MpcWbcRelaxation::buildQp(const RelaxationInput& in) const
   // 系数矩阵描述两类松弛量如何改变力矩，常量为松弛前力矩加外部PD。
   if (settings_.enforce_torque_limits)
   {
-    WbcTaskMatrix tau_j_X;
+    RelaxationMatrix tau_j_X;
     tau_j_X.setZero(12, n_X);
-    tau_j_X.leftCols<6>() = in.M.bottomRows<12>().leftCols<6>();
+    tau_j_X.leftCols(18) = in.M.bottomRows<12>();
     tau_j_X.rightCols(n_f) = -qp.J_c.rightCols(12).transpose();
     const Vec12 tau_j_0 = in.M.bottomRows<12>() * in.qddot_cmd + in.C.tail<12>() -
         qp.J_c.rightCols(12).transpose() * qp.f_MPC_O + in.tau_PD_j;
@@ -243,26 +240,27 @@ RelaxationOutput MpcWbcRelaxation::solve(const RelaxationInput& in) const
   {
     const auto& qp = buildQp(in);
     const int n_X = static_cast<int>(qp.G.rows());
+    const int n_E = static_cast<int>(qp.C_E.cols());
     const int n_I = static_cast<int>(qp.C_I.cols());
 
     // 5. 论文式(4.58)：调用仓库已有QuadProg++。
     // 接口说明：Eigen矩阵要复制到库的Matrix/Vector类型，约束已按列存好，无需再转置。
     // G会被求解器用于原地分解，必须传副本；g0是库要求的一次项，本问题取零。
     // 内存说明：这些库容器与求解器内部仍分配堆内存，未改动原库。
-    quadprogpp::Matrix<double> G(n_X, n_X), C_E(n_X, 6), C_I(n_X, n_I);
-    quadprogpp::Vector<double> g0(n_X), c_e(6), c_i(n_I), X(n_X);
+    quadprogpp::Matrix<double> G(n_X, n_X), C_E(n_X, n_E), C_I(n_X, n_I);
+    quadprogpp::Vector<double> g0(n_X), c_e(n_E), c_i(n_I), X(n_X);
 
     // 数值适配：按G的对角线缩放求解变量，使两类变量的数值尺度接近。
     // 权重、目标和约束均不改变；求解后还原为论文中的原变量。
     // 这样避免Q_MPC很大时，QuadProg++内部停止阈值随矩阵尺度放大。
-    WbcWorkVector variable_scale(n_X);
+    RelaxationVector variable_scale(n_X);
     for (int row = 0; row < n_X; ++row)
       variable_scale(row) = 1.0 / std::sqrt(qp.G(row, row));
 
     // 每条约束再按缩放后的系数长度归一化，保持约束含义与方向不变。
-    Vec6 equality_scale;
+    RelaxationVector equality_scale(n_E);
     RelaxationInequalityVector inequality_scale(n_I);
-    for (int col = 0; col < 6; ++col)
+    for (int col = 0; col < n_E; ++col)
     {
       const double norm = qp.C_E.col(col).cwiseProduct(variable_scale).norm();
       equality_scale(col) = norm > 0.0 ? 1.0 / norm : 1.0;
@@ -281,32 +279,32 @@ RelaxationOutput MpcWbcRelaxation::solve(const RelaxationInput& in) const
       X[row] = 0.0;
       for (int col = 0; col < n_X; ++col)
         G[row][col] = variable_scale(row) * qp.G(row, col) * variable_scale(col);
-      for (int col = 0; col < 6; ++col)
+      for (int col = 0; col < n_E; ++col)
         C_E[row][col] = variable_scale(row) * qp.C_E(row, col) * equality_scale(col);
       for (int col = 0; col < n_I; ++col)
         C_I[row][col] = variable_scale(row) * qp.C_I(row, col) * inequality_scale(col);
     }
-    for (int row = 0; row < 6; ++row) c_e[row] = qp.c_e(row) * equality_scale(row);
+    for (int row = 0; row < n_E; ++row) c_e[row] = qp.c_e(row) * equality_scale(row);
     for (int row = 0; row < n_I; ++row) c_i[row] = qp.c_i(row) * inequality_scale(row);
 
     const double objective = quadprogpp::solve_quadprog(G, g0, C_E, c_e, C_I, c_i, X);
     require(std::isfinite(objective), "松弛QP不可行或求解器失败");
 
     // 把库输出放回固定容量Eigen向量，便于后续分段和残差检查。
-    WbcWorkVector X_solution(n_X);
+    RelaxationVector X_solution(n_X);
     for (int row = 0; row < n_X; ++row) X_solution(row) = variable_scale(row) * X[row];
     require(X_solution.allFinite(), "松弛QP返回无效解");
 
 
     // 6. 检查解是否满足等式和不等式，误差容差只用于判定结果，不改变优化问题。
-    const Vec6 equality_value = qp.C_E.transpose() * X_solution;
-    const Vec6 equality_error = equality_value + qp.c_e;
+    const RelaxationVector equality_value = qp.C_E.transpose() * X_solution;
+    const RelaxationVector equality_error = equality_value + qp.c_e;
     const double equality_tolerance = settings_.absolute_feasibility_tolerance +
         settings_.relative_feasibility_tolerance * std::max(infNorm(equality_value), infNorm(qp.c_e));
     if (!equality_error.allFinite() || infNorm(equality_error) > equality_tolerance)
     {
       char message[192];
-      std::snprintf(message, sizeof(message), "松弛QP动力学等式误差%.3e，超过容差%.3e",
+      std::snprintf(message, sizeof(message), "松弛QP动力学/支撑等式误差%.3e，超过容差%.3e",
                     infNorm(equality_error), equality_tolerance);
       require(false, message);
     }
@@ -331,20 +329,22 @@ RelaxationOutput MpcWbcRelaxation::solve(const RelaxationInput& in) const
 
     // 7. 论文式(4.43)：取出松弛量，再加回WBC加速度和MPC足底力。
     out.delta_qddot = X_solution.head<6>();
-    out.qddot = in.qddot_cmd;
-    out.qddot.head<6>() += out.delta_qddot; // 后12维实体关节加速度不修正。
-    const WbcTaskVector f_c_O = qp.f_MPC_O + X_solution.tail(n_X - 6);
+    out.qddot = in.qddot_cmd + X_solution.head<18>();
+    const WbcTaskVector f_c_O = qp.f_MPC_O + X_solution.tail(n_X - 18);
 
     for (int i = 0; i < qp.n_c; ++i)
     {
       const int leg = qp.stance_legs[i];
-      out.delta_f_O.col(leg) = X_solution.segment(6 + 3 * i, 3);
+      out.delta_f_O.col(leg) = X_solution.segment(18 + 3 * i, 3);
       out.f_c_O.col(leg) = f_c_O.segment(3 * i, 3); // 未写入的摆动足保持默认零。
 
-      // 中文两阶段方法没有重新约束支撑足加速度；基座松弛可能改变原WBC任务结果。
-      // 该残差用于诊断，不参与本节QP的约束。
+      // 回读QP中的固定支撑硬约束；独立检查加速度容差，避免被动力学数值尺度放宽。
       out.stance_acceleration_residual_O.col(leg) =
           in.J_f_O[leg] * out.qddot + in.Jdot_f_qdot_O.col(leg);
+      require(out.stance_acceleration_residual_O.col(leg).lpNorm<Eigen::Infinity>() <=
+                  settings_.absolute_feasibility_tolerance + settings_.relative_feasibility_tolerance *
+                  in.Jdot_f_qdot_O.col(leg).lpNorm<Eigen::Infinity>(),
+              "松弛后支撑足加速度超出容差");
     }
 
 

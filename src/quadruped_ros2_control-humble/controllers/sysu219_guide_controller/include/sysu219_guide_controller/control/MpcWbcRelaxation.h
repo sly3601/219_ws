@@ -5,15 +5,18 @@
 namespace sysu219::wbc {
 
 // 主依据：北航《基于稳定性的仿生四足机器人控制系统设计》第4.3节。
-// 输入MPC足底力和WBC加速度，只修正基座加速度与支撑足力，再求实体关节力矩。
+// 输入MPC足底力和WBC加速度，协调全部18维加速度与支撑足力，并保持固定支撑足加速度为零。
 // 阅读顺序：输入检查 → 支撑足打包 → 目标函数 → 等式/不等式约束 → 求解 → 恢复输出。
 // C是动力学偏置力，Q_WBC/Q_MPC是权重，G/C_E/c_e/C_I/c_i沿用论文的QP命名。
 // O为世界系；腿顺序、18维广义量和加速度约定均与WbcInput保持一致。
 
-// 最多4只支撑足：优化变量最多18维，足底力约束最多24条，可选力矩约束最多24条。
+// 最多4只支撑足：变量最多30维、等式最多18条；力/可选力矩不等式仍最多48条。
 // 动态尺寸只改变有效范围，Eigen数据空间随对象预留，接触切换时不重新分配。
+using RelaxationMatrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic,
+                                       Eigen::ColMajor, 30, 30>;
+using RelaxationVector = Eigen::Matrix<double, Eigen::Dynamic, 1, 0, 30, 1>;
 using RelaxationInequalityMatrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic,
-                                                Eigen::ColMajor, 18, 48>;
+                                                Eigen::ColMajor, 30, 48>;
 using RelaxationInequalityVector = Eigen::Matrix<double, Eigen::Dynamic, 1, 0, 48, 1>;
 using ContactConstraintMatrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic,
                                              Eigen::ColMajor, 20, 12>;
@@ -33,11 +36,10 @@ struct ContactForceLimits {
 
 
 struct RelaxationSettings {
-  // 论文式(4.44)：Q_WBC对应Q_1，惩罚基座加速度修正；Q_MPC对应Q_2，惩罚足底力修正。
+  // Q_WBC统一惩罚18维加速度修正；Q_MPC统一惩罚所有支撑足的力修正。
   // 权重越大，对应修正越不容易发生；两种量的单位不同，不代表信任百分比。
-  Eigen::Matrix<double, 6, 6> Q_WBC = Eigen::Matrix<double, 6, 6>::Identity();
-  Eigen::Matrix<double, 12, 12> Q_MPC =
-      0.005 * Eigen::Matrix<double, 12, 12>::Identity();
+  double Q_WBC = 1.0;
+  double Q_MPC = 0.005;
 
   // 实现所需的数值检查参数，不属于论文中的优化变量。
   double absolute_feasibility_tolerance = 1e-6;
@@ -63,7 +65,7 @@ struct RelaxationInput {
       FootJacobian::Constant(kUnset), FootJacobian::Constant(kUnset)}};
   std::array<ContactForceLimits, 4> force_limits{};
 
-  // 仅用于检查松弛后支撑脚的加速度；不增加论文QP中的约束。
+  // 同时用于固定支撑足硬约束和求解后残差检查。
   Feet Jdot_f_qdot_O = Feet::Constant(kUnset);
 
   // [英文补充] 仅开启力矩约束时读取上下界，无穷界表示该方向不限制。
@@ -77,11 +79,11 @@ struct RelaxationInput {
 
 
 struct RelaxationQp {
-  // 论文式(4.45)：X前6项是delta_qddot，其余是按支撑足排列的delta_f。
+  // X前18项是完整广义加速度修正，其余是按支撑足排列的delta_f。
   // 论文式(4.58)：以下矩阵直接按QuadProg++的列约束格式存储。
-  WbcWorkMatrix G;                 // 二次目标矩阵，n_X×n_X。
-  WbcWorkMatrix C_E;               // 等式系数，n_X×6；每列是一条等式。
-  Vec6 c_e = Vec6::Zero();         // 等式常量，放在等式左侧。
+  RelaxationMatrix G;              // 二次目标矩阵，n_X×n_X。
+  RelaxationMatrix C_E;            // n_X×(6+3*n_c)，动力学与固定支撑等式。
+  RelaxationVector c_e;            // 等式常量，放在等式左侧。
   RelaxationInequalityMatrix C_I;  // 不等式系数，n_X×n_I；每列是一条不等式。
   RelaxationInequalityVector c_i;  // 不等式常量，放在不等式左侧。
 
@@ -103,7 +105,7 @@ struct RelaxationOutput {
 
   Vec6 delta_qddot = Vec6::Zero(); // 论文式(4.43)：基座加速度修正量。
   Feet delta_f_O = Feet::Zero();  // 足底力修正，解包回四足列顺序。
-  Vec18 qddot = Vec18::Zero();    // 修正后的广义加速度，后12维仍取WBC结果。
+  Vec18 qddot = Vec18::Zero();    // 修正后的完整广义加速度；delta_qddot字段仍仅保留基座6维。
   Feet f_c_O = Feet::Zero();      // 修正后的世界系反力，摆动足为零。
   Vec12 tau_j = Vec12::Zero();    // 论文式(4.61)：逆动力学求出的实体关节力矩。
   Vec12 tau_cmd_j = Vec12::Zero(); // 控制接口：tau_j加外部PD后的总力矩。
