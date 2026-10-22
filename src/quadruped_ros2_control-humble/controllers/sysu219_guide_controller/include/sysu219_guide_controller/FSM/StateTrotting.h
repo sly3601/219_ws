@@ -152,7 +152,7 @@ private:
     // 第一次进入 trotting 后，先初始化一次所有腿的足底点
     bool mpc_foot_hold_initialized_ = false;
 
-    // 250 Hz 控制中，每 5 周期同步求解 1 次 MPC（50 Hz）。
+    // 250 Hz 控制中，每 2 周期同步求解 1 次 MPC（125 Hz），预测步长保持独立。
     int mpc_cycle_ = 0;
     Vec34 mpc_force_P_ = Vec34::Zero(); // 仅缓存 MPC 力，不包含摆动腿 PD。
 

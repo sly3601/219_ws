@@ -314,7 +314,7 @@ ConvexMpcSolver::ConvexMpcSolver()
   pcb_B = Vec3::Zero();           // pcb_B 表示“从机身原点 body 到质心 COM 的偏移向量”，在 B 系下表达。COM = body + R * pcb_B
   g = Vec3(0.0, 0.0, -9.81);      // 重力加速度向量
 
-  mu = 0.35;                      // 摩擦系数
+  mu = 0.35;                      // 规划摩擦系数；WBC松弛优化沿用同一参数。
   fzMin = 0.0;
   fzMax = 350.0;
 
@@ -328,10 +328,10 @@ ConvexMpcSolver::ConvexMpcSolver()
   Q.setZero();
   R.setZero();
   S.setZero();
-  Q.diagonal() << 380, 460, 23, // 3轴角度，姿态的权重
-                      500,  500,  640,// 3轴位置，机身位置的权重
-                      45,   54,   5,  // 3轴角速度，姿态变化的权重
-                      570,   670,   470, // 3轴速度，机身速度的权重
+  Q.diagonal() << 380, 590, 23, // 3轴角度，姿态的权重
+                      500*1.5,  500*1.5,  640*1.5,// 3轴位置，机身位置的权重
+                      70,   85,   5,  // 3轴角速度，姿态变化的权重
+                      570*1.5,   770*1.5,   470*1.5, // 3轴速度，机身速度的权重
                       0.0;          // 重力
 
   R.diagonal() << 1, 1, 1,  // 力大小限制惩罚权重
@@ -350,13 +350,14 @@ ConvexMpcSolver::ConvexMpcSolver()
                   1e-4, 1e-4, 1e-6,  // FL
                   1e-4, 1e-4, 1e-6,  // RR
                   1e-4, 1e-4, 1e-6;  // RL
-  S.diagonal() << 1e-3, 1e-3, 1e-6,  // FR: fx, fy, fz
-                  1e-3, 1e-3, 1e-6,  // FL
-                  1e-3, 1e-3, 1e-6,  // RR
-                  1e-3, 1e-3, 1e-6;  // RL
+  S.diagonal() << 2e-3, 2e-3, 1e-5,  // FR: fx, fy, fz
+                  2e-3, 2e-3, 1e-5,  // FL
+                  2e-3, 2e-3, 1e-5,  // RR
+                  2e-3, 2e-3, 1e-5;  // RL
   // 额外惩罚 1e-3 * (本次总 fz - 上次总 fz)^2；腿间转移承重不受此项惩罚。
   const Vec12 total_fz = (Vec12() << 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1).finished();
   S.noalias() += 1e-3 * total_fz * total_fz.transpose();
+  S *= 2.5; // 125 Hz试调：整体增强力变化惩罚，包含各腿分量和总竖直力耦合项。
 
   rebuildFixedMatrices();
 }

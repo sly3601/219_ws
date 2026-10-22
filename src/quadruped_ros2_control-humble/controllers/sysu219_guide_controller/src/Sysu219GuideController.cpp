@@ -10,6 +10,7 @@
 #include "sysu219_guide_controller/debug/DebugConfig.h"
 
 #include <Eigen/Geometry>
+#include <cmath>
 
 namespace sysu219_guide_controller
 {
@@ -210,8 +211,6 @@ namespace sysu219_guide_controller
                 }
                 // 记下"上一状态名"，让 next_state_ 的 enter() 能据此决定过渡策略
                 next_state_->previous_state_name = current_state_->state_name;
-                RCLCPP_INFO(get_node()->get_logger(), "Switched from %s to %s",
-                            current_state_->state_name_string.c_str(), next_state_->state_name_string.c_str());
             }
             else
             {
@@ -221,10 +220,39 @@ namespace sysu219_guide_controller
         }
         else if (mode_ == FSMMode::CHANGE)
         {
-            current_state_->exit();
-            current_state_ = next_state_;
-
-            current_state_->enter();
+            bool reject_trotting = false;
+            if (next_state_ == state_list_.trotting)
+            {
+                // 进入前按相对零度的绝对角度检查，不能把过大的倾斜锁成目标姿态。
+                constexpr double trotting_entry_tilt_limit_deg = 5.0;
+                constexpr double rad_to_deg = 180.0 / M_PI;
+                const Vec3 entry_rpy = rotMatToRPY(ctrl_component_.estimator_->getRotation());
+                reject_trotting = !entry_rpy.allFinite() ||
+                    std::abs(entry_rpy(0)) * rad_to_deg > trotting_entry_tilt_limit_deg ||
+                    std::abs(entry_rpy(1)) * rad_to_deg > trotting_entry_tilt_limit_deg;
+                if (reject_trotting)
+                {
+                    ctrl_interfaces_.control_inputs_.command = 0; // 拒绝后须重新发起，避免姿态恢复时自动进入。
+                    next_state_ = current_state_;
+                    next_state_name_ = current_state_->state_name;
+                    RCLCPP_WARN(get_node()->get_logger(),
+                        "拒绝进入Trotting：roll=%.2f deg，pitch=%.2f deg，要求均在±%.1f deg内且姿态有效；保持%s",
+                        entry_rpy(0) * rad_to_deg, entry_rpy(1) * rad_to_deg,
+                        trotting_entry_tilt_limit_deg, current_state_->state_name_string.c_str());
+                }
+            }
+            if (reject_trotting)
+            {
+                current_state_->run(time, period);
+            }
+            else
+            {
+                RCLCPP_INFO(get_node()->get_logger(), "Switched from %s to %s",
+                            current_state_->state_name_string.c_str(), next_state_->state_name_string.c_str());
+                current_state_->exit();
+                current_state_ = next_state_;
+                current_state_->enter();
+            }
             mode_ = FSMMode::NORMAL;
         }
 

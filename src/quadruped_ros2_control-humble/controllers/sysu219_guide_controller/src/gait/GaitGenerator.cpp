@@ -221,7 +221,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 double target_x = foot_pos(0);
                 double target_y = foot_pos(1);
                 
-                const double step_limit_xy = 0.84; // 步长限幅，防止迈步目标跳太远
+                const double step_limit_xy = 0.03; // 步长限幅，防止迈步目标跳太远
 
                 // 最终 x 落点相对当前摆动起点限幅
                 target_x = saturation(target_x, Vec2(start_p_(0, i) - step_limit_xy,
