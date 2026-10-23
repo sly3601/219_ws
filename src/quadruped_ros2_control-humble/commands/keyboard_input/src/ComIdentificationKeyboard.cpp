@@ -5,6 +5,7 @@
 #include <cerrno>
 #include <chrono>
 #include <csignal>
+#include <cstring>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -45,8 +46,8 @@ public:
                 if (status_ == msg->data) return;
                 status_ = msg->data;
                 const char* states[] = {"未进入（仅稳定FixStand可进入）", "保持，等待a",
-                    "缓慢过渡", "等待持续停稳", "正式采集", "已停稳，准备交还FixStand", "中止保持，未失能",
-                    "采集完成，缓慢返回原FixStand目标", "返回后等待静止，尚未交接"};
+                    "缓慢过渡", "定时保持，记录运动质量", "原始数据记录中", "记录完成，准备交还FixStand", "中止保持，未失能",
+                    "采集完成，缓慢返回原FixStand目标", "返回后定时保持，尚未交接"};
                 if (status_ < 9) RCLCPP_INFO(get_logger(), "%s", states[status_]);
             });
         feedback_sub_ = create_subscription<std_msgs::msg::String>("/com_identification/feedback", 10,
@@ -61,31 +62,68 @@ public:
                                 const_cast<char*>(processed_.c_str()), nullptr};
                 const int error = posix_spawnp(&child_, python, nullptr, nullptr, args, environ);
                 if (error != 0) {
-                    child_ = -1; RCLCPP_ERROR(get_logger(), "自动处理启动失败(%d)，数据在 %s", error, processed_.c_str());
+                    child_ = -1;
+                    RCLCPP_ERROR(get_logger(),
+                        "[COM_ID][SPAWN_FAILED] Python进程未启动：error=%d (%s)，processor=%s，dataset=%s",
+                        error, std::strerror(error), processor_.c_str(), processed_.c_str());
                 }
-                else RCLCPP_INFO(get_logger(), "采集文件已关闭，启动离线计算：%s", processed_.c_str());
+                else RCLCPP_INFO(get_logger(),
+                    "[COM_ID][PROCESS_STARTED] 采集文件已关闭；pid=%d，processor=%s，dataset=%s",
+                    static_cast<int>(child_), processor_.c_str(), processed_.c_str());
             });
         timer_ = create_wall_timer(std::chrono::milliseconds(100), [this] {
             send("heartbeat");
             if (child_ > 0) {
                 int status = 0;
-                if (waitpid(child_, &status, WNOHANG) == child_) {
-                    if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
-                        RCLCPP_INFO(get_logger(), "计算结束：查看采集目录下 results.json 和 report.md；未修改模型");
-                    else RCLCPP_WARN(get_logger(), "计算未通过或无法启动：检查终端及采集目录 report.md");
+                const auto finished = waitpid(child_, &status, WNOHANG);
+                if (finished == child_) {
+                    if (WIFEXITED(status)) {
+                        const int code = WEXITSTATUS(status);
+                        if (code == 0)
+                            RCLCPP_INFO(get_logger(),
+                                "[COM_ID][QUALITY_PASSED] 离线计算成功，内部检查通过；参数仍为未独立验证的候选值。报告：%s/report.md，详细诊断：%s/debug.json",
+                                processed_.c_str(), processed_.c_str());
+                        else if (code == 2)
+                            RCLCPP_WARN(get_logger(),
+                                "[COM_ID][QUALITY_FAILED] 离线计算成功、候选参数已生成；内部质量未通过。具体姿态/关节/数值/阈值见上方输出及 %s/report.md；详细诊断：%s/debug.json",
+                                processed_.c_str(), processed_.c_str());
+                        else if (code == 3)
+                            RCLCPP_WARN(get_logger(),
+                                "[COM_ID][DATA_REJECTED] 离线程序已运行，但输入数据未通过完整性或有效性检查。原因及处理阶段：%s/report.md，%s/debug.json",
+                                processed_.c_str(), processed_.c_str());
+                        else if (code == 4)
+                            RCLCPP_ERROR(get_logger(),
+                                "[COM_ID][PROCESSING_ERROR] 离线处理或文件读写异常；查看上方具体异常，诊断文件可写时保存在 %s/debug.json",
+                                processed_.c_str());
+                        else
+                            RCLCPP_ERROR(get_logger(),
+                                "[COM_ID][UNEXPECTED_EXIT] Python退出码=%d；查看上方Python错误（含依赖/脚本路径等）。processor=%s，dataset=%s",
+                                code, processor_.c_str(), processed_.c_str());
+                    } else if (WIFSIGNALED(status)) {
+                        RCLCPP_ERROR(get_logger(),
+                            "[COM_ID][PROCESS_SIGNAL] 离线进程被信号%d终止；processor=%s，dataset=%s",
+                            WTERMSIG(status), processor_.c_str(), processed_.c_str());
+                    }
+                    child_ = -1;
+                } else if (finished < 0 && errno != EINTR) {
+                    const int error = errno;
+                    RCLCPP_ERROR(get_logger(), "[COM_ID][WAIT_FAILED] waitpid失败：error=%d (%s)，pid=%d，dataset=%s",
+                                 error, std::strerror(error), static_cast<int>(child_), processed_.c_str());
                     child_ = -1;
                 }
             }
         });
         RCLCPP_INFO(get_logger(),
             "\n质心辨识：先用原流程稳定站到FixStand，关闭其他运动键盘。\n"
-            " a：一键进入并完成13姿态全流程（约4～5分钟）；b：只接管保持\n"
+            " a：一键完成6段辨识（默认约40秒，停稳等待可能延长）；b：只接管保持\n"
             " 1：立即中止并保持最后关节目标/增益，不失能、不自动回中\n"
-            " h：中止后人工请求8秒以上慢速回中，不恢复采集\n"
+            " h：中止后人工请求平滑回中（默认3秒），不恢复采集\n"
             " x / Ctrl+C：发送1后退出键盘；掉线超过0.5秒也中止保持\n"
-            " 全程四足落地，默认站高±5mm、roll/pitch±2°，不抬腿、不步行。\n"
+            " 全程四足落地，默认roll/pitch±4°，不抬腿、不步行；倾角为目标变化量。\n"
+            " 顺序：原位、pitch正、roll正、pitch负、roll负、回中复测；不再插入升降和重复回中。\n"
+            " 默认每次过渡3秒、定时保持1秒、记录2秒；运动质量只标记，不打断整套记录。\n"
             " 1是软件中止保持，并非保证站稳的硬件急停；无独立足底力反馈。\n"
-            " 正常完成后慢速返回、确认静止，再自动回原FixStand；之后用原键盘手动趴下，再断电。\n"
+            " 正常完成后平滑返回、定时保持，再自动回原FixStand；之后用原键盘手动趴下，再断电。\n"
             " 全程不自动失能/趴下/断电；中止时不自动退出，每次激活仅采一套。\n"
             " 自动计算使用本键盘所在电脑的文件路径；远程键盘需共享采集目录。\n");
     }

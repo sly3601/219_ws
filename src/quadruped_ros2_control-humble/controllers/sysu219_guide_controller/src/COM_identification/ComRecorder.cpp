@@ -19,9 +19,10 @@ void Recorder::start(std::string root, std::string description, std::string meta
     root_ = std::move(root); description_ = std::move(description); metadata_ = std::move(metadata);
     start_.store(true, std::memory_order_release);
 }
-void Recorder::finish(bool completed) {
+void Recorder::finish(bool completed, const char* static_reason) {
     if (finish_.load()) return; // A later keyboard exit must not invalidate an already completed run.
     completed_.store(completed);
+    finish_reason_.store(static_reason);
     finish_.store(true, std::memory_order_release);
 }
 bool Recorder::push(const Sample& sample) {
@@ -61,7 +62,7 @@ void Recorder::work() {
                     csv << ',' << leg << '_' << kind << '_' << field;
         for (const auto* name : {"qw", "qx", "qy", "qz", "gx", "gy", "gz", "ax", "ay", "az"})
             csv << ',' << name;
-        csv << '\n'; csv.flush();
+        csv << ",motion_quality_ok,motion_quality_bad_cycles\n"; csv.flush();
         if (!csv) throw std::runtime_error("Cannot open COM CSV");
         ready_.store(true, std::memory_order_release);
         auto flushed = std::chrono::steady_clock::now();
@@ -76,7 +77,7 @@ void Recorder::work() {
                     csv << ',' << s.q[j] << ',' << s.dq[j] << ',' << s.tau[j] << ',' << s.q_cmd[j]
                         << ',' << s.kp[j] << ',' << s.kd[j];
                 for (double value : s.imu) csv << ',' << value;
-                csv << '\n'; ++written;
+                csv << ',' << s.motion_quality_ok << ',' << s.motion_quality_bad_cycles << '\n'; ++written;
             } else {
                 if (finish_.load(std::memory_order_acquire) || shutdown_.load() || failed()) break;
                 std::this_thread::sleep_for(2ms);
@@ -92,7 +93,10 @@ void Recorder::work() {
         std::ofstream result(folder / "acquisition.json");
         result << "{\"completed\":" << (completed_.load() && !failed() ? "true" : "false")
                << ",\"writer_failed\":" << (failed() ? "true" : "false")
-               << ",\"written_samples\":" << written << "}\n";
+               << ",\"written_samples\":" << written << ",\"reason\":"
+               << std::quoted(finish_reason_.load() ? finish_reason_.load() :
+                    (completed_.load() ? "normal completion after return" : "collection ended without completion"))
+               << "}\n";
         result.close();
         if (!result) throw std::runtime_error("COM completion marker failed");
     } catch (...) { failed_.store(true); }

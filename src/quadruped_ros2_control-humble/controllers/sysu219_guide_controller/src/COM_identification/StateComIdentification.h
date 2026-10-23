@@ -34,8 +34,8 @@ private:
     const std::vector<double> stand_;
     const std::string base_;
     const std::vector<std::string> feet_;
-    double transition_ = 8.0, settling_ = 1.0, sample_seconds_ = 10.0;
-    double height_ = 0.005, angle_ = 0.03490658503988659;
+    double transition_ = 3.0, settling_ = 1.0, sample_seconds_ = 2.0;
+    double angle_ = 0.06981317007977318;
     std::string root_, description_;
     std::atomic<bool> model_ready_{false}, entry_{false}, active_{false}, stop_{false};
     std::atomic<bool> writer_started_{false};
@@ -47,6 +47,7 @@ private:
     int pose_ = 0, phase_ = 0; // 1 move, 2 settle, 3 sample, 4 hold, 5 stopped, 6 ready to exit, 7 return, 8 return settling
     double phase_start_ = 0, stable_since_ = -1, next_sample_ = 0, last_time_ = 0;
     uint64_t sequence_ = 0;
+    uint64_t pose_motion_quality_bad_cycles_ = 0;
     Vec12 baseline_, target_, kp_, kd_, ff_;
     Vec12 return_goal_, return_start_;
     Vec34 baseline_feet_;

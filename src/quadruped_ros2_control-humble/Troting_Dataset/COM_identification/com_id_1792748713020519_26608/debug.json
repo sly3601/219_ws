@@ -1,0 +1,1520 @@
+{
+  "stage": "completed",
+  "source_directory": "/home/sysu219/219_ws/src/quadruped_ros2_control-humble/Troting_Dataset/COM_identification/com_id_1792748713020519_26608",
+  "output_directory": "/home/sysu219/219_ws/src/quadruped_ros2_control-humble/Troting_Dataset/COM_identification/com_id_1792748713020519_26608",
+  "processor": "/home/sysu219/219_ws/install/sysu219_guide_controller/share/sysu219_guide_controller/COM_identification/process_com.py",
+  "processor_sha256": "8d13e5edb336ad4025e203b442c02ca36c31af126d52c622b526992814f4d8b1",
+  "python_version": "3.10.12 (main, Aug 31 2026, 10:18:17) [GCC 11.4.0]",
+  "numpy_version": "1.21.5",
+  "metadata": {
+    "schema": 1,
+    "base": "base",
+    "trunk": "trunk",
+    "feet": [
+      "FR_foot",
+      "FL_foot",
+      "RR_foot",
+      "RL_foot"
+    ],
+    "stand_q": [
+      0,
+      0.9,
+      -1.53,
+      0,
+      0.9,
+      -1.53,
+      0,
+      0.9,
+      -1.3,
+      0,
+      0.9,
+      -1.3
+    ],
+    "schedule": "compact_tilt_v2",
+    "acquisition_policy": "fixed_timing_quality_does_not_abort",
+    "height_m": 0,
+    "tilt_rad": 0.06981317007977318,
+    "transition_s": 3,
+    "settling_s": 1,
+    "sample_s": 2,
+    "pose_names": [
+      "reference",
+      "pitch_positive",
+      "roll_positive",
+      "pitch_negative",
+      "roll_negative",
+      "reference_repeat"
+    ],
+    "force_source": "motor feedback estimate, not measured GRF",
+    "gross_tracking_error_limit_rad": 0.3,
+    "max_target_offset_rad": 0.2,
+    "max_target_speed_rad_s": 0.12,
+    "static_gate": {
+      "joint_speed_rad_s": 0.015,
+      "gyro_norm_rad_s": 0.015
+    }
+  },
+  "acquisition": {
+    "completed": true,
+    "writer_failed": false,
+    "written_samples": 3303,
+    "reason": "normal completion after return"
+  },
+  "model": {
+    "nominal_whole_mass_kg": 41.281929589959766,
+    "nominal_trunk_mass_kg": 23.262327999999997,
+    "nominal_trunk_com_link_m": [
+      -0.008263775204270183,
+      0.00013850204932197672,
+      -0.0038367281726919174
+    ],
+    "reference_is_urdf_not_independent_measurement": true,
+    "friction_Fc_Nm": {
+      "FR_hip_joint": 1.0170625680080705,
+      "FR_thigh_joint": 1.2980958388469037,
+      "FR_calf_joint": 1.0794450668988391,
+      "FL_hip_joint": 1.0170625680080705,
+      "FL_thigh_joint": 1.2980958388469037,
+      "FL_calf_joint": 1.0794450668988391,
+      "RR_hip_joint": 1.0170625680080705,
+      "RR_thigh_joint": 1.2980958388469037,
+      "RR_calf_joint": 1.0794450668988391,
+      "RL_hip_joint": 1.0170625680080705,
+      "RL_thigh_joint": 1.2980958388469037,
+      "RL_calf_joint": 1.0794450668988391
+    },
+    "viscous_B_Nms_rad": {
+      "FR_hip_joint": 9.833942875227822e-10,
+      "FR_thigh_joint": 0.09591841174893605,
+      "FR_calf_joint": 1.6499038712067307e-09,
+      "FL_hip_joint": 9.833942875227822e-10,
+      "FL_thigh_joint": 0.09591841174893605,
+      "FL_calf_joint": 1.6499038712067307e-09,
+      "RR_hip_joint": 9.833942875227822e-10,
+      "RR_thigh_joint": 0.09591841174893605,
+      "RR_calf_joint": 1.6499038712067307e-09,
+      "RL_hip_joint": 9.833942875227822e-10,
+      "RL_thigh_joint": 0.09591841174893605,
+      "RL_calf_joint": 1.6499038712067307e-09
+    },
+    "foot_collision_sphere_radii_m": {
+      "FR_foot": [
+        0.02
+      ],
+      "FL_foot": [
+        0.02
+      ],
+      "RR_foot": [
+        0.02
+      ],
+      "RL_foot": [
+        0.02
+      ]
+    },
+    "hardware_plugins": [
+      "hardware_sysu219/HardwareSysu219"
+    ],
+    "force_model": "J_foot_origin.T*f = g_leg + B*dq - tau_feedback; unknown static friction omitted",
+    "physical_accuracy_verified": false,
+    "notes": [
+      "[UNMODELED_STATIC_FRICTION] URDF含非零Fc，单帧足力反算未计入未知静摩擦；静止不会消除静摩擦。Fc敏感性分析不是已验证补偿，也不是静摩擦上界。",
+      "[CONTACT_POINT_ASSUMPTION] 反算使用foot链接原点的点力模型；URDF脚底是有半径的球，实际接触点偏置和接触力矩未纳入该反算。"
+    ]
+  },
+  "mass_policy": {
+    "whole_mass_kg": 41.8,
+    "real_default_applied": true,
+    "CAN_torque_mapping": "accepted as accurate by user; no rescaling or inferred offset correction"
+  },
+  "data": {
+    "rows": 3303,
+    "csv_sha256": "07fac15f150400a08970ca729abb4d18c4383997b8762bd37ad9300a59594d1e",
+    "first_sequence": 0,
+    "last_sequence": 3302,
+    "recorded_span_s": 33.023979419,
+    "last_pose": 5,
+    "last_phase": 3
+  },
+  "timing": {
+    "sample_interval_min_s": 0.00563517,
+    "sample_interval_max_s": 0.014425579000000001,
+    "sample_interval_median_s": 0.0103475255,
+    "reported_control_period_min_s": 0.004,
+    "reported_control_period_max_s": 0.004,
+    "note": "Host sampling times only; no hardware packet timestamp or sample-age measurement"
+  },
+  "joint_signal_summary_formal": {
+    "FR_hip_joint": {
+      "q_rad": {
+        "min": -0.15594589710235596,
+        "max": -0.02853214740753174,
+        "mean": -0.09335788534008921,
+        "std": 0.036968660613356304,
+        "distinct_levels": 10
+      },
+      "dq_rad_s": {
+        "min": -0.03418731689453125,
+        "max": 0.014652252197265625,
+        "mean": -0.005022418677509327,
+        "std": 0.007394409587637313,
+        "distinct_levels": 6
+      },
+      "CAN_tau_Nm": {
+        "min": 21.92919921875,
+        "max": 25.347991943359375,
+        "mean": 23.98096180438202,
+        "std": 1.385873140249892,
+        "distinct_levels": 10
+      },
+      "q_cmd_rad": {
+        "min": -0.0703871765634311,
+        "max": 0.06925606912776508,
+        "mean": -0.0002465926340820168,
+        "std": 0.040329681423741826,
+        "distinct_levels": 6
+      }
+    },
+    "FR_thigh_joint": {
+      "q_rad": {
+        "min": 0.9306223392486572,
+        "max": 0.9786875247955322,
+        "mean": 0.9549678514483765,
+        "std": 0.014123859768225746,
+        "distinct_levels": 10
+      },
+      "dq_rad_s": {
+        "min": -0.02442169189453125,
+        "max": 0.03418731689453125,
+        "mean": 0.005347455004090676,
+        "std": 0.008186795548758596,
+        "distinct_levels": 7
+      },
+      "CAN_tau_Nm": {
+        "min": -15.67767333984375,
+        "max": -12.649581909179688,
+        "mean": -14.397098115994014,
+        "std": 1.1585220028366385,
+        "distinct_levels": 11
+      },
+      "q_cmd_rad": {
+        "min": 0.8809814469854795,
+        "max": 0.9183959288012872,
+        "mean": 0.8988254208838942,
+        "std": 0.0109225664161653,
+        "distinct_levels": 6
+      }
+    },
+    "FR_calf_joint": {
+      "q_rad": {
+        "min": -1.7042429447174072,
+        "max": -1.471543550491333,
+        "mean": -1.593931733272635,
+        "std": 0.07148063727278912,
+        "distinct_levels": 10
+      },
+      "dq_rad_s": {
+        "min": -0.014652252197265625,
+        "max": 0.03418731689453125,
+        "mean": 0.0050711671445215,
+        "std": 0.007861645144812352,
+        "distinct_levels": 6
+      },
+      "CAN_tau_Nm": {
+        "min": 14.700851440429688,
+        "max": 20.366302490234375,
+        "mean": 17.18064410674592,
+        "std": 2.137959910898371,
+        "distinct_levels": 17
+      },
+      "q_cmd_rad": {
+        "min": -1.6485002017327317,
+        "max": -1.4047650392112443,
+        "mean": -1.5286914559890876,
+        "std": 0.07287001760507715,
+        "distinct_levels": 6
+      }
+    },
+    "FL_hip_joint": {
+      "q_rad": {
+        "min": 0.01421266794204712,
+        "max": 0.14009958505630493,
+        "mean": 0.076880973210549,
+        "std": 0.0370066604933549,
+        "distinct_levels": 11
+      },
+      "dq_rad_s": {
+        "min": -0.024419784545898438,
+        "max": 0.014652252197265625,
+        "mean": -0.005184928906737469,
+        "std": 0.007766682067235062,
+        "distinct_levels": 5
+      },
+      "CAN_tau_Nm": {
+        "min": -22.124542236328125,
+        "max": -16.361419677734375,
+        "mean": -20.174839216540143,
+        "std": 2.1101765469234732,
+        "distinct_levels": 13
+      },
+      "q_cmd_rad": {
+        "min": -0.06925703312956104,
+        "max": 0.0703861797144742,
+        "mean": 0.00013045218139750848,
+        "std": 0.0403285824920389,
+        "distinct_levels": 6
+      }
+    },
+    "FL_thigh_joint": {
+      "q_rad": {
+        "min": 0.9515030980110168,
+        "max": 0.9793503880500793,
+        "mean": 0.9658117037446249,
+        "std": 0.008767180748908497,
+        "distinct_levels": 7
+      },
+      "dq_rad_s": {
+        "min": -0.024419784545898438,
+        "max": 0.02442169189453125,
+        "mean": -0.0047136154428694685,
+        "std": 0.007285598670970607,
+        "distinct_levels": 6
+      },
+      "CAN_tau_Nm": {
+        "min": -18.901092529296875,
+        "max": -15.970687866210938,
+        "mean": -17.64945842977768,
+        "std": 0.9582769651074541,
+        "distinct_levels": 14
+      },
+      "q_cmd_rad": {
+        "min": 0.8809811910536801,
+        "max": 0.9183957311312843,
+        "mean": 0.8987943147799575,
+        "std": 0.010920085131083971,
+        "distinct_levels": 6
+      }
+    },
+    "FL_calf_joint": {
+      "q_rad": {
+        "min": -1.6943737268447876,
+        "max": -1.468539834022522,
+        "mean": -1.5915654108250596,
+        "std": 0.06710709274804602,
+        "distinct_levels": 8
+      },
+      "dq_rad_s": {
+        "min": -0.024419784545898438,
+        "max": 0.014652252197265625,
+        "mean": -0.004786734176356463,
+        "std": 0.007496352629500713,
+        "distinct_levels": 5
+      },
+      "CAN_tau_Nm": {
+        "min": 11.67279052734375,
+        "max": 18.608062744140625,
+        "mean": 16.1450195439445,
+        "std": 2.661667933920264,
+        "distinct_levels": 11
+      },
+      "q_cmd_rad": {
+        "min": -1.6485002041332928,
+        "max": -1.4047649388596266,
+        "mean": -1.5286364117474214,
+        "std": 0.07286916237111768,
+        "distinct_levels": 6
+      }
+    },
+    "RR_hip_joint": {
+      "q_rad": {
+        "min": -0.1553208827972412,
+        "max": -0.024857282638549805,
+        "mean": -0.09343916207502369,
+        "std": 0.03874174676923126,
+        "distinct_levels": 8
+      },
+      "dq_rad_s": {
+        "min": -0.02442169189453125,
+        "max": 0.03418731689453125,
+        "mean": 0.005258030185286891,
+        "std": 0.00848180125187792,
+        "distinct_levels": 7
+      },
+      "CAN_tau_Nm": {
+        "min": 20.561660766601562,
+        "max": 28.27838134765625,
+        "mean": 24.462525353455504,
+        "std": 2.4653741871173374,
+        "distinct_levels": 14
+      },
+      "q_cmd_rad": {
+        "min": -0.07034448253884905,
+        "max": 0.06929618038838743,
+        "mean": -0.00023278696663092468,
+        "std": 0.040328771355063506,
+        "distinct_levels": 6
+      }
+    },
+    "RR_thigh_joint": {
+      "q_rad": {
+        "min": 0.7377032041549683,
+        "max": 1.0379246473312378,
+        "mean": 0.8878310641115795,
+        "std": 0.0869866678978425,
+        "distinct_levels": 8
+      },
+      "dq_rad_s": {
+        "min": -0.014652252197265625,
+        "max": 0.03418731689453125,
+        "mean": 0.004526650846103662,
+        "std": 0.00819697263936017,
+        "distinct_levels": 6
+      },
+      "CAN_tau_Nm": {
+        "min": 0.8302764892578125,
+        "max": 5.128204345703125,
+        "mean": 3.246112398220576,
+        "std": 1.2660129630815353,
+        "distinct_levels": 13
+      },
+      "q_cmd_rad": {
+        "min": 0.7471797507687095,
+        "max": 1.050174039105903,
+        "mean": 0.8994438576782453,
+        "std": 0.08832442708669316,
+        "distinct_levels": 6
+      }
+    },
+    "RR_calf_joint": {
+      "q_rad": {
+        "min": -1.4828664064407349,
+        "max": -1.2330008745193481,
+        "mean": -1.364844844464256,
+        "std": 0.0742935649760014,
+        "distinct_levels": 8
+      },
+      "dq_rad_s": {
+        "min": -0.014652252197265625,
+        "max": 0.03418731689453125,
+        "mean": 0.004559163047549331,
+        "std": 0.007647282744010033,
+        "distinct_levels": 6
+      },
+      "CAN_tau_Nm": {
+        "min": 14.114776611328125,
+        "max": 22.124542236328125,
+        "mean": 17.79467960046651,
+        "std": 3.1561151549351965,
+        "distinct_levels": 13
+      },
+      "q_cmd_rad": {
+        "min": -1.4290929046452394,
+        "max": -1.15564405699953,
+        "mean": -1.297212488851345,
+        "std": 0.08179515830959642,
+        "distinct_levels": 6
+      }
+    },
+    "RL_hip_joint": {
+      "q_rad": {
+        "min": 0.0445745587348938,
+        "max": 0.1632135510444641,
+        "mean": 0.10654593515713481,
+        "std": 0.03465180612613855,
+        "distinct_levels": 8
+      },
+      "dq_rad_s": {
+        "min": -0.014652252197265625,
+        "max": 0.024419784545898438,
+        "mean": 0.005290585230670237,
+        "std": 0.0077156923543930875,
+        "distinct_levels": 5
+      },
+      "CAN_tau_Nm": {
+        "min": -30.4273681640625,
+        "max": -23.882797241210938,
+        "mean": -27.428697824081446,
+        "std": 2.1394688301694504,
+        "distinct_levels": 15
+      },
+      "q_cmd_rad": {
+        "min": -0.06929714399067506,
+        "max": 0.07034349114777412,
+        "mean": 0.00011665152478264817,
+        "std": 0.04032775373052321,
+        "distinct_levels": 6
+      }
+    },
+    "RL_thigh_joint": {
+      "q_rad": {
+        "min": 0.7370619773864746,
+        "max": 1.0292725563049316,
+        "mean": 0.8845279577766203,
+        "std": 0.08594300872233468,
+        "distinct_levels": 13
+      },
+      "dq_rad_s": {
+        "min": -0.024419784545898438,
+        "max": 0.07326126098632812,
+        "mean": -0.004762352802194097,
+        "std": 0.008465771509227565,
+        "distinct_levels": 6
+      },
+      "CAN_tau_Nm": {
+        "min": 1.9047698974609375,
+        "max": 6.20269775390625,
+        "mean": 3.6674837947090135,
+        "std": 1.5905858166692974,
+        "distinct_levels": 16
+      },
+      "q_cmd_rad": {
+        "min": 0.7471797508330721,
+        "max": 1.0501739752472383,
+        "mean": 0.8994070653920756,
+        "std": 0.08832459038173905,
+        "distinct_levels": 6
+      }
+    },
+    "RL_calf_joint": {
+      "q_rad": {
+        "min": -1.4881329536437988,
+        "max": -1.2382655143737793,
+        "mean": -1.3737708962895905,
+        "std": 0.07776565004882598,
+        "distinct_levels": 10
+      },
+      "dq_rad_s": {
+        "min": -0.024419784545898438,
+        "max": 0.014652252197265625,
+        "mean": -0.005046771489046576,
+        "std": 0.007836914709645044,
+        "distinct_levels": 5
+      },
+      "CAN_tau_Nm": {
+        "min": 14.896224975585938,
+        "max": 23.101348876953125,
+        "mean": 19.713839018404386,
+        "std": 3.156884469526449,
+        "distinct_levels": 13
+      },
+      "q_cmd_rad": {
+        "min": -1.4290928083804737,
+        "max": -1.155644058733962,
+        "mean": -1.297150842686439,
+        "std": 0.08179405402211289,
+        "distinct_levels": 6
+      }
+    }
+  },
+  "poses": [
+    {
+      "pose": 0,
+      "name": "reference",
+      "samples": 29,
+      "raw_samples": 201,
+      "selected_samples": 36,
+      "rejected_counts": {
+        "motion": 7,
+        "jacobian": 0,
+        "mass_range": 0,
+        "insufficient_vertical_support": 0,
+        "friction_ratio": 0
+      },
+      "duration_s": 1.9960877010000002,
+      "first_sequence": 100,
+      "last_sequence": 300,
+      "static_checks": {
+        "max_joint_drift_rad": 0.00038242340087890625,
+        "max_orientation_drift_deg": 0.04326378981368509,
+        "joint_drift_detail": {
+          "joint": "FR_calf_joint",
+          "row_offset": 1,
+          "elapsed_s": 0.008055180000155815,
+          "observed_rad": 0.00038242340087890625,
+          "limit_rad": 0.003,
+          "initial_q_rad": -1.6073486804962158,
+          "peak_q_rad": -1.606966257095337,
+          "final_q_rad": -1.606966257095337,
+          "definition": "max(abs(q(t)-q(first_formal_sample))); not q-q_cmd",
+          "sequence": 101
+        },
+        "max_joint_speed_rad_s": 0.03418731689453125,
+        "max_joint_speed_joint": "RR_thigh_joint",
+        "max_gyro_norm_rad_s": 0.005892936338830755,
+        "acceleration_peak_window_start_s": 0.5000862839997353,
+        "max_acceleration_window_mean_m_s2": 0.045369245770260934,
+        "warnings": [
+          "[MOTION_QUALITY] 正式段速度质量超限：joint=RR_thigh_joint, |dq|max=0.034187317 rad/s (limit<=0.015), gyro_norm_max=0.005892936 rad/s (limit<0.015)；保留原始数据，继续离线计算。"
+        ],
+        "controller_motion_quality_bad_cycles": 112
+      },
+      "q_mean_rad": [
+        -0.0956858807596667,
+        0.9606400604905754,
+        -1.6070058181368072,
+        0.07880134623626182,
+        0.9690507054328918,
+        -1.6020956080535362,
+        -0.10755824220591578,
+        0.8873342768899326,
+        -1.384064793586731,
+        0.1178176999092102,
+        0.8846926689147949,
+        -1.3893303871154785
+      ],
+      "q_std_rad": [
+        6.960510546097822e-05,
+        0.00017648115309351872,
+        0.00011646455262932182,
+        0.00017648115309351866,
+        0.0,
+        0.00011617411733598178,
+        0.0001545260215558115,
+        0.00016323844180917227,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_cmd_mean_rad": [
+        -1.7429771192093647e-08,
+        0.9000000227720629,
+        -1.530000073830706,
+        1.6097368140820733e-08,
+        0.9000000226462025,
+        -1.530000076304659,
+        -2.9017490187443317e-08,
+        0.9000000136012006,
+        -1.3000000919862413,
+        3.050999306201512e-08,
+        0.9000000134977748,
+        -1.3000000935217038
+      ],
+      "quat_mean_wxyz": [
+        0.9994433262736797,
+        -0.006349346370337097,
+        0.029698102268734292,
+        0.01381108573966547
+      ],
+      "estimated_mass_kg": 55.19562032547042,
+      "estimated_mass_std_kg": 0.02497083125779524,
+      "net_force_relative_residual": 0.07397054194857193,
+      "mean_specific_acceleration_residual_m_s2": 0.016604190026015844,
+      "foot_height_spread_mean_m": 0.01398385751213151
+    },
+    {
+      "pose": 1,
+      "name": "pitch_positive",
+      "samples": 25,
+      "raw_samples": 200,
+      "selected_samples": 36,
+      "rejected_counts": {
+        "motion": 11,
+        "jacobian": 0,
+        "mass_range": 0,
+        "insufficient_vertical_support": 0,
+        "friction_ratio": 0
+      },
+      "duration_s": 1.988007029,
+      "first_sequence": 701,
+      "last_sequence": 900,
+      "static_checks": {
+        "max_joint_drift_rad": 0.0003814697265625,
+        "max_orientation_drift_deg": 0.04714457157910454,
+        "joint_drift_detail": {
+          "joint": "FL_thigh_joint",
+          "row_offset": 5,
+          "elapsed_s": 0.0480231379997349,
+          "observed_rad": 0.0003814697265625,
+          "limit_rad": 0.003,
+          "initial_q_rad": 0.9614213109016418,
+          "peak_q_rad": 0.9618027806282043,
+          "final_q_rad": 0.9614213109016418,
+          "definition": "max(abs(q(t)-q(first_formal_sample))); not q-q_cmd",
+          "sequence": 706
+        },
+        "max_joint_speed_rad_s": 0.03418731689453125,
+        "max_joint_speed_joint": "RR_hip_joint",
+        "max_gyro_norm_rad_s": 0.009251270254317892,
+        "acceleration_peak_window_start_s": 0.2599839280001106,
+        "max_acceleration_window_mean_m_s2": 0.0533413282545972,
+        "warnings": [
+          "[MOTION_QUALITY] 正式段速度质量超限：joint=RR_hip_joint, |dq|max=0.034187317 rad/s (limit<=0.015), gyro_norm_max=0.009251270 rad/s (limit<0.015)；保留原始数据，继续离线计算。"
+        ],
+        "controller_motion_quality_bad_cycles": 116
+      },
+      "q_mean_rad": [
+        -0.09834301471710205,
+        0.9557993412017822,
+        -1.7042429447174072,
+        0.08213144540786743,
+        0.9615433812141418,
+        -1.6943737268447876,
+        -0.09466719627380371,
+        0.7377032041549683,
+        -1.2330008745193481,
+        0.1056106686592102,
+        0.7370619773864746,
+        -1.2385096549987793
+      ],
+      "q_std_rad": [
+        0.0,
+        0.0,
+        0.0,
+        7.475249459177179e-05,
+        0.00017794652999405825,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.00018310546875
+      ],
+      "q_cmd_mean_rad": [
+        -1.8393383867785384e-08,
+        0.8956912407656111,
+        -1.648500201732731,
+        1.6987329323516708e-08,
+        0.8956912404979785,
+        -1.6485002041332921,
+        -2.710766693011666e-08,
+        0.747179750768709,
+        -1.1556440569995308,
+        2.850195304340678e-08,
+        0.747179750833072,
+        -1.155644058733962
+      ],
+      "quat_mean_wxyz": [
+        0.997562199937707,
+        -0.005363919340150046,
+        0.06832299151163233,
+        0.013147412508021844
+      ],
+      "estimated_mass_kg": 49.27206376109837,
+      "estimated_mass_std_kg": 0.04737664785581479,
+      "net_force_relative_residual": 0.05472665597818094,
+      "mean_specific_acceleration_residual_m_s2": 0.013771178766178145,
+      "foot_height_spread_mean_m": 0.017416200977846397
+    },
+    {
+      "pose": 2,
+      "name": "roll_positive",
+      "samples": 23,
+      "raw_samples": 201,
+      "selected_samples": 36,
+      "rejected_counts": {
+        "motion": 13,
+        "jacobian": 0,
+        "mass_range": 0,
+        "insufficient_vertical_support": 0,
+        "friction_ratio": 0
+      },
+      "duration_s": 1.999953383,
+      "first_sequence": 1301,
+      "last_sequence": 1501,
+      "static_checks": {
+        "max_joint_drift_rad": 0.0003814697265625,
+        "max_orientation_drift_deg": 0.007981085362654619,
+        "joint_drift_detail": {
+          "joint": "RL_hip_joint",
+          "row_offset": 1,
+          "elapsed_s": 0.007977477999702387,
+          "observed_rad": 0.0003814697265625,
+          "limit_rad": 0.003,
+          "initial_q_rad": 0.0445745587348938,
+          "peak_q_rad": 0.0449560284614563,
+          "final_q_rad": 0.0445745587348938,
+          "definition": "max(abs(q(t)-q(first_formal_sample))); not q-q_cmd",
+          "sequence": 1302
+        },
+        "max_joint_speed_rad_s": 0.02442169189453125,
+        "max_joint_speed_joint": "FL_thigh_joint",
+        "max_gyro_norm_rad_s": 0.005796208006096879,
+        "acceleration_peak_window_start_s": 1.5000418500003434,
+        "max_acceleration_window_mean_m_s2": 0.0547697293328461,
+        "warnings": [
+          "[MOTION_QUALITY] 正式段速度质量超限：joint=FL_thigh_joint, |dq|max=0.024421692 rad/s (limit<=0.015), gyro_norm_max=0.005796208 rad/s (limit<0.015)；保留原始数据，继续离线计算。"
+        ],
+        "controller_motion_quality_bad_cycles": 121
+      },
+      "q_mean_rad": [
+        -0.15586296890092932,
+        0.9786875247955322,
+        -1.6371033191680908,
+        0.014279010503188423,
+        0.9515030980110168,
+        -1.5673589861911277,
+        -0.1553208827972412,
+        0.9032639265060425,
+        -1.3924902988516765,
+        0.0446409012960351,
+        0.8530306816101074,
+        -1.322953701019287
+      ],
+      "q_std_rad": [
+        0.00015734519926162622,
+        0.0,
+        0.0,
+        0.00014459025983530705,
+        0.0,
+        7.779354858105589e-05,
+        0.0,
+        0.0,
+        0.0001074872340062657,
+        0.00014459025983530705,
+        0.0,
+        0.0
+      ],
+      "q_cmd_mean_rad": [
+        -0.07038717656343112,
+        0.9183959288012874,
+        -1.5624558902859722,
+        -0.06925703312956101,
+        0.8809811910536801,
+        -1.4962546407663264,
+        -0.07034448253884905,
+        0.9217127865274387,
+        -1.3362101489856355,
+        -0.06929714399067509,
+        0.877479448061901,
+        -1.2621160075190831
+      ],
+      "quat_mean_wxyz": [
+        0.9989966113010421,
+        0.026764689574158815,
+        0.03431078162903054,
+        0.010592085018468799
+      ],
+      "estimated_mass_kg": 45.85817419511856,
+      "estimated_mass_std_kg": 0.044564324617028264,
+      "net_force_relative_residual": 0.07523667443686119,
+      "mean_specific_acceleration_residual_m_s2": 0.02427471920052534,
+      "foot_height_spread_mean_m": 0.01379970400109717
+    },
+    {
+      "pose": 3,
+      "name": "pitch_negative",
+      "samples": 29,
+      "raw_samples": 200,
+      "selected_samples": 36,
+      "rejected_counts": {
+        "motion": 7,
+        "jacobian": 0,
+        "mass_range": 0,
+        "insufficient_vertical_support": 0,
+        "friction_ratio": 0
+      },
+      "duration_s": 1.9880632280000001,
+      "first_sequence": 1902,
+      "last_sequence": 2101,
+      "static_checks": {
+        "max_joint_drift_rad": 0.0019073486328125,
+        "max_orientation_drift_deg": 0.04307128326597279,
+        "joint_drift_detail": {
+          "joint": "RL_thigh_joint",
+          "row_offset": 33,
+          "elapsed_s": 0.32799803800025984,
+          "observed_rad": 0.0019073486328125,
+          "limit_rad": 0.003,
+          "initial_q_rad": 1.0273652076721191,
+          "peak_q_rad": 1.0292725563049316,
+          "final_q_rad": 1.0292725563049316,
+          "definition": "max(abs(q(t)-q(first_formal_sample))); not q-q_cmd",
+          "sequence": 1935
+        },
+        "max_joint_speed_rad_s": 0.07326126098632812,
+        "max_joint_speed_joint": "RL_thigh_joint",
+        "max_gyro_norm_rad_s": 0.01194158624851882,
+        "acceleration_peak_window_start_s": 0.25600056999974186,
+        "max_acceleration_window_mean_m_s2": 0.04984035032844446,
+        "warnings": [
+          "[MOTION_QUALITY] 正式段速度质量超限：joint=RL_thigh_joint, |dq|max=0.073261261 rad/s (limit<=0.015), gyro_norm_max=0.011941586 rad/s (limit<0.015)；保留原始数据，继续离线计算。"
+        ],
+        "controller_motion_quality_bad_cycles": 128
+      },
+      "q_mean_rad": [
+        -0.09529125690460205,
+        0.952813354031793,
+        -1.471543550491333,
+        0.06226660670905278,
+        0.9621842503547668,
+        -1.468539834022522,
+        -0.09962630271911621,
+        1.0379246473312378,
+        -1.4828664064407349,
+        0.1006515622138977,
+        1.0290226278633907,
+        -1.4878567169452537
+      ],
+      "q_std_rad": [
+        0.0,
+        0.0001440962580990406,
+        0.0,
+        6.960510546097828e-05,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0005778840857272656,
+        0.00019774991237210123
+      ],
+      "q_cmd_mean_rad": [
+        -1.1884782114267441e-07,
+        0.897780457753039,
+        -1.404765039211244,
+        -8.684321131287608e-08,
+        0.8977803976804734,
+        -1.4047649388596277,
+        -1.3359393944339963e-07,
+        1.0501740391059036,
+        -1.4290929046452383,
+        -6.921940556128713e-08,
+        1.0501739752472377,
+        -1.4290928083804741
+      ],
+      "quat_mean_wxyz": [
+        0.9998936024927674,
+        -0.004365646345636308,
+        -0.004675738646573164,
+        0.013109626010285733
+      ],
+      "estimated_mass_kg": 43.74800311053825,
+      "estimated_mass_std_kg": 0.0740326239524947,
+      "net_force_relative_residual": 0.07362349709451226,
+      "mean_specific_acceleration_residual_m_s2": 0.02968879793076261,
+      "foot_height_spread_mean_m": 0.013716875939745254
+    },
+    {
+      "pose": 4,
+      "name": "roll_negative",
+      "samples": 22,
+      "raw_samples": 200,
+      "selected_samples": 35,
+      "rejected_counts": {
+        "motion": 13,
+        "jacobian": 0,
+        "mass_range": 0,
+        "insufficient_vertical_support": 0,
+        "friction_ratio": 0
+      },
+      "duration_s": 1.988058185,
+      "first_sequence": 2503,
+      "last_sequence": 2702,
+      "static_checks": {
+        "max_joint_drift_rad": 0.0003814697265625,
+        "max_orientation_drift_deg": 0.025247774281528457,
+        "joint_drift_detail": {
+          "joint": "FL_calf_joint",
+          "row_offset": 1,
+          "elapsed_s": 0.008029827000427758,
+          "observed_rad": 0.0003814697265625,
+          "limit_rad": 0.003,
+          "initial_q_rad": -1.6150261163711548,
+          "peak_q_rad": -1.6146446466445923,
+          "final_q_rad": -1.6150261163711548,
+          "definition": "max(abs(q(t)-q(first_formal_sample))); not q-q_cmd",
+          "sequence": 2504
+        },
+        "max_joint_speed_rad_s": 0.03418731689453125,
+        "max_joint_speed_joint": "FR_thigh_joint",
+        "max_gyro_norm_rad_s": 0.006290197311362211,
+        "acceleration_peak_window_start_s": 0.7600153550001778,
+        "max_acceleration_window_mean_m_s2": 0.051921714568484656,
+        "warnings": [
+          "[MOTION_QUALITY] 正式段速度质量超限：joint=FR_thigh_joint, |dq|max=0.034187317 rad/s (limit<=0.015), gyro_norm_max=0.006290197 rad/s (limit<0.015)；保留原始数据，继续离线计算。"
+        ],
+        "controller_motion_quality_bad_cycles": 128
+      },
+      "q_mean_rad": [
+        -0.02853214740753174,
+        0.9308824322440408,
+        -1.5554148717360063,
+        0.14009958505630493,
+        0.9793503880500793,
+        -1.6150261163711548,
+        -0.024857282638549805,
+        0.8749831481413408,
+        -1.339051365852356,
+        0.1632135510444641,
+        0.9117953127080743,
+        -1.419466495513916
+      ],
+      "q_std_rad": [
+        0.0,
+        0.00017767734121772766,
+        0.00013091060352794903,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.00013091060352794903,
+        0.0,
+        0.0,
+        7.945972260485285e-05,
+        0.0
+      ],
+      "q_cmd_mean_rad": [
+        0.06925606912776507,
+        0.8809814469854799,
+        -1.4962526581246065,
+        0.07038617971447424,
+        0.9183957311312839,
+        -1.5624530582916067,
+        0.06929618038838742,
+        0.8774827953980914,
+        -1.2621193458929705,
+        0.0703434911477741,
+        0.9217154861938358,
+        -1.3362122886421366
+      ],
+      "quat_mean_wxyz": [
+        0.9986515377040259,
+        -0.04006860227928248,
+        0.030156573851875118,
+        0.013423651004314972
+      ],
+      "estimated_mass_kg": 48.429832261045796,
+      "estimated_mass_std_kg": 0.04010540493265441,
+      "net_force_relative_residual": 0.07043202661152151,
+      "mean_specific_acceleration_residual_m_s2": 0.022044807710038583,
+      "foot_height_spread_mean_m": 0.0167708654655909
+    },
+    {
+      "pose": 5,
+      "name": "reference_repeat",
+      "samples": 27,
+      "raw_samples": 200,
+      "selected_samples": 37,
+      "rejected_counts": {
+        "motion": 10,
+        "jacobian": 0,
+        "mass_range": 0,
+        "insufficient_vertical_support": 0,
+        "friction_ratio": 0
+      },
+      "duration_s": 1.9919233660000002,
+      "first_sequence": 3103,
+      "last_sequence": 3302,
+      "static_checks": {
+        "max_joint_drift_rad": 0.0003814697265625,
+        "max_orientation_drift_deg": 0.01273867647218139,
+        "joint_drift_detail": {
+          "joint": "FL_hip_joint",
+          "row_offset": 1,
+          "elapsed_s": 0.007966118000695133,
+          "observed_rad": 0.0003814697265625,
+          "limit_rad": 0.003,
+          "initial_q_rad": 0.08402353525161743,
+          "peak_q_rad": 0.08364206552505493,
+          "final_q_rad": 0.08402353525161743,
+          "definition": "max(abs(q(t)-q(first_formal_sample))); not q-q_cmd",
+          "sequence": 3104
+        },
+        "max_joint_speed_rad_s": 0.02442169189453125,
+        "max_joint_speed_joint": "RR_hip_joint",
+        "max_gyro_norm_rad_s": 0.007506669352991824,
+        "acceleration_peak_window_start_s": 1.760016743000051,
+        "max_acceleration_window_mean_m_s2": 0.032510093967269386,
+        "warnings": [
+          "[MOTION_QUALITY] 正式段速度质量超限：joint=RR_hip_joint, |dq|max=0.024421692 rad/s (limit<=0.015), gyro_norm_max=0.007506669 rad/s (limit<0.015)；保留原始数据，继续离线计算。"
+        ],
+        "controller_motion_quality_bad_cycles": 146
+      },
+      "q_mean_rad": [
+        -0.08612090128439444,
+        0.9508402347564697,
+        -1.5879775418175592,
+        0.08400940674322623,
+        0.9713395237922668,
+        -1.6020561456680298,
+        -0.07827812654000742,
+        0.8857163190841675,
+        -1.357361912727356,
+        0.1075180172920227,
+        0.8918699511775264,
+        -1.384751796722412
+      ],
+      "q_std_rad": [
+        7.204153998470705e-05,
+        0.0,
+        0.00015859211335813485,
+        7.204153998470706e-05,
+        0.0,
+        0.0,
+        7.204153998470709e-05,
+        0.0,
+        0.0,
+        0.0,
+        0.00014818104612140677,
+        0.0
+      ],
+      "q_cmd_mean_rad": [
+        1.176345775316467e-06,
+        0.8999997026768556,
+        -1.529999507488573,
+        1.209868960659683e-06,
+        0.9000003427494266,
+        -1.530000642661137,
+        1.1647578880083608e-06,
+        0.8999996352442674,
+        -1.299999458282108,
+        1.2242817075296907e-06,
+        0.9000003918647542,
+        -1.3000007272429357
+      ],
+      "quat_mean_wxyz": [
+        0.9993026890555833,
+        -0.012779810799573596,
+        0.03278473743323704,
+        0.012488918033244235
+      ],
+      "estimated_mass_kg": 48.21183820461881,
+      "estimated_mass_std_kg": 0.05443802646211419,
+      "net_force_relative_residual": 0.06629280964034379,
+      "mean_specific_acceleration_residual_m_s2": 0.018613357187971868,
+      "foot_height_spread_mean_m": 0.015776130455611007
+    }
+  ],
+  "current_pose": {
+    "index": 5,
+    "name": "reference_repeat",
+    "raw_samples": 200,
+    "selected_samples": 37,
+    "rejected_counts": {
+      "motion": 10,
+      "jacobian": 0,
+      "mass_range": 0,
+      "insufficient_vertical_support": 0,
+      "friction_ratio": 0
+    },
+    "valid_samples": 27
+  },
+  "body_fit": {
+    "A": [
+      [
+        0.0,
+        9.791904460323172,
+        0.11645740463063287
+      ],
+      [
+        -9.791904460323172,
+        0.0,
+        -0.5840728905801136
+      ],
+      [
+        -0.11645740463063287,
+        0.5840728905801136,
+        0.0
+      ],
+      [
+        0.0,
+        9.717848320903846,
+        0.0873591578916313
+      ],
+      [
+        -9.717848320903846,
+        0.0,
+        -1.3386129837351488
+      ],
+      [
+        -0.0873591578916313,
+        1.3386129837351488,
+        0.0
+      ],
+      [
+        0.0,
+        9.772847984287132,
+        -0.5317266570064598
+      ],
+      [
+        -9.772847984287132,
+        0.0,
+        -0.6669399284788234
+      ],
+      [
+        0.5317266570064598,
+        0.6669399284788234,
+        0.0
+      ],
+      [
+        0.0,
+        9.809196904542762,
+        0.0868474962737896
+      ],
+      [
+        -9.809196904542762,
+        0.0,
+        0.09060533384708591
+      ],
+      [
+        -0.0868474962737896,
+        -0.09060533384708591,
+        0.0
+      ],
+      [
+        0.0,
+        9.76065736988565,
+        0.7771434881551191
+      ],
+      [
+        -9.76065736988565,
+        0.0,
+        -0.60142709715444
+      ],
+      [
+        -0.7771434881551191,
+        0.60142709715444,
+        0.0
+      ],
+      [
+        0.0,
+        9.785707240400573,
+        0.24253171282667305
+      ],
+      [
+        -9.785707240400573,
+        0.0,
+        -0.64591947408715
+      ],
+      [
+        -0.24253171282667305,
+        0.64591947408715,
+        0.0
+      ]
+    ],
+    "b_Nm": [
+      [
+        -1.445349318625569,
+        8.384901692160511,
+        -2.3468632796235087
+      ],
+      [
+        -1.567172529409878,
+        36.55450611679072,
+        -1.1991181904564154
+      ],
+      [
+        7.738434109159663,
+        -25.146998315081845,
+        -4.0706798435043465
+      ],
+      [
+        -8.368914825633361,
+        -25.337564421148038,
+        -3.6629273096455544
+      ],
+      [
+        -8.032655300998575,
+        24.1370883757046,
+        -0.7512821780023892
+      ],
+      [
+        13.843759830711871,
+        2.9819021122449367,
+        -1.7483442220758065
+      ]
+    ],
+    "trunk_first_moment_kg_m": [
+      1.3281829616425602,
+      0.3760765167386566,
+      -26.55554120952262
+    ],
+    "singular_values": [
+      24.011508989228012,
+      24.007860889637946,
+      1.379571482676803
+    ],
+    "weighting": "equal weight per pose, averaged valid frames; diagnostic raw frames do not change fit",
+    "poses": [
+      {
+        "name": "reference",
+        "estimated_ground_force_B_N": [
+          7.727359015812571,
+          -5.32055575990244,
+          542.867318733782
+        ],
+        "force_balance_residual_B_N": [
+          32.14160584206132,
+          -0.45263624634198685,
+          133.56571229227342
+        ],
+        "estimated_ground_moment_B_Nm": [
+          -1.5561792550024636,
+          15.392841925546069,
+          -2.270127041008188
+        ],
+        "known_nontrunk_gravity_moment_B_Nm": [
+          -0.1108299363768945,
+          7.0079402333855585,
+          0.0767362386153209
+        ],
+        "required_body_moment_B_Nm": [
+          -1.445349318625569,
+          8.384901692160511,
+          -2.3468632796235087
+        ],
+        "predicted_body_moment_B_Nm": [
+          0.5899159138532322,
+          2.5049310489321766,
+          0.06497935762332768
+        ],
+        "fit_residual_B_Nm": [
+          2.0352652324788014,
+          -5.879970643228335,
+          2.4118426372468362
+        ],
+        "moment_parallel_gravity_Nm": 2.3560199624880425
+      },
+      {
+        "name": "pitch_positive",
+        "estimated_ground_force_B_N": [
+          -39.754864153706265,
+          -3.8848457702001156,
+          482.43144186135646
+        ],
+        "force_balance_residual_B_N": [
+          16.199158566422952,
+          -0.23323297032992718,
+          76.22538204757575
+        ],
+        "estimated_ground_moment_B_Nm": [
+          -1.6513466178124543,
+          43.64047196026363,
+          -1.1470132900676937
+        ],
+        "known_nontrunk_gravity_moment_B_Nm": [
+          -0.0841740884025764,
+          7.085965843472916,
+          0.05210490038872167
+        ],
+        "required_body_moment_B_Nm": [
+          -1.567172529409878,
+          36.55450611679072,
+          -1.1991181904564154
+        ],
+        "predicted_body_moment_B_Nm": [
+          1.3347848292997129,
+          22.640511689529525,
+          0.38739196312914786
+        ],
+        "fit_residual_B_Nm": [
+          2.901957358709591,
+          -13.913994427261194,
+          1.5865101535855632
+        ],
+        "moment_parallel_gravity_Nm": 1.2995293109174029
+      },
+      {
+        "name": "roll_positive",
+        "estimated_ground_force_B_N": [
+          -0.2283868231165478,
+          39.30057095197071,
+          449.42501408907657
+        ],
+        "force_balance_residual_B_N": [
+          27.64970218729827,
+          17.074396689100695,
+          40.91996834587445
+        ],
+        "estimated_ground_moment_B_Nm": [
+          7.684510792089788,
+          -18.072939134622487,
+          -4.459249228183581
+        ],
+        "known_nontrunk_gravity_moment_B_Nm": [
+          -0.053923317069875014,
+          7.074059180459359,
+          -0.3885693846792343
+        ],
+        "required_body_moment_B_Nm": [
+          7.738434109159663,
+          -25.146998315081845,
+          -4.0706798435043465
+        ],
+        "predicted_body_moment_B_Nm": [
+          17.79562778088385,
+          4.730820575542458,
+          0.9570507312633822
+        ],
+        "fit_residual_B_Nm": [
+          10.057193671724189,
+          29.877818890624305,
+          5.0277305747677286
+        ],
+        "moment_parallel_gravity_Nm": 5.94439709164245
+      },
+      {
+        "name": "pitch_negative",
+        "estimated_ground_force_B_N": [
+          32.91797185728667,
+          -16.44347904778636,
+          428.75343142716616
+        ],
+        "force_balance_residual_B_N": [
+          29.130668902478483,
+          -12.813253703541957,
+          18.729000817278745
+        ],
+        "estimated_ground_moment_B_Nm": [
+          -8.506084974712518,
+          -18.330157567065456,
+          -3.5996189722011875
+        ],
+        "known_nontrunk_gravity_moment_B_Nm": [
+          -0.137170149079158,
+          7.007406854082581,
+          0.06330833744436701
+        ],
+        "required_body_moment_B_Nm": [
+          -8.368914825633361,
+          -25.337564421148038,
+          -3.6629273096455544
+        ],
+        "predicted_body_moment_B_Nm": [
+          1.3827263376215728,
+          -15.434481872789487,
+          -0.14942390316331827
+        ],
+        "fit_residual_B_Nm": [
+          9.751641163254934,
+          9.903082548358551,
+          3.513503406482236
+        ],
+        "moment_parallel_gravity_Nm": 3.5156106445778033
+      },
+      {
+        "name": "roll_negative",
+        "estimated_ground_force_B_N": [
+          3.539817873717883,
+          -44.742616600963444,
+          474.15410994171157
+        ],
+        "force_balance_residual_B_N": [
+          28.679470534773472,
+          -12.258018796079469,
+          66.15863188049144
+        ],
+        "estimated_ground_moment_B_Nm": [
+          -8.19025498950772,
+          31.16704318985542,
+          -0.2012680973321959
+        ],
+        "known_nontrunk_gravity_moment_B_Nm": [
+          -0.15759968850914427,
+          7.0299548141508215,
+          0.5500140806701933
+        ],
+        "required_body_moment_B_Nm": [
+          -8.032655300998575,
+          24.1370883757046,
+          -0.7512821780023892
+        ],
+        "predicted_body_moment_B_Nm": [
+          -16.966711900669328,
+          3.0072832498952913,
+          -0.8060061319490127
+        ],
+        "fit_residual_B_Nm": [
+          -8.934056599670752,
+          -21.12980512580931,
+          -0.05472395394662355
+        ],
+        "moment_parallel_gravity_Nm": 2.1671694639849526
+      },
+      {
+        "name": "reference_repeat",
+        "estimated_ground_force_B_N": [
+          -0.025074999277236998,
+          -15.004922313394228,
+          473.7586998197705
+        ],
+        "force_balance_residual_B_N": [
+          26.974359017565632,
+          -4.867096717239296,
+          64.71613717102662
+        ],
+        "estimated_ground_moment_B_Nm": [
+          13.690212317212808,
+          10.071427691206587,
+          -1.5827705525289066
+        ],
+        "known_nontrunk_gravity_moment_B_Nm": [
+          -0.15354751349906326,
+          7.08952557896165,
+          0.16557366954689992
+        ],
+        "required_body_moment_B_Nm": [
+          13.843759830711871,
+          2.9819021122449367,
+          -1.7483442220758065
+        ],
+        "predicted_body_moment_B_Nm": [
+          -2.760386201790723,
+          4.155531587832211,
+          -0.07921134272601321
+        ],
+        "fit_residual_B_Nm": [
+          -16.604146032502594,
+          1.1736294755872745,
+          1.6691328793497933
+        ],
+        "moment_parallel_gravity_Nm": 2.7292502174440103
+      }
+    ]
+  },
+  "observability": {
+    "recorded": [
+      "joint q/dq/CAN tau",
+      "q_cmd/kp/kd",
+      "IMU quaternion/gyro/acceleration",
+      "sequence/phase/period"
+    ],
+    "derived_not_measured": [
+      "contact forces",
+      "contact moments",
+      "force balance",
+      "COM candidate",
+      "PD proxy without feedforward"
+    ],
+    "not_recorded_or_independently_observed": [
+      "independent foot loads/contact state",
+      "external support or cable forces",
+      "ground-truth body translation",
+      "motor/IMU hardware timestamps and sample age",
+      "motor feedback temperature/error flags"
+    ],
+    "no_guarantee": "Existing interfaces cannot establish absolute rest or identify every physical cause."
+  },
+  "computation_complete": true,
+  "processing_status": "computed",
+  "internal_quality_status": "failed",
+  "failed_quality_checks": [
+    "reference: [MOTION_QUALITY] 正式段速度质量超限：joint=RR_thigh_joint, |dq|max=0.034187317 rad/s (limit<=0.015), gyro_norm_max=0.005892936 rad/s (limit<0.015)；保留原始数据，继续离线计算。",
+    "pitch_positive: [MOTION_QUALITY] 正式段速度质量超限：joint=RR_hip_joint, |dq|max=0.034187317 rad/s (limit<=0.015), gyro_norm_max=0.009251270 rad/s (limit<0.015)；保留原始数据，继续离线计算。",
+    "pitch_positive: [LOW_VALID_RATIO] 可用帧=25/36，低于80%质量参考；rejected_counts={'motion': 11, 'jacobian': 0, 'mass_range': 0, 'insufficient_vertical_support': 0, 'friction_ratio': 0}。仍使用可用帧计算候选，不宣称静态质量合格。",
+    "roll_positive: [MOTION_QUALITY] 正式段速度质量超限：joint=FL_thigh_joint, |dq|max=0.024421692 rad/s (limit<=0.015), gyro_norm_max=0.005796208 rad/s (limit<0.015)；保留原始数据，继续离线计算。",
+    "roll_positive: [LOW_VALID_RATIO] 可用帧=23/36，低于80%质量参考；rejected_counts={'motion': 13, 'jacobian': 0, 'mass_range': 0, 'insufficient_vertical_support': 0, 'friction_ratio': 0}。仍使用可用帧计算候选，不宣称静态质量合格。",
+    "pitch_negative: [MOTION_QUALITY] 正式段速度质量超限：joint=RL_thigh_joint, |dq|max=0.073261261 rad/s (limit<=0.015), gyro_norm_max=0.011941586 rad/s (limit<0.015)；保留原始数据，继续离线计算。",
+    "roll_negative: [MOTION_QUALITY] 正式段速度质量超限：joint=FR_thigh_joint, |dq|max=0.034187317 rad/s (limit<=0.015), gyro_norm_max=0.006290197 rad/s (limit<0.015)；保留原始数据，继续离线计算。",
+    "roll_negative: [LOW_VALID_RATIO] 可用帧=22/35，低于80%质量参考；rejected_counts={'motion': 13, 'jacobian': 0, 'mass_range': 0, 'insufficient_vertical_support': 0, 'friction_ratio': 0}。仍使用可用帧计算候选，不宣称静态质量合格。",
+    "reference_repeat: [MOTION_QUALITY] 正式段速度质量超限：joint=RR_hip_joint, |dq|max=0.024421692 rad/s (limit<=0.015), gyro_norm_max=0.007506669 rad/s (limit<0.015)；保留原始数据，继续离线计算。",
+    "reference_repeat: [LOW_VALID_RATIO] 可用帧=27/37，低于80%质量参考；rejected_counts={'motion': 10, 'jacobian': 0, 'mass_range': 0, 'insufficient_vertical_support': 0, 'friction_ratio': 0}。仍使用可用帧计算候选，不宣称静态质量合格。",
+    "[MASS_CONSISTENCY] 跨姿态质量标准差/整机质量=0.084617 > 0.05；CAN换算按用户确认准确，分析模型、接触及静力假设。",
+    "[MOMENT_FIT] 跨姿态重力矩拟合RMS=11.254235 N·m > 2 N·m。",
+    "[REPEATABILITY] 回中最大差异=0.048647576 m > 0.015 m；存在方向相关摩擦、漂移或反馈偏差。",
+    "[LEAVE_ONE_OUT] 留一姿态重算最大XY变化=0.032472888 m（限值0.015 m），最大Z变化=0.385652531 m（限值0.04 m）；至少一项超限。",
+    "[COM_MAGNITUDE] 躯干质心最大绝对坐标=1.116699 m > 0.5 m。"
+  ],
+  "model_comparison": {
+    "reference": "URDF snapshot parameters, not independent physical ground truth",
+    "whole_mass_delta_kg": 0.5180704100402309,
+    "whole_mass_delta_percent": 1.2549568665662258,
+    "trunk_com_delta_link_m": [
+      0.06411578149705767,
+      0.01567605707849629,
+      -1.1128620231110844
+    ]
+  }
+}

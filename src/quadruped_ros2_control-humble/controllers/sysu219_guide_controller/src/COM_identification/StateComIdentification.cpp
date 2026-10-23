@@ -10,16 +10,19 @@
 
 namespace sysu219_guide_controller {
 namespace {
-constexpr int pose_count = 13;
+constexpr int pose_count = 6;
 constexpr double pi = 3.14159265358979323846;
-const char* pose_names[] = {"reference", "lower", "center_after_lower", "higher", "center_after_higher",
-    "pitch_positive", "center_after_pitch_positive", "pitch_negative", "center_after_pitch_negative",
-    "roll_positive", "center_after_roll_positive", "roll_negative", "reference_repeat"};
-Eigen::Vector3d poseGoal(int pose, double height, double angle) {
+// Gross tracking failure only; a constant load-bearing PD offset is not motion.
+constexpr double max_tracking_error_rad = 0.30;
+constexpr double max_target_offset_rad = 0.20;
+constexpr double max_target_speed_rad_s = 0.12;
+// Alternate axes to avoid a direct +pitch -> -pitch joint excursion.
+const char* pose_names[] = {"reference", "pitch_positive", "roll_positive",
+    "pitch_negative", "roll_negative", "reference_repeat"};
+Eigen::Vector3d poseGoal(int pose, double angle) {
     switch (pose) {
-        case 1: return {0, 0, -height}; case 3: return {0, 0, height};
-        case 5: return {0, angle, 0}; case 7: return {0, -angle, 0};
-        case 9: return {angle, 0, 0}; case 11: return {-angle, 0, 0};
+        case 1: return {0, angle, 0}; case 3: return {0, -angle, 0};
+        case 2: return {angle, 0, 0}; case 4: return {-angle, 0, 0};
         default: return Eigen::Vector3d::Zero();
     }
 }
@@ -68,12 +71,10 @@ StateComIdentification::StateComIdentification(CtrlInterfaces& interfaces, CtrlC
     transition_ = parameter("transition_s", transition_);
     settling_ = parameter("settling_s", settling_);
     sample_seconds_ = parameter("sample_s", sample_seconds_);
-    height_ = parameter("height_m", height_);
-    angle_ = parameter("tilt_deg", 2.0) * pi / 180;
-    if (transition_ < 8 || transition_ > 30 || settling_ < 1 || settling_ > 30 ||
-        sample_seconds_ < 10 || sample_seconds_ > 30 || height_ <= 0 || height_ > 0.008 ||
-        angle_ <= 0 || angle_ > 3 * pi / 180)
-        throw std::invalid_argument("COM motion exceeds conservative parameter bounds");
+    angle_ = parameter("tilt_deg", 4.0) * pi / 180;
+    if (transition_ < 3 || transition_ > 30 || settling_ < 1 || settling_ > 30 ||
+        sample_seconds_ < 2 || sample_seconds_ > 30 || angle_ <= 0 || angle_ > 4 * pi / 180)
+        throw std::invalid_argument("COM motion exceeds parameter bounds");
     if (!node->has_parameter("com_identification.output_directory")) {
         // Source workspace path, also valid when the Windows workspace is shared with Linux.
         auto project = std::filesystem::path(__FILE__);
@@ -95,7 +96,7 @@ StateComIdentification::StateComIdentification(CtrlInterfaces& interfaces, CtrlC
         if (const auto* text = notice_.exchange(nullptr)) {
             std_msgs::msg::String msg;
             msg.data = std::string(text) + " [pose " + std::to_string(pose_status_.load()) +
-                       "/12: " + pose_names[pose_status_.load()] + ']';
+                       "/" + std::to_string(pose_count - 1) + ": " + pose_names[pose_status_.load()] + ']';
             feedback_pub_->publish(msg);
         }
         if (recorder_.done()) {
@@ -121,12 +122,17 @@ StateComIdentification::StateComIdentification(CtrlInterfaces& interfaces, CtrlC
                     for (size_t i = 0; i < 4; ++i) meta << (i ? "," : "") << '"' << feet_[i] << '"';
                     meta << "],\"stand_q\":[";
                     for (size_t j = 0; j < 12; ++j) meta << (j ? "," : "") << stand_[j];
-                    meta << "],\"height_m\":" << height_ << ",\"tilt_rad\":" << angle_
+                    meta << "],\"schedule\":\"compact_tilt_v2\","
+                         << "\"acquisition_policy\":\"fixed_timing_quality_does_not_abort\","
+                         << "\"height_m\":0,\"tilt_rad\":" << angle_
                          << ",\"transition_s\":" << transition_ << ",\"settling_s\":" << settling_
                          << ",\"sample_s\":" << sample_seconds_ << ",\"pose_names\":[";
                     for (int i = 0; i < pose_count; ++i) meta << (i ? "," : "") << '"' << pose_names[i] << '"';
                     meta << "],\"force_source\":\"motor feedback estimate, not measured GRF\","
-                         << "\"static_gate\":{\"joint_position_error_rad\":0.1,"
+                         << "\"gross_tracking_error_limit_rad\":" << max_tracking_error_rad << ','
+                         << "\"max_target_offset_rad\":" << max_target_offset_rad << ','
+                         << "\"max_target_speed_rad_s\":" << max_target_speed_rad_s << ','
+                         << "\"static_gate\":{"
                          << "\"joint_speed_rad_s\":0.015,\"gyro_norm_rad_s\":0.015}}\n";
                     recorder_.start(root_, description_, meta.str());
                 }
@@ -167,7 +173,8 @@ bool StateComIdentification::healthy(bool entry) const {
         if (!std::isfinite(q) || !std::isfinite(dq) || !std::isfinite(tau) || !std::isfinite(cmd) ||
             !std::isfinite(kp) || !std::isfinite(kd) || kp <= 0 || kd <= 0 || std::abs(tau) > 80 ||
             q < robot.joint_lower_(j) + 0.03 || q > robot.joint_upper_(j) - 0.03 ||
-            std::abs(dq) > (entry ? 0.03 : 0.4) || std::abs(q - cmd) > 0.12) return false;
+            std::abs(dq) > (entry ? 0.03 : 0.4) ||
+            std::abs(q - cmd) > max_tracking_error_rad) return false;
         if (entry && (std::abs(cmd - stand_[j]) > 0.015 ||
             std::abs(ctrl_interfaces_.joint_velocity_command_interface_[j].get().get_value()) > 1e-6 ||
             !std::isfinite(ctrl_interfaces_.joint_torque_command_interface_[j].get().get_value()) ||
@@ -197,7 +204,7 @@ void StateComIdentification::setReturnTarget(const std::array<double, 12>& q) {
     return_target_ready_ = true;
 }
 FSMStateName StateComIdentification::checkChange() {
-    if (phase_ == 6 && !stop_.load() && healthy() && settled() && recorder_.done() && !recorder_.failed())
+    if (phase_ == 6 && !stop_.load() && healthy() && recorder_.done() && !recorder_.failed())
         return FSMStateName::FIXEDSTAND;
     return FSMStateName::COMIDENTIFICATION;
 }
@@ -241,17 +248,19 @@ void StateComIdentification::holdOutputs() {
 }
 void StateComIdentification::stop(const char* reason) {
     phase_ = 5; status_.store(6); request_.store(0); returning_ = false;
-    if (writer_started_.load()) recorder_.finish(false);
+    if (writer_started_.load()) recorder_.finish(false, reason);
     notice(reason); // Preserve the LAST COMMAND, not measured q: avoids removing the load-bearing PD offset.
 }
 bool StateComIdentification::settled() const {
-    // Allow a fixed load-bearing PD offset; arrival never requires zero position error.
-    for (int j = 0; j < 12; ++j)
-        if (std::abs(ctrl_interfaces_.joint_velocity_state_interface_[j].get().get_value()) > 0.015 ||
-            std::abs(ctrl_interfaces_.joint_position_state_interface_[j].get().get_value() - target_(j)) > 0.10)
-            return false;
+    // Judge rest from motion feedback, never from distance to the PD target.
+    // healthy() separately rejects gross tracking failure; identification uses measured q.
+    for (int j = 0; j < 12; ++j) {
+        const double dq = ctrl_interfaces_.joint_velocity_state_interface_[j].get().get_value();
+        if (!std::isfinite(dq) || std::abs(dq) > 0.015) return false;
+    }
     const auto& imu = ctrl_interfaces_.imu_state_interface_;
-    return Vec3(imu[4].get().get_value(), imu[5].get().get_value(), imu[6].get().get_value()).norm() < 0.015;
+    const Vec3 gyro(imu[4].get().get_value(), imu[5].get().get_value(), imu[6].get().get_value());
+    return gyro.allFinite() && gyro.norm() < 0.015;
 }
 bool StateComIdentification::solveTarget(const Eigen::Vector3d& offset, Vec12& q) {
     const Eigen::Matrix3d rotation = (Eigen::AngleAxisd(offset.y(), Vec3::UnitY()) *
@@ -272,16 +281,17 @@ bool StateComIdentification::solveTarget(const Eigen::Vector3d& offset, Vec12& q
             const double scale = std::max(1.0, step.cwiseAbs().maxCoeff() / 0.005);
             q.segment<3>(3 * leg) += step / scale;
         }
-        if (!q.allFinite() || (q - baseline_).cwiseAbs().maxCoeff() > 0.12 ||
+        if (!q.allFinite() || (q - baseline_).cwiseAbs().maxCoeff() > max_target_offset_rad ||
             (q.array() < component_.robot_model_->joint_lower_.array() + 0.05).any() ||
             (q.array() > component_.robot_model_->joint_upper_.array() - 0.05).any()) return false;
     }
     return false;
 }
 void StateComIdentification::nextPose(double t) {
-    from_ = offset_; goal_ = poseGoal(pose_, height_, angle_); phase_start_ = t; stable_since_ = -1;
+    from_ = offset_; goal_ = poseGoal(pose_, angle_); phase_start_ = t; stable_since_ = -1;
     phase_ = (pose_ == 0 ? 2 : 1); status_.store(phase_ + 1); pose_status_.store(pose_);
-    notice("开始下一姿态：至少8秒过渡，停稳后采10秒；1随时中止保持");
+    pose_motion_quality_bad_cycles_ = 0;
+    notice("开始下一姿态：默认过渡3秒、定时保持1秒、记录2秒；运动质量只标记，不中止流程");
 }
 void StateComIdentification::record(const rclcpp::Time& time, double period, double t) {
     if (!used_ || returning_ || phase_ >= 4 || t < next_sample_) return;
@@ -290,6 +300,8 @@ void StateComIdentification::record(const rclcpp::Time& time, double period, dou
     com_identification::Sample s;
     s.steady_ns = static_cast<int64_t>(t * 1e9); s.ros_ns = time.nanoseconds();
     s.sequence = sequence_++; s.pose = pose_; s.phase = phase_; s.period = period;
+    s.motion_quality_ok = settled() ? 1 : 0;
+    s.motion_quality_bad_cycles = pose_motion_quality_bad_cycles_;
     for (int j = 0; j < 12; ++j) {
         s.q[j] = ctrl_interfaces_.joint_position_state_interface_[j].get().get_value();
         s.dq[j] = ctrl_interfaces_.joint_velocity_state_interface_[j].get().get_value();
@@ -336,7 +348,7 @@ void StateComIdentification::run(const rclcpp::Time& time, const rclcpp::Duratio
         Vec12 candidate;
         try {
             if (!solveTarget(candidate_offset, candidate) ||
-                (candidate - target_).cwiseAbs().maxCoeff() > 0.025 * dt + 1e-6) {
+                (candidate - target_).cwiseAbs().maxCoeff() > max_target_speed_rad_s * dt + 1e-6) {
                 stop("位置逆解、关节限位或目标速度检查失败：已中止并保持");
             } else { target_ = candidate; offset_ = candidate_offset; }
         } catch (...) { stop("质心辨识模型计算异常：已中止并保持"); }
@@ -345,26 +357,29 @@ void StateComIdentification::run(const rclcpp::Time& time, const rclcpp::Duratio
             phase_start_ = t; stable_since_ = -1;
         }
     } else if (phase_ == 2) {
-        if (settled()) { if (stable_since_ < 0) stable_since_ = t; }
-        else stable_since_ = -1;
-        if (stable_since_ >= 0 && t - stable_since_ >= settling_) {
-            phase_ = 3; status_.store(4); phase_start_ = t; notice("已停稳，开始当前姿态正式采集");
-        } else if (t - phase_start_ > 30) stop("30秒内未持续停稳：已中止并保持");
+        if (t - phase_start_ >= settling_) {
+            phase_ = 3; status_.store(4); phase_start_ = t;
+            notice("定时保持结束，开始记录当前姿态；不宣称绝对静止，运动质量留待离线检查");
+        }
     } else if (phase_ == 3) {
-        if (!settled()) stop("正式静态采集中出现运动：整套已中止并保持");
-        else if (t - phase_start_ >= sample_seconds_) {
+        if (!settled()) {
+            if (pose_motion_quality_bad_cycles_++ == 0)
+                notice("[MOTION_QUALITY] 检测到速度质量超限：继续记录和后续姿态，CSV保留质量标记及计数");
+        }
+        if (t - phase_start_ >= sample_seconds_) {
             if (++pose_ >= pose_count) {
                 pose_ = pose_count - 1; phase_ = 7; status_.store(7);
                 returning_ = false; return_start_ = target_; phase_start_ = t;
-                notice("采集完成：至少8秒缓慢返回原FixStand目标，保留承重增益");
+                notice("采集完成：按配置平滑返回原FixStand目标（默认3秒），保留承重增益");
             } else nextPose(t);
         }
     } else if (phase_ == 7) {
         const double u = std::clamp((t - phase_start_) / transition_, 0.0, 1.0);
         const double blend = u * u * u * (10 + u * (-15 + 6 * u));
         const Vec12 candidate = return_start_ + blend * (return_goal_ - return_start_);
-        if (!candidate.allFinite() || (candidate - target_).cwiseAbs().maxCoeff() > 0.025 * dt + 1e-6 ||
-            (candidate - baseline_).cwiseAbs().maxCoeff() > 0.12 ||
+        if (!candidate.allFinite() ||
+            (candidate - target_).cwiseAbs().maxCoeff() > max_target_speed_rad_s * dt + 1e-6 ||
+            (candidate - baseline_).cwiseAbs().maxCoeff() > max_target_offset_rad ||
             (candidate.array() < component_.robot_model_->joint_lower_.array() + 0.05).any() ||
             (candidate.array() > component_.robot_model_->joint_upper_.array() - 0.05).any()) {
             stop("返回FixStand目标检查失败：中止并保持，不切模式");
@@ -373,29 +388,25 @@ void StateComIdentification::run(const rclcpp::Time& time, const rclcpp::Duratio
             if (u >= 1) {
                 target_ = return_goal_; phase_ = 8; status_.store(8);
                 phase_start_ = t; stable_since_ = -1;
-                notice("已恢复原FixStand目标，确认静止后自动交还原FixStand模式");
+                notice("已恢复原FixStand目标，定时保持后交还原FixStand；不再由低速质量门槛卡住");
             }
         }
     } else if (phase_ == 8) {
-        if (settled()) { if (stable_since_ < 0) stable_since_ = t; }
-        else stable_since_ = -1;
-        if (stable_since_ >= 0 && t - stable_since_ >= settling_) {
+        if (t - phase_start_ >= settling_) {
             if (returning_) {
                 phase_ = 4; status_.store(1); returning_ = false;
-                notice("人工回中已完成并停稳：保留辨识模式保持，不恢复采集");
+                notice("人工回中与定时保持已完成：保留辨识模式保持，不恢复采集");
             } else {
                 phase_ = 6; status_.store(5); recorder_.finish(true);
-                notice("返回后已确认静止；关闭CSV并准备交还FixStand，全程未失能");
+                notice("六段记录、返回和定时保持完成；关闭CSV并交还FixStand，数据质量由离线报告给出");
             }
-        } else if (t - phase_start_ > 30) stop("返回FixStand后未能确认静止：保持，不自动切模式");
-    } else if (phase_ == 6 && !settled()) {
-        phase_ = 8; status_.store(8); stable_since_ = -1; phase_start_ = t;
+        }
     }
     holdOutputs(); record(time, period.seconds(), t);
 }
 void StateComIdentification::exit() {
     active_.store(false);
-    if (used_ && phase_ != 6) recorder_.finish(false);
+    if (used_ && phase_ != 6) recorder_.finish(false, "controller exited before collection complete");
     if (phase_ == 6) {
         ctrl_interfaces_.control_inputs_.command = 0;
         notice("已交还原FixStand模式，保持承重；请用原键盘手动趴下后再断电");
