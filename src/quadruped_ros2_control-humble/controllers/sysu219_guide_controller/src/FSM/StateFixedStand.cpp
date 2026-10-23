@@ -10,6 +10,28 @@ StateFixedStand::StateFixedStand(CtrlInterfaces &ctrl_interfaces, const std::vec
     : BaseFixedStand(ctrl_interfaces, target_pos, kp, kd) {
 }
 
+std::array<double, 12> StateFixedStand::targetPosition() const {
+    std::array<double, 12> result{};
+    for (int i = 0; i < 12; ++i) result[i] = target_pos_[i] + offset_pos_[i];
+    return result;
+}
+
+void StateFixedStand::enter() {
+    if (previous_state_name != FSMStateName::COMIDENTIFICATION) {
+        BaseFixedStand::enter();
+        return;
+    }
+    // COM has already returned to this state's exact target and confirmed rest.
+    // Preserve command/gains: resetting q_cmd to measured q would remove the load-bearing PD torque.
+    for (int i = 0; i < 12; ++i) {
+        cmd_pos_[i] = ctrl_interfaces_.joint_position_command_interface_[i].get().get_value();
+        start_pos_[i] = cmd_pos_[i] - offset_pos_[i];
+    }
+    percent_ = 20.0; phase = 1.0;
+    ctrl_interfaces_.control_inputs_.command = 0;
+    fixedstand_active_ = true;
+}
+
 FSMStateName StateFixedStand::checkChange() {
     // 失能优先：1 键不受姿态过渡锁定期限制，随时可切
     if (ctrl_interfaces_.control_inputs_.command == 1) {

@@ -36,6 +36,7 @@
     <exec_depend>gazebo_plugins</exec_depend>
     <depend>gazebo_ros2_control</depend>
     <exec_depend>rclpy</exec_depend>
+    <exec_depend>python3-numpy</exec_depend>
     <exec_depend>ros2service</exec_depend>
     <exec_depend>std_srvs</exec_depend>
     <exec_depend>nav_msgs</exec_depend>

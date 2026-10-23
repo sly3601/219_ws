@@ -6,6 +6,7 @@
 #define STATEFIXEDSTAND_H
 
 #include <controller_common/FSM/BaseFixedStand.h>
+#include <array>
 
 class StateFixedStand final : public BaseFixedStand {
 public:
@@ -14,6 +15,8 @@ public:
                              double kp,
                              double kd);
 
+    void enter() override;
+    std::array<double, 12> targetPosition() const;
     FSMStateName checkChange() override;
 };
 

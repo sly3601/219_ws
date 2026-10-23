@@ -3,6 +3,7 @@
 //
 
 #include "sysu219_guide_controller/Sysu219GuideController.h"
+#include "COM_identification/StateComIdentification.h"
 
 #include <sysu219_guide_controller/gait/WaveGenerator.h>
 #include "sysu219_guide_controller/robot/QuadrupedRobot.h"
@@ -196,6 +197,9 @@ namespace sysu219_guide_controller
                 state_list_.legIdentification->consumeEntryRequest();
             next_state_name_ = enter_identification && current_state_ == state_list_.passive
                 ? FSMStateName::LEGIDENTIFICATION : current_state_->checkChange();
+            if (state_list_.comIdentification && state_list_.comIdentification->consumeEntryRequest(
+                    current_state_ == state_list_.fixedStand))
+                next_state_name_ = FSMStateName::COMIDENTIFICATION;
 
             if (next_state_name_ != current_state_->state_name)
             {
@@ -241,7 +245,10 @@ namespace sysu219_guide_controller
                         trotting_entry_tilt_limit_deg, current_state_->state_name_string.c_str());
                 }
             }
-            if (reject_trotting)
+            const bool reject_com_return = current_state_ == state_list_.comIdentification &&
+                next_state_ == state_list_.fixedStand &&
+                state_list_.comIdentification->checkChange() != FSMStateName::FIXEDSTAND;
+            if (reject_trotting || reject_com_return)
             {
                 current_state_->run(time, period);
             }
@@ -251,6 +258,8 @@ namespace sysu219_guide_controller
                             current_state_->state_name_string.c_str(), next_state_->state_name_string.c_str());
                 current_state_->exit();
                 current_state_ = next_state_;
+                if (current_state_ == state_list_.comIdentification)
+                    state_list_.comIdentification->setReturnTarget(state_list_.fixedStand->targetPosition());
                 current_state_->enter();
             }
             mode_ = FSMMode::NORMAL;
@@ -471,6 +480,14 @@ namespace sysu219_guide_controller
                 "[LEG_ID] 辨识模块初始化失败，已停用该模块，原有FSM继续启动：%s", e.what());
         }
 
+        try {
+            state_list_.comIdentification = std::make_shared<StateComIdentification>(
+                ctrl_interfaces_, ctrl_component_, joint_names_, stand_pos_, base_name_, feet_names_);
+        } catch (const std::exception& e) {
+            state_list_.comIdentification.reset();
+            RCLCPP_ERROR(get_node()->get_logger(), "[COM_ID] 已停用质心辨识，原FSM不受影响：%s", e.what());
+        }
+
         // Initialize FSM
         current_state_ = state_list_.passive;
         current_state_->enter();
@@ -487,6 +504,8 @@ namespace sysu219_guide_controller
         const rclcpp_lifecycle::State& /*previous_state*/)
     {
         if (current_state_ == state_list_.legIdentification && current_state_) current_state_->exit();
+        if (current_state_ == state_list_.comIdentification && current_state_) current_state_->exit();
+        state_list_.comIdentification.reset();
         estimator_debug_pub_.reset();
         com_estimated_pub_.reset();
         release_interfaces();
@@ -521,6 +540,8 @@ namespace sysu219_guide_controller
             return state_list_.passive;
         case FSMStateName::LEGIDENTIFICATION:
             return state_list_.legIdentification;
+        case FSMStateName::COMIDENTIFICATION:
+            return state_list_.comIdentification;
         case FSMStateName::FIXEDPRONE:
             return state_list_.fixedProne;
         case FSMStateName::FIXEDDOWN:

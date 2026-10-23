@@ -29,6 +29,7 @@
 #include <geometry_msgs/msg/point_stamped.hpp>
 
 namespace sysu219_guide_controller {
+    class StateComIdentification;
     struct FSMStateList {
         std::shared_ptr<FSMState> invalid;
         std::shared_ptr<StatePassive> passive;
@@ -42,6 +43,7 @@ namespace sysu219_guide_controller {
         std::shared_ptr<StateBalanceTest> balanceTest;
         std::shared_ptr<StateRLWalk> rlWalk;
         std::shared_ptr<StateLegIdentification> legIdentification;
+        std::shared_ptr<StateComIdentification> comIdentification;
     };
 
     class Sysu219GuideController final : public controller_interface::ControllerInterface {

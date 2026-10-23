@@ -12,6 +12,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(control_input_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 
 add_executable(keyboard_input src/KeyboardInput.cpp)
 target_include_directories(keyboard_input
@@ -43,5 +44,9 @@ install(TARGETS
 add_executable(leg_identification_keyboard src/LegIdentificationKeyboard.cpp)
 ament_target_dependencies(leg_identification_keyboard rclcpp std_msgs)
 install(TARGETS leg_identification_keyboard DESTINATION lib/${PROJECT_NAME})
+add_executable(com_identification_keyboard src/ComIdentificationKeyboard.cpp)
+target_compile_features(com_identification_keyboard PRIVATE cxx_std_17)
+ament_target_dependencies(com_identification_keyboard rclcpp std_msgs ament_index_cpp)
+install(TARGETS com_identification_keyboard DESTINATION lib/${PROJECT_NAME})
 
 ament_package()

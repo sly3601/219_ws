@@ -54,6 +54,8 @@ add_library(${PROJECT_NAME} SHARED
         src/Sysu219GuideController.cpp
         src/dynamics_identification/StateLegIdentification.cpp
         src/dynamics_identification/CsvRecorder.cpp
+        src/COM_identification/StateComIdentification.cpp
+        src/COM_identification/ComRecorder.cpp
 
         src/FSM/StateFixedStand.cpp
         src/FSM/StateSwingTest.cpp
@@ -154,6 +156,9 @@ install(
 
 install(PROGRAMS scripts/gazebo_com_visualizer.py
         DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY src/COM_identification/
+        DESTINATION share/${PROJECT_NAME}/COM_identification
+        FILES_MATCHING PATTERN "*.py" PATTERN "*.md")
 install(DIRECTORY dynamics_identification/
         DESTINATION share/${PROJECT_NAME}/dynamics_identification
         PATTERN "__pycache__" EXCLUDE)
