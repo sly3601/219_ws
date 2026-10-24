@@ -1,0 +1,343 @@
+{
+  "pid": 121452,
+  "kind": "real_robot_trotting",
+  "archived_at": "2026-10-24T14:39:37.128662+08:00",
+  "csv_count": 17,
+  "csv_columns": 494,
+  "total_rows": 14071,
+  "recorded_ros_time_start": "2026-10-24T14:36:11.867195+08:00",
+  "recorded_ros_time_end": "2026-10-24T14:37:14.755190+08:00",
+  "recorded_time_span_s": 62.88799500465393,
+  "cycle_gaps_inclusive": [
+    [
+      2501,
+      2695
+    ],
+    [
+      3447,
+      3548
+    ],
+    [
+      4300,
+      4401
+    ],
+    [
+      5153,
+      5254
+    ],
+    [
+      6006,
+      6108
+    ],
+    [
+      6860,
+      6961
+    ],
+    [
+      7713,
+      7814
+    ],
+    [
+      8566,
+      8667
+    ],
+    [
+      9419,
+      9520
+    ],
+    [
+      10272,
+      10373
+    ],
+    [
+      11125,
+      11226
+    ],
+    [
+      11978,
+      12079
+    ],
+    [
+      12831,
+      12933
+    ],
+    [
+      13685,
+      13786
+    ],
+    [
+      14538,
+      14639
+    ],
+    [
+      15391,
+      15417
+    ]
+  ],
+  "cycle_resets": [],
+  "log": {
+    "file": "runtime_log.txt",
+    "source": "/home/sysu219/.codex/attachments/890c2fd7-d571-47d3-8ca5-88ec5e9515ad/已粘贴的文本.txt",
+    "sha256": "dbbd60a02782683877ea172f308b9d9ac65d269ec34f9871085ec4949e27ef8a",
+    "bytes": 78816,
+    "csv_files_mentioned": 12,
+    "all_mentioned_csvs_archived": true
+  },
+  "csv_files": [
+    {
+      "file": "trotting_debug_121452_1792823781880374.csv",
+      "source": "/tmp/trotting_debug_121452_1792823781880374.csv",
+      "bytes": 18484759,
+      "sha256": "3c480813852cf92e54f7173e9491e53795177e67789678abe69b2949d32efb2a",
+      "rows": 2501,
+      "first": {
+        "cycle": 0,
+        "ros_s": 1792823771.8671954
+      },
+      "last": {
+        "cycle": 2500,
+        "ros_s": 1792823781.8671906
+      }
+    },
+    {
+      "file": "trotting_debug_121452_1792823785664820.csv",
+      "source": "/tmp/trotting_debug_121452_1792823785664820.csv",
+      "bytes": 5545461,
+      "sha256": "0747202f98f9568a42186c5d375cc8a969cd39ec93c8794a8fe392a491fb8b9e",
+      "rows": 751,
+      "first": {
+        "cycle": 2696,
+        "ros_s": 1792823782.651233
+      },
+      "last": {
+        "cycle": 3446,
+        "ros_s": 1792823785.6511984
+      }
+    },
+    {
+      "file": "trotting_debug_121452_1792823789079730.csv",
+      "source": "/tmp/trotting_debug_121452_1792823789079730.csv",
+      "bytes": 5541743,
+      "sha256": "a9d4e7a483cd09905caff8f1b94bc5e9ad75a09debbbeea2d8283501690504dd",
+      "rows": 751,
+      "first": {
+        "cycle": 3549,
+        "ros_s": 1792823786.0631933
+      },
+      "last": {
+        "cycle": 4299,
+        "ros_s": 1792823789.0631905
+      }
+    },
+    {
+      "file": "trotting_debug_121452_1792823792481747.csv",
+      "source": "/tmp/trotting_debug_121452_1792823792481747.csv",
+      "bytes": 5541407,
+      "sha256": "380940323c396814c2b90a7eae94394a199f06b10d6d07f8f8574084295a9a1f",
+      "rows": 751,
+      "first": {
+        "cycle": 4402,
+        "ros_s": 1792823789.475191
+      },
+      "last": {
+        "cycle": 5152,
+        "ros_s": 1792823792.4751947
+      }
+    },
+    {
+      "file": "trotting_debug_121452_1792823795903368.csv",
+      "source": "/tmp/trotting_debug_121452_1792823795903368.csv",
+      "bytes": 5541567,
+      "sha256": "b787b1601cf47645af1ed5544701c49bc84bf8209921952d3d0e04059914b6bc",
+      "rows": 751,
+      "first": {
+        "cycle": 5255,
+        "ros_s": 1792823792.8871925
+      },
+      "last": {
+        "cycle": 6005,
+        "ros_s": 1792823795.8871956
+      }
+    },
+    {
+      "file": "trotting_debug_121452_1792823799308897.csv",
+      "source": "/tmp/trotting_debug_121452_1792823799308897.csv",
+      "bytes": 5538735,
+      "sha256": "30a470978fc9cb947ffc49394d891e047c8754b2406af2336637de6ec2d5f384",
+      "rows": 751,
+      "first": {
+        "cycle": 6109,
+        "ros_s": 1792823796.3032036
+      },
+      "last": {
+        "cycle": 6859,
+        "ros_s": 1792823799.3031895
+      }
+    },
+    {
+      "file": "trotting_debug_121452_1792823802723827.csv",
+      "source": "/tmp/trotting_debug_121452_1792823802723827.csv",
+      "bytes": 5538759,
+      "sha256": "b01e17d26cd1a7240911182cfd07e9a0db03f8fcf1c2fa2741b60b16d4800a34",
+      "rows": 751,
+      "first": {
+        "cycle": 6962,
+        "ros_s": 1792823799.71519
+      },
+      "last": {
+        "cycle": 7712,
+        "ros_s": 1792823802.715192
+      }
+    },
+    {
+      "file": "trotting_debug_121452_1792823806130666.csv",
+      "source": "/tmp/trotting_debug_121452_1792823806130666.csv",
+      "bytes": 5540964,
+      "sha256": "7c32ccd39cc17e4dc861efcd073327d587456f873317219e10e9995fb129744a",
+      "rows": 751,
+      "first": {
+        "cycle": 7815,
+        "ros_s": 1792823803.1271963
+      },
+      "last": {
+        "cycle": 8565,
+        "ros_s": 1792823806.1280684
+      }
+    },
+    {
+      "file": "trotting_debug_121452_1792823809550964.csv",
+      "source": "/tmp/trotting_debug_121452_1792823809550964.csv",
+      "bytes": 5542399,
+      "sha256": "35deb356dd2b51f0a1de324f556264f3b7f8bf10027baee989b5f320fd494422",
+      "rows": 751,
+      "first": {
+        "cycle": 8668,
+        "ros_s": 1792823806.5391905
+      },
+      "last": {
+        "cycle": 9418,
+        "ros_s": 1792823809.5391908
+      }
+    },
+    {
+      "file": "trotting_debug_121452_1792823812954759.csv",
+      "source": "/tmp/trotting_debug_121452_1792823812954759.csv",
+      "bytes": 5547399,
+      "sha256": "f8868a1bc52abc1d3596954201d8bbfc87686cd2da59e539fd41e16ce63794f7",
+      "rows": 751,
+      "first": {
+        "cycle": 9521,
+        "ros_s": 1792823809.9511847
+      },
+      "last": {
+        "cycle": 10271,
+        "ros_s": 1792823812.9512057
+      }
+    },
+    {
+      "file": "trotting_debug_121452_1792823816381396.csv",
+      "source": "/tmp/trotting_debug_121452_1792823816381396.csv",
+      "bytes": 5545693,
+      "sha256": "07fff7bcb47102c2a88fe57ce008f29a2fd8751c4f30b12b8622e65fc089703c",
+      "rows": 751,
+      "first": {
+        "cycle": 10374,
+        "ros_s": 1792823813.3632054
+      },
+      "last": {
+        "cycle": 11124,
+        "ros_s": 1792823816.363204
+      }
+    },
+    {
+      "file": "trotting_debug_121452_1792823819793251.csv",
+      "source": "/tmp/trotting_debug_121452_1792823819793251.csv",
+      "bytes": 5547118,
+      "sha256": "d70e47116c04ba2f414587a5d71cf46d0ec8bfc6fa3fec89e79dd73be844b6eb",
+      "rows": 751,
+      "first": {
+        "cycle": 11227,
+        "ros_s": 1792823816.7751913
+      },
+      "last": {
+        "cycle": 11977,
+        "ros_s": 1792823819.775234
+      }
+    },
+    {
+      "file": "trotting_debug_121452_1792823823203117.csv",
+      "source": "/tmp/trotting_debug_121452_1792823823203117.csv",
+      "bytes": 5548091,
+      "sha256": "ff345dbec1ad85b99f93e01f16b4c139304334bc95a6a62e121cd2165784bc91",
+      "rows": 751,
+      "first": {
+        "cycle": 12080,
+        "ros_s": 1792823820.1872556
+      },
+      "last": {
+        "cycle": 12830,
+        "ros_s": 1792823823.1872036
+      }
+    },
+    {
+      "file": "trotting_debug_121452_1792823826607068.csv",
+      "source": "/tmp/trotting_debug_121452_1792823826607068.csv",
+      "bytes": 5549230,
+      "sha256": "c41a29ac3963f1ef0eb2964e7b1b7ae6265dcda117f461dbfca8ef4a82f05f11",
+      "rows": 751,
+      "first": {
+        "cycle": 12934,
+        "ros_s": 1792823823.603194
+      },
+      "last": {
+        "cycle": 13684,
+        "ros_s": 1792823826.6031988
+      }
+    },
+    {
+      "file": "trotting_debug_121452_1792823830035508.csv",
+      "source": "/tmp/trotting_debug_121452_1792823830035508.csv",
+      "bytes": 5547267,
+      "sha256": "3dd060ce0cdf5cc4e41f87997c0405505af3829c10a3c890b3f06442d5a4df60",
+      "rows": 751,
+      "first": {
+        "cycle": 13787,
+        "ros_s": 1792823827.0151918
+      },
+      "last": {
+        "cycle": 14537,
+        "ros_s": 1792823830.0151966
+      }
+    },
+    {
+      "file": "trotting_debug_121452_1792823833440881.csv",
+      "source": "/tmp/trotting_debug_121452_1792823833440881.csv",
+      "bytes": 5545178,
+      "sha256": "7bf7d048747248e6052415ae3f2337a028bf8f053ef1967d97ac830d82b0fbad",
+      "rows": 751,
+      "first": {
+        "cycle": 14640,
+        "ros_s": 1792823830.4271953
+      },
+      "last": {
+        "cycle": 15390,
+        "ros_s": 1792823833.4271955
+      }
+    },
+    {
+      "file": "trotting_debug_121452_1792823834782908.csv",
+      "source": "/tmp/trotting_debug_121452_1792823834782908.csv",
+      "bytes": 2258457,
+      "sha256": "377f3a686eba65cfcf139e274d6faa00b4c1675a00e7e7dfb9a9ed31e3c1b021",
+      "rows": 305,
+      "first": {
+        "cycle": 15418,
+        "ros_s": 1792823833.5391924
+      },
+      "last": {
+        "cycle": 15722,
+        "ros_s": 1792823834.7551904
+      }
+    }
+  ]
+}
