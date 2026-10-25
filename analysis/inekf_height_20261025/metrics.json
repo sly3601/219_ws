@@ -1,0 +1,72 @@
+{
+  "session_pid": 37474,
+  "csv_files": 14,
+  "unique_rows": 13514,
+  "runs": [
+    {
+      "run": 1,
+      "start_ros_s": 1792914163.0981069,
+      "end_ros_s": 1792914192.3621483,
+      "rows": 6757,
+      "windows": [
+        {
+          "window_s": [
+            0,
+            0.5
+          ],
+          "p_2": 0.3876139129868093,
+          "p_ref_2": 0.3891056035711235,
+          "support_z_median": -0.00045012337488287146,
+          "body_above_support": 0.38791834374211737
+        },
+        {
+          "window_s": [
+            27,
+            29.5
+          ],
+          "p_2": 0.3957945074399205,
+          "p_ref_2": 0.38913572558111365,
+          "support_z_median": 0.1743102918262744,
+          "body_above_support": 0.22065391088173691
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "start_ros_s": 1792914228.8741484,
+      "end_ros_s": 1792914258.3061082,
+      "rows": 6757,
+      "windows": [
+        {
+          "window_s": [
+            0,
+            0.5
+          ],
+          "p_2": 0.5664122913933004,
+          "p_ref_2": 0.5682499184721406,
+          "support_z_median": 0.17816066727196941,
+          "body_above_support": 0.3883744505973975
+        },
+        {
+          "window_s": [
+            27,
+            29.5
+          ],
+          "p_2": 0.5691843164815075,
+          "p_ref_2": 0.5682464482070123,
+          "support_z_median": 0.3080864544716352,
+          "body_above_support": 0.26210637202274856
+        }
+      ]
+    }
+  ],
+  "fallback_event": {
+    "ros_s": 1792914240.7699766,
+    "z_before_m": 0.56195,
+    "z_fallback_m": 0.345177,
+    "z_after_m": 0.562196,
+    "kinematic_height_before_m": 0.346845,
+    "kinematic_height_at_fallback_m": 0.346914,
+    "kinematic_height_after_m": 0.346885
+  }
+}

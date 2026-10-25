@@ -119,6 +119,75 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     
     // 初始化足底可视化发布器
     foot_marker_pub_ = std::make_unique<quadruped_controller::FootMarkerPublisher>(this->ctrl_interfaces_.node);
+
+    // on_activate 中，在本控制器开始运行前启动窗口，先读取原 MPC/WBC 最终赋值。
+    // 不使用单独维护的默认值，不从快照回灌，也不在构造时写回求解器。
+    try {
+        if (!convex_mpc_) throw std::runtime_error("MPC 尚未初始化，无法读取实际初值");
+        sysu219::tuning::Parameters initial;
+        for (int row = 0; row < 13; ++row)
+            for (int col = 0; col < 13; ++col)
+                initial.values[13 * row + col] = convex_mpc_->stateWeights()(row, col);
+        for (int row = 0; row < 12; ++row) {
+            for (int col = 0; col < 12; ++col) {
+                initial.values[169 + 12 * row + col] = convex_mpc_->forceWeights()(row, col);
+                initial.values[313 + 12 * row + col] = convex_mpc_->forceRateWeights()(row, col);
+            }
+        }
+        const auto& settings = wbc_->settings();
+        std::size_t offset = sysu219::tuning::Parameters::kWbcOffset;
+        for (const Vec3* gain : {&settings.kp_orientation, &settings.kd_orientation,
+                                &settings.kp_body_position, &settings.kd_body_position,
+                                &settings.kp_swing, &settings.kd_swing})
+            for (int axis = 0; axis < 3; ++axis) initial.values[offset++] = (*gain)(axis);
+        initial.values[offset++] = settings.swing_hip_posture_weight;
+        initial.values[offset++] = settings.kp_swing_hip_posture;
+        initial.values[offset] = settings.kd_swing_hip_posture;
+        online_tuning_ = std::make_unique<sysu219::tuning::OnlineTuning>(initial);
+    } catch (const std::exception& error) {
+        RCLCPP_WARN(ctrl_interfaces_.node->get_logger(),
+            "[ONLINE_TUNING] 窗口未启动，原有控制与参数继续生效：%s", error.what());
+    }
+}
+
+void StateTrotting::applyOnlineTuning() noexcept {
+    if (!online_tuning_) return;
+    std::uint64_t revision = 0;
+    if (!online_tuning_->tryReadUpdate(tuning_update_, revision)) return;
+    if (!convex_mpc_ || !wbc_) {
+        online_tuning_->finishUpdate(revision, false);
+        return;
+    }
+    Mat13 q;
+    Mat12 r, s;
+    for (int row = 0; row < 13; ++row)
+        for (int col = 0; col < 13; ++col)
+            q(row, col) = tuning_update_.values[13 * row + col];
+    for (int row = 0; row < 12; ++row) {
+        for (int col = 0; col < 12; ++col) {
+            r(row, col) = tuning_update_.values[169 + 12 * row + col];
+            s(row, col) = tuning_update_.values[313 + 12 * row + col];
+        }
+    }
+    auto settings = wbc_->settings();
+    std::size_t offset = sysu219::tuning::Parameters::kWbcOffset;
+    for (Vec3* gain : {&settings.kp_orientation, &settings.kd_orientation,
+                      &settings.kp_body_position, &settings.kd_body_position,
+                      &settings.kp_swing, &settings.kd_swing})
+        for (int axis = 0; axis < 3; ++axis) (*gain)(axis) = tuning_update_.values[offset++];
+    settings.swing_hip_posture_weight = tuning_update_.values[offset++];
+    settings.kp_swing_hip_posture = tuning_update_.values[offset++];
+    settings.kd_swing_hip_posture = tuning_update_.values[offset];
+
+    // 固定长度拷贝和已分配缓存原地更新；不校验特征值、不等待、不写日志。
+    // MPC 权重改变则令该周期同步求解，不继续输出旧权重下缓存的力。
+    if (convex_mpc_->updateCostWeights(q, r, s)) mpc_cycle_ = 0;
+    wbc_->updateTaskGains(settings);
+    online_tuning_->finishUpdate(revision, true);
+}
+
+void StateTrotting::stopOnlineTuning() noexcept {
+    if (online_tuning_) online_tuning_->requestStop();
 }
 
 

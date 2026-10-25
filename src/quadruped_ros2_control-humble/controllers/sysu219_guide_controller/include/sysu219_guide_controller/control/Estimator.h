@@ -25,7 +25,8 @@ public:
      * Get the estimated robot central position
      * @return robot central position
      */
-    Vec3 getPosition() {
+    Vec3 getPosition() const {
+        if (use_inekf_) return inekf_position_;
         return x_hat_.segment(0, 3);
     }
 
@@ -33,7 +34,8 @@ public:
      * Get the estimated robot central velocity
      * @return robot central velocity
      */
-    Vec3 getVelocity() {    // 从状态向量x_hat_的第3个元素开始，截取3个元素（即速度部分）
+    Vec3 getVelocity() const {    // 从状态向量x_hat_的第3个元素开始，截取3个元素（即速度部分）
+        if (use_inekf_) return inekf_velocity_;
         return x_hat_.segment(3, 3); // 机身在世界坐标系下的线速度
     }
 
@@ -43,7 +45,7 @@ public:
      * @return foot position in world frame
      */
     Vec3 getFootPos(const int index) {
-        return getPosition() + rotation_ * Vec3(foot_poses_[index].p.data);
+        return getPosition() + getRotation() * Vec3(foot_poses_[index].p.data);
     }
 
     /**
@@ -68,7 +70,7 @@ public:
         for (int i(0); i < 4; ++i) {
             const Vec3 foot_pos_B(foot_poses_[i].p.data);
             // v_foot_G = v_body_G + R_B2G * (J * qd + omega_B x r_B)
-            result.col(i) = rotation_ * (Vec3(feet_vel[i].data) + gyro_.cross(foot_pos_B))
+            result.col(i) = getRotation() * (Vec3(feet_vel[i].data) + getGyro().cross(foot_pos_B))
                             + getVelocity();
         }
         return result;
@@ -87,18 +89,18 @@ public:
         return foot_pos;
     }
 
-    RotMat getRotation() {
-        return rotation_;
+    RotMat getRotation() const {
+        return use_inekf_ ? inekf_rotation_ : rotation_;
     }
 
-    Vec3 getGyro() {
-        return gyro_;
+    Vec3 getGyro() const {
+        return use_inekf_ ? inekf_gyro_ : gyro_;
     }
 
-    //  getGyro()：IMU 原始角速度，机身坐标系
-    //  getGyroGlobal()：把它乘 rotation_，变成 全局坐标系 角速度
+    //  getGyro()：机身坐标系角速度；旧 KF 使用原值，InEKF 使用去零偏后的值。
+    //  getGyroGlobal()：使用同一来源的姿态转换到世界坐标系。
     [[nodiscard]] Vec3 getGyroGlobal() const {
-        return rotation_ * gyro_;
+        return getRotation() * getGyro();
     }
 
     [[nodiscard]] double getYaw() const;
@@ -109,13 +111,29 @@ public:
 
     void update();
 
-    // 仅诊断：预测后、观测校正后但低通之前的速度，以及去重力后的加速度。
+    // 仅由源码开关在激活时选定；新系统暂未产出结果时也不改用旧 KF。
+    void selectInEKF(bool enabled) { use_inekf_ = enabled; }
+    // 只供对照发布读取旧 KF，避免显示链误把选定的新输出当作旧估计。
+    void legacyState(Vec3& position, Vec3& velocity, RotMat& rotation) const {
+        position = x_hat_.segment<3>(0); velocity = x_hat_.segment<3>(3); rotation = rotation_;
+    }
+
+    // 只写入新系统的缓存输出，不改变来源选择或旧 KF 的状态、协方差及低通滤波器。
+    void useInEKFState(const Vec3& position, const Vec3& velocity,
+                      const RotMat& rotation, const Vec3& gyro) {
+        inekf_position_ = position; inekf_velocity_ = velocity;
+        inekf_rotation_ = rotation; inekf_gyro_ = gyro;
+    }
+    // 仅诊断：始终为旧 KF 的预测速度、低通前速度及去重力加速度，不用于控制切换。
     const Vec3& debugVelocityPredicted() const { return debug_v_predicted_; }
     const Vec3& debugVelocityUnfiltered() const { return debug_v_unfiltered_; }
     const Vec3& debugAcceleration() const { return u_; }
     double debugDt() const { return dt_; }
 
 private:
+    bool use_inekf_ = false;
+    Vec3 inekf_position_ = Vec3::Zero(), inekf_velocity_ = Vec3::Zero(), inekf_gyro_ = Vec3::Zero();
+    RotMat inekf_rotation_ = RotMat::Identity();
     Vec3 debug_v_predicted_ = Vec3::Zero(), debug_v_unfiltered_ = Vec3::Zero();
     CtrlInterfaces &ctrl_interfaces_;
     std::shared_ptr<QuadrupedRobot> &robot_model_;

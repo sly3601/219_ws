@@ -83,6 +83,18 @@ WbcTask emptyTask(const char* name, int rows)
 
 }  // namespace
 
+void WbcController::updateTaskGains(const WbcSettings& settings) noexcept {
+  settings_.kp_orientation = settings.kp_orientation;
+  settings_.kd_orientation = settings.kd_orientation;
+  settings_.kp_body_position = settings.kp_body_position;
+  settings_.kd_body_position = settings.kd_body_position;
+  settings_.kp_swing = settings.kp_swing;
+  settings_.kd_swing = settings.kd_swing;
+  settings_.swing_hip_posture_weight = settings.swing_hip_posture_weight;
+  settings_.kp_swing_hip_posture = settings.kp_swing_hip_posture;
+  settings_.kd_swing_hip_posture = settings.kd_swing_hip_posture;
+}
+
 // 构造函数：保存控制参数，并立即拒绝无效增益或SVD阈值。
 // 冒号后是成员初始化；std::move允许用移动构造将参数交给settings_保存。
 WbcController::WbcController(WbcSettings settings) : settings_(std::move(settings)) 

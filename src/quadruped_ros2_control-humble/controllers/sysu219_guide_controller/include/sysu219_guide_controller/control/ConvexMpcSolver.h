@@ -39,6 +39,13 @@ public:
   ~ConvexMpcSolver();
 
   void reset();
+  // 仅初始化时读取实际权重；在线写入仅由主控制线程完成。
+  const Mat13& stateWeights() const noexcept { return Q; }
+  const Mat12& forceWeights() const noexcept { return R; }
+  const Mat12& forceRateWeights() const noexcept { return S; }
+  // 输入已经过调参后台校验；原地更新现有代价缓存，无分配/重建/求解器重置。
+  // 返回是否发生改变，供主控制线程决定本周期是否需要立即重新求解。
+  [[nodiscard]] bool updateCostWeights(const Mat13& q, const Mat12& r, const Mat12& s) noexcept;
   const Vec3& comOffsetBody() const { return pcb_B; }
   // WBC松弛优化读取同一组力界，避免两级优化使用不同摩擦参数。
   double frictionCoefficient() const { return mu; }

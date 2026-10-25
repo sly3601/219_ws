@@ -68,11 +68,13 @@ add_library(${PROJECT_NAME} SHARED
         src/robot/FloatingBaseModel.cpp
 
         src/control/Estimator.cpp
+        src/control/ShadowInEKF.cpp
         src/control/LowPassFilter.cpp
         src/control/BalanceCtrl.cpp
         src/control/ConvexMpcSolver.cpp
         src/control/WbcController.cpp
         src/control/MpcWbcRelaxation.cpp
+        src/control/OnlineTuning.cpp
 
         src/quadProgpp/Array.cc
         src/quadProgpp/QuadProg++.cc

@@ -8,6 +8,7 @@
 #include <sysu219_guide_controller/gait/GaitGenerator.h>
 #include <sysu219_guide_controller/control/ConvexMpcSolver.h>
 #include <sysu219_guide_controller/control/MpcWbcRelaxation.h>
+#include <sysu219_guide_controller/control/OnlineTuning.h>
 
 #include "controller_common/FSM/FSMState.h"
 // marker array可视化插件
@@ -25,6 +26,11 @@ public:
              const rclcpp::Duration &period) override;
 
     void exit() override;
+
+    // 主控制器在所有 FSM 状态的周期开头调用；无修改时不写入任何算法参数。
+    void applyOnlineTuning() noexcept;
+    // 生命周期停用回调只通知后台退出，不等待/回收线程。
+    void stopOnlineTuning() noexcept;
 
     FSMStateName checkChange() override;
     void recordDebug(const rclcpp::Time& time, const rclcpp::Duration& period,
@@ -165,6 +171,9 @@ private:
     Vec12 legacy_q_ = Vec12::Zero(), legacy_qd_ = Vec12::Zero();
     Vec12 legacy_tau_ = Vec12::Zero();
     bool mpc_frame_valid_ = false; // 本周期calcTau成功才允许WBC覆盖原输出。
+
+    sysu219::tuning::Parameters tuning_update_; // 固定长度复用缓存，控制周期不构造/分配。
+    std::unique_ptr<sysu219::tuning::OnlineTuning> online_tuning_;
 
     TrottingDebug::Frame debug_frame_;
     uint64_t debug_cycle_ = 0;

@@ -364,6 +364,31 @@ ConvexMpcSolver::ConvexMpcSolver()
 
 ConvexMpcSolver::~ConvexMpcSolver() = default;
 
+bool ConvexMpcSolver::updateCostWeights(const Mat13& q, const Mat12& r, const Mat12& s) noexcept {
+  if ((Q.array() == q.array()).all() && (R.array() == r.array()).all() &&
+      (S.array() == s.array()).all()) return false;
+  Q = q;
+  R = r;
+  S = s;
+  // 这些缓存已由构造函数分配。逐元素写入确保实时路径不 resize、不分配。
+  // 不调用 rebuildFixedMatrices：它还会重建与本次调参无关的动态约束缓存。
+  for (int row = 0; row < 13; ++row) {
+    for (int col = 0; col < 13; ++col) {
+      Q_cost_(row, col) = 2.0 * Q(row, col) + (row == col ? regularization : 0.0);
+    }
+  }
+  for (int row = 0; row < 12; ++row) {
+    for (int col = 0; col < 12; ++col) {
+      const double reg = row == col ? regularization : 0.0;
+      R_cost_(row, col) = 2.0 * R(row, col) + reg;
+      R_cost_rate_(row, col) = 2.0 * (R(row, col) + S(row, col)) + reg;
+    }
+  }
+  // r_cost_rate_ 在下一次 solveMpc 中按新 S 与原 last_u0_ 重新计算。
+  // 保留上一帧力参考，使调参本身不清空力变化惩罚的历史。
+  return true;
+}
+
 void ConvexMpcSolver::rebuildFixedMatrices() {
 
   /*

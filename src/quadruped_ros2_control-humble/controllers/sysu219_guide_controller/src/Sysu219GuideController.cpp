@@ -4,6 +4,7 @@
 
 #include "sysu219_guide_controller/Sysu219GuideController.h"
 #include "COM_identification/StateComIdentification.h"
+#include "sysu219_guide_controller/control/ShadowInEKF.hpp"
 
 #include <sysu219_guide_controller/gait/WaveGenerator.h>
 #include "sysu219_guide_controller/robot/QuadrupedRobot.h"
@@ -16,6 +17,9 @@
 namespace sysu219_guide_controller
 {
     using config_type = controller_interface::interface_configuration_type;
+
+    // 里程计唯一切换开关：false=旧 KF（默认），true=新 InEKF；修改后重新编译生效。
+    constexpr bool kUseInEKFOdometry = true;
 
     controller_interface::InterfaceConfiguration Sysu219GuideController::command_interface_configuration() const
     {
@@ -81,9 +85,27 @@ namespace sysu219_guide_controller
             return controller_interface::return_type::OK;
         }
 
+        // 所有 FSM 状态均消费调参请求；窗口通信/快照从不在本线程执行。
+        if (state_list_.trotting) state_list_.trotting->applyOnlineTuning();
         ctrl_component_.robot_model_->update();
         ctrl_component_.wave_generator_->update(period.seconds());
         ctrl_component_.estimator_->update();
+        bool odometry_ready = !kUseInEKFOdometry;
+        if (shadow_inekf_) {
+            shadow_inekf_->submit(time, period, ctrl_interfaces_,
+                *ctrl_component_.wave_generator_, *ctrl_component_.estimator_,
+                current_state_ == state_list_.fixedStand || current_state_ == state_list_.freeStand);
+            // 两套滤波状态独立；旧 KF 只保留对照，新系统不向旧系统回退。
+            if constexpr (kUseInEKFOdometry)
+                odometry_ready = shadow_inekf_->selectForControl(time, *ctrl_component_.estimator_);
+        }
+        if constexpr (kUseInEKFOdometry) {
+            if (!odometry_ready && (current_state_ == state_list_.trotting ||
+                current_state_ == state_list_.balanceTest || current_state_ == state_list_.rlWalk)) {
+                RCLCPP_ERROR(get_node()->get_logger(), "[ODOMETRY] InEKF 失效，停止本控制周期；不切换旧 KF。");
+                return controller_interface::return_type::ERROR;
+            }
+        }
 
         // 仅 Gazebo 配置开启；所有 FSM 状态都以约 25 Hz 输出 MPC 的估计质心。
         if (com_estimated_pub_ && ctrl_component_.convex_mpc_) {
@@ -224,6 +246,14 @@ namespace sysu219_guide_controller
         }
         else if (mode_ == FSMMode::CHANGE)
         {
+            const bool reject_odometry = !odometry_ready && (next_state_ == state_list_.trotting ||
+                next_state_ == state_list_.balanceTest || next_state_ == state_list_.rlWalk);
+            if (reject_odometry) {
+                RCLCPP_WARN(get_node()->get_logger(), "[ODOMETRY] InEKF 尚未就绪，保持当前状态，等待站立初始化。");
+                ctrl_interfaces_.control_inputs_.command = 0;
+                next_state_ = current_state_;
+                next_state_name_ = current_state_->state_name;
+            }
             bool reject_trotting = false;
             if (next_state_ == state_list_.trotting)
             {
@@ -248,7 +278,7 @@ namespace sysu219_guide_controller
             const bool reject_com_return = current_state_ == state_list_.comIdentification &&
                 next_state_ == state_list_.fixedStand &&
                 state_list_.comIdentification->checkChange() != FSMStateName::FIXEDSTAND;
-            if (reject_trotting || reject_com_return)
+            if (reject_odometry || reject_trotting || reject_com_return)
             {
                 current_state_->run(time, period);
             }
@@ -318,6 +348,7 @@ namespace sysu219_guide_controller
             imu_name_ = auto_declare<std::string>("imu_name", imu_name_);
             base_name_ = auto_declare<std::string>("base_name", base_name_);
             auto_declare<bool>("gazebo_com_visualization", false);
+            auto_declare<bool>("shadow_inekf_enabled", true);
             imu_interface_types_ = auto_declare<std::vector<std::string>>("imu_interfaces", state_interface_types_);
             command_prefix_ = auto_declare<std::string>("command_prefix", command_prefix_);
             feet_names_ =
@@ -370,6 +401,19 @@ namespace sysu219_guide_controller
     controller_interface::CallbackReturn Sysu219GuideController::on_configure(
         const rclcpp_lifecycle::State& /*previous_state*/)
     {
+        // MPC 权重初始化不依赖机器人描述。先创建，保证 FSM/调参初值始终可读。
+        // 异步描述回调不再替换此实例，避免启动竞态以及已调参数被覆盖。
+        ctrl_component_.convex_mpc_ = std::make_shared<ConvexMpcSolver>();
+        // 可选影子观测器：初始化失败时仅停用该模块，主控制器继续运行。
+        shadow_inekf_.reset();
+        if (kUseInEKFOdometry || get_node()->get_parameter("shadow_inekf_enabled").as_bool()) {
+            try {
+                shadow_inekf_ = std::make_shared<ShadowInEKF>(
+                    joint_names_, feet_names_, base_name_, imu_name_);
+            } catch (const std::exception& e) {
+                RCLCPP_ERROR(get_node()->get_logger(), "[SHADOW_INEKF] disabled: %s", e.what());
+            }
+        }
         control_input_subscription_ = get_node()->create_subscription<control_input_msgs::msg::Inputs>(
             "/control_input", 10, [this](const control_input_msgs::msg::Inputs::SharedPtr msg)
             {
@@ -388,7 +432,12 @@ namespace sysu219_guide_controller
                 ctrl_component_.robot_model_ = std::make_shared<QuadrupedRobot>(
                     ctrl_interfaces_, msg->data, feet_names_, base_name_);
                 ctrl_component_.balance_ctrl_ = std::make_shared<BalanceCtrl>(ctrl_component_.robot_model_);
-                ctrl_component_.convex_mpc_ = std::make_shared<ConvexMpcSolver>();
+                if (shadow_inekf_) {
+                    try { shadow_inekf_->setRobotDescription(msg->data); }
+                    catch (const std::exception& e) {
+                        RCLCPP_ERROR(get_node()->get_logger(), "[SHADOW_INEKF] description rejected: %s", e.what());
+                    }
+                }
             });
 
         // 摆动保持 0.325 s，支撑加倍为 0.650 s；每次对角交接四足支撑 0.1625 s。
@@ -461,6 +510,13 @@ namespace sysu219_guide_controller
         }
 
         // Create FSM List
+        ctrl_component_.estimator_->selectInEKF(kUseInEKFOdometry);
+        if (shadow_inekf_) {
+            try { shadow_inekf_->startSession(ctrl_interfaces_); }
+            catch (const std::exception& e) {
+                RCLCPP_ERROR(get_node()->get_logger(), "[SHADOW_INEKF] inactive: %s", e.what());
+            }
+        }
         state_list_.passive = std::make_shared<StatePassive>(ctrl_interfaces_);
         state_list_.fixedProne = std::make_shared<StateFixedProne>(ctrl_interfaces_, prone_pos_, prone_kp_, prone_kd_);
         state_list_.fixedDown = std::make_shared<StateFixedDown>(ctrl_interfaces_, down_pos_, stand_kp_, stand_kd_);
@@ -503,6 +559,8 @@ namespace sysu219_guide_controller
     controller_interface::CallbackReturn Sysu219GuideController::on_deactivate(
         const rclcpp_lifecycle::State& /*previous_state*/)
     {
+        if (state_list_.trotting) state_list_.trotting->stopOnlineTuning();
+        if (shadow_inekf_) shadow_inekf_->stopSession();
         if (current_state_ == state_list_.legIdentification && current_state_) current_state_->exit();
         if (current_state_ == state_list_.comIdentification && current_state_) current_state_->exit();
         state_list_.comIdentification.reset();
@@ -515,18 +573,24 @@ namespace sysu219_guide_controller
     controller_interface::CallbackReturn
     Sysu219GuideController::on_cleanup(const rclcpp_lifecycle::State& /*previous_state*/)
     {
+        if (state_list_.trotting) state_list_.trotting->stopOnlineTuning();
+        if (shadow_inekf_) shadow_inekf_->stopSession();
         return CallbackReturn::SUCCESS;
     }
 
     controller_interface::CallbackReturn
     Sysu219GuideController::on_error(const rclcpp_lifecycle::State& /*previous_state*/)
     {
+        if (state_list_.trotting) state_list_.trotting->stopOnlineTuning();
+        if (shadow_inekf_) shadow_inekf_->stopSession();
         return CallbackReturn::SUCCESS;
     }
 
     controller_interface::CallbackReturn
     Sysu219GuideController::on_shutdown(const rclcpp_lifecycle::State& /*previous_state*/)
     {
+        if (state_list_.trotting) state_list_.trotting->stopOnlineTuning();
+        if (shadow_inekf_) shadow_inekf_->stopSession();
         return CallbackReturn::SUCCESS;
     }
 

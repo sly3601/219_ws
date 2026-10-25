@@ -154,6 +154,9 @@ struct WbcOutput {
 class WbcController {
  public:
   explicit WbcController(WbcSettings settings = {});  // 保存并检查配置；默认使用零任务增益。
+  const WbcSettings& settings() const noexcept { return settings_; }
+  // 输入已由调参后台校验；仅控制线程调用。只更新任务增益，保留 SVD 阈值及工作区。
+  void updateTaskGains(const WbcSettings& settings) noexcept;
   // 构造五个任务；没有支撑足或摆动足时，对应任务为空。
   // 返回内部任务缓存的只读引用；下一次调用会覆盖内容，同一实例仅供一个控制线程使用。
   const std::array<WbcTask, kWbcTaskCount>& buildTasks(const WbcInput& input) const;
@@ -178,7 +181,7 @@ class WbcController {
   void buildSwingTask(const WbcInput& input, WbcTask& task) const;        // 摆动足任务。
   void buildSwingHipPostureTask(const WbcInput& input, WbcTask& task) const; // 四髋全相位回零软任务，保留原函数名。
 
-  // mutable仅用于更新计算缓存，控制参数仍保持只读。
+  // mutable仅用于更新计算缓存；在线增益由主控制线程在周期开始时更新。
   mutable std::array<WbcTask, kWbcTaskCount> tasks_;
   struct Workspace {
     WbcWorkMatrix J_A{0, 18};             // 已处理任务的堆叠雅可比。

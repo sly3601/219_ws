@@ -157,7 +157,7 @@ Estimator::Estimator(CtrlInterfaces &ctrl_interfaces, CtrlComponent &ctrl_compon
 }
 
 double Estimator::getYaw() const {
-    return rotMatToRPY(rotation_)(2);
+    return rotMatToRPY(getRotation())(2);
 }
 
 void Estimator::update() {
