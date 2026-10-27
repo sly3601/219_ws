@@ -5,6 +5,7 @@
 #include <vector>
 #include <rclcpp/time.hpp>
 #include <rclcpp/duration.hpp>
+#include "ContactObservation.hpp"
 
 struct CtrlInterfaces;
 class WaveGenerator;
@@ -12,8 +13,7 @@ class Estimator;
 
 namespace sysu219_guide_controller {
 
-// 黄色、仅观测的 InEKF。复用滤波数学，但状态/模型/线程/日志全部独立。
-// 故意不提供 selectForControl 或任何控制结果读取入口。
+// 黄色接触 InEKF。状态/模型/线程/日志独立；默认影子运行，配置明确选中后才允许控制读取。
 class ContactShadowInEKF final {
 public:
     struct Settings {
@@ -23,6 +23,7 @@ public:
         double confirm_on_s = 0.012;
         double confirm_off_s = 0.020;
         bool write_csv = true;
+        bool serve_odometry = false; // 只有启动时选中本实例才允许输出控制状态。
     };
     ContactShadowInEKF(const std::vector<std::string>& joint_names,
                       const std::vector<std::string>& foot_names,
@@ -37,6 +38,8 @@ public:
     void submit(const rclcpp::Time& time, const rclcpp::Duration& period,
                 const CtrlInterfaces& io, const WaveGenerator& wave, const Estimator& reference,
                 bool fixed_stance_prior, bool reference_ready) noexcept;
+    bool selectForControl(const rclcpp::Time& time, Estimator& estimator) noexcept;
+    bool controlContact(const rclcpp::Time& time, ContactObservation& observation) const noexcept;
 
 private:
     class Impl;

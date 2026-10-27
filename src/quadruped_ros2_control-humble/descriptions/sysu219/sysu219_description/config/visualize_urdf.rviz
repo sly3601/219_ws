@@ -402,7 +402,7 @@ Visualization Manager:
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
-      Name: 里程计对照（在役红／接触影子黄）
+      Name: 里程计对照（原InEKF红／修复InEKF黄）
       Namespaces:
         body: true
         legs: true

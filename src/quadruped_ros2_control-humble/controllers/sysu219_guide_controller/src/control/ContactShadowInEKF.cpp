@@ -1,6 +1,6 @@
 /*
  * 黄色接触影子：力观测、接触状态机和独立诊断集中在本文件。
- * 不连接任何命令接口，不修改 WaveGenerator，不向在役 Estimator 写回。
+ * 不连接命令接口或改写 WaveGenerator；被配置选中后经原连续性保护提供 Estimator 状态。
  * InEKF 使用 ShadowInEKF 的另一实例；滤波参数和已有滑移处理不另行调参。
  *
  * 力源是电机反馈力矩，不是足底传感器。采用广义动量残差：
@@ -44,7 +44,8 @@ constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
 // Unloaded 表示没有可靠载荷证据，不能据此断言几何上已经离地。
 enum State { Unknown = 0, Air = 1, Touchdown = 2, Contact = 3, Releasing = 4, Unloaded = 5 };
 enum Reason { Reset = 0, Candidate = 1, Confirmed = 2, Cancelled = 3,
-              PlannedUnload = 4, LoadLost = 5, AirMotion = 6, InvalidForce = 7 };
+              PlannedUnload = 4, LoadLost = 5, AirMotion = 6, InvalidForce = 7,
+              LiftConfirmed = 8 };
 
 class ForceContactObserver final : public ShadowInEKF::ContactObserver {
 public:
@@ -71,7 +72,7 @@ public:
     void reset() override {
         have_momentum_ = false; observer_age_ = 0.0;
         state_.fill(Unknown); reason_.fill(Reset); flags_.fill(0);
-        pending_s_.fill(0.0); changes_.fill(0); transitions_.fill(0);
+        pending_s_.fill(0.0); lift_pending_s_.fill(0.0); changes_.fill(0); transitions_.fill(0);
         contact_.fill(0); raw_fz_.fill(kNaN); fz_.fill(kNaN); rcond_.fill(kNaN);
         relative_z_.fill(kNaN); relative_vz_.fill(kNaN);
         residual_.setZero(); last_publish_s_ = last_flush_s_ = -1.0;
@@ -169,16 +170,19 @@ public:
                 csv_ << "ros_s,stamp_ns,session,dt_s,worker_age_s,filter_ready,reference_ready,"
                      << "shadow_px,shadow_py,shadow_pz,shadow_vx,shadow_vy,shadow_vz,"
                      << "serving_px,serving_py,serving_pz,serving_vx,serving_vy,serving_vz,"
-                     << "force_on_N,force_off_N,confirm_on_s,confirm_off_s,observer_gain_per_s,observer_age_s";
+                     << "force_on_N,force_off_N,confirm_on_s,confirm_off_s,observer_gain_per_s,observer_age_s,"
+                     << "lift_height_m,lift_rise_m_s,lift_confirm_s,lift_phase_end,"
+                     << "stationary_speed_scale_m_s,stationary_filter_s,contact_noise_limit";
                 for (const char* leg : {"FR", "FL", "RR", "RL"})
                     for (const char* key : {"planned", "phase", "raw_proxy_fz_N", "estimated_fz_N", "force_valid",
                          "state", "reason", "gates", "pending_s", "feedback_changes", "rcond", "relative_z_m",
-                         "relative_vz_m_s", "estimator_contact", "support_authorized", "transitions"})
+                         "relative_vz_m_s", "estimator_contact", "support_authorized", "transitions", "lift_pending_s",
+                         "stationary_quality", "foot_speed_xy_est_m_s", "position_R_scale"})
                         csv_ << ',' << leg << '_' << key;
                 for (const char* key : {"q", "qd", "tau_feedback", "external_tau_residual"})
                     for (int j = 0; j < 12; ++j) csv_ << ',' << key << '_' << j;
                 csv_ << '\n' << std::setprecision(17);
-                RCLCPP_INFO(node_->get_logger(), "[CONTACT_SHADOW] yellow only; force estimates (not force sensors), CSV=%s", path.c_str());
+                RCLCPP_INFO(node_->get_logger(), "[CONTACT_SHADOW] yellow contact InEKF, selected=%d; force estimates (not force sensors), CSV=%s", settings_.serve_odometry, path.c_str());
             } else RCLCPP_ERROR(node_->get_logger(), "[CONTACT_SHADOW] CSV unavailable: %s", path.c_str());
         }
         const V3 estimate_p = ready ? p : V3(kNaN, kNaN, kNaN);
@@ -189,12 +193,16 @@ public:
             for (const V3* x : {&estimate_p, &estimate_v, &s.reference_position, &s.reference_velocity})
                 for (int axis = 0; axis < 3; ++axis) csv_ << ',' << (*x)(axis);
             csv_ << ',' << settings_.force_on_N << ',' << settings_.force_off_N << ',' << settings_.confirm_on_s
-                 << ',' << settings_.confirm_off_s << ',' << kObserverGain << ',' << observer_age_;
+                 << ',' << settings_.confirm_off_s << ',' << kObserverGain << ',' << observer_age_
+                 << ',' << kLiftHeight << ',' << kLiftRise << ',' << kLiftConfirm << ',' << kLiftPhaseEnd
+                 << ',' << s.stationary_speed_scale << ",0.04," << s.contact_noise_limit;
             for (int leg = 0; leg < 4; ++leg) {
                 csv_ << ',' << s.planned_contact[leg] << ',' << s.phase[leg] << ',' << raw_fz_[leg] << ',' << fz_[leg]
                      << ',' << ((flags_[leg] & 1) != 0) << ',' << state_[leg] << ',' << reason_[leg] << ',' << flags_[leg]
                      << ',' << pending_s_[leg] << ',' << changes_[leg] << ',' << rcond_[leg] << ',' << relative_z_[leg]
-                     << ',' << relative_vz_[leg] << ',' << contact_[leg] << ",0," << transitions_[leg];
+                     << ',' << relative_vz_[leg] << ',' << contact_[leg] << ",0," << transitions_[leg]
+                     << ',' << lift_pending_s_[leg] << ',' << s.stationary_quality[leg]
+                     << ',' << s.foot_speed_xy[leg] << ',' << s.position_R_scale[leg];
             }
             for (const Vec12* x : std::array<const Vec12*, 4>{{&s.q, &s.qd, &s.tau, &residual_}})
                 for (int j = 0; j < 12; ++j) csv_ << ',' << (*x)(j);
@@ -223,11 +231,19 @@ public:
         }
     }
 
+    void readObservation(ContactObservation& observation) const override {
+        observation.contact = contact_;
+        observation.fz = fz_;
+        observation.relative_height = relative_z_; observation.relative_vz = relative_vz_;
+        observation.force_on_N = settings_.force_on_N;
+        for (int leg = 0; leg < 4; ++leg) observation.force_valid[leg] = (flags_[leg] & 1) != 0;
+    }
+
 private:
     void invalidate() {
         for (int leg = 0; leg < 4; ++leg) {
             transition(leg, Unknown, InvalidForce);
-            pending_s_[leg] = 0.0; changes_[leg] = 0; contact_[leg] = 0;
+            pending_s_[leg] = lift_pending_s_[leg] = 0.0; changes_[leg] = 0; contact_[leg] = 0;
         }
     }
     void transition(int leg, int next, int why) {
@@ -255,7 +271,23 @@ private:
     }
     void advance(const Sample& s, int leg, bool changed) {
         if (!(flags_[leg] & 1)) {
-            transition(leg, Unknown, InvalidForce); pending_s_[leg] = 0.0; changes_[leg] = 0; return;
+            transition(leg, Unknown, InvalidForce);
+            pending_s_[leg] = lift_pending_s_[leg] = 0.0; changes_[leg] = 0; return;
+        }
+        // 仅解除黄色里程计的静止足约束，不授权/撤销主控制器的承重。
+        // 已确认接触的脚在摆动前半段明确抬高并持续上升时，不再等待力残差拖尾。
+        const bool lifting = (state_[leg] == Contact || state_[leg] == Releasing) &&
+            !s.fixed_stance_prior && !s.planned_contact[leg] && std::isfinite(s.phase[leg]) &&
+            s.phase[leg] >= 0.0 && (s.phase[leg] < kLiftPhaseEnd) &&
+            std::isfinite(relative_z_[leg]) && relative_z_[leg] > kLiftHeight &&
+            std::isfinite(relative_vz_[leg]) && relative_vz_[leg] > kLiftRise;
+        lift_pending_s_[leg] = lifting ? lift_pending_s_[leg] + s.dt : 0.0;
+        if (lifting) flags_[leg] |= 64;
+        if (lift_pending_s_[leg] >= kLiftConfirm) {
+            flags_[leg] |= 128;
+            transition(leg, Air, LiftConfirmed);
+            pending_s_[leg] = 0.0; changes_[leg] = 0;
+            return; // 再接触仍须走下面原有的近落地门控及力消抖。
         }
         const bool on = fz_[leg] > settings_.force_on_N && (flags_[leg] & 14) == 14;
         const bool off = fz_[leg] < settings_.force_off_N;
@@ -287,6 +319,9 @@ private:
 
     static constexpr double kObserverGain = 80.0; // s^-1，残差观测器带宽起点，不是控制增益。
     static constexpr double kSettle = 0.12, kMaxGap = 0.04;
+    // 仅根据本次平地仿真离线回放选取的候选值，尚未经过新一轮仿真/真机验证。
+    static constexpr double kLiftHeight = 0.005, kLiftRise = 0.04;
+    static constexpr double kLiftConfirm = 0.008, kLiftPhaseEnd = 0.5;
     std::string base_;
     std::vector<std::string> feet_;
     const ContactShadowInEKF::Settings settings_;
@@ -298,7 +333,7 @@ private:
     bool have_momentum_ = false, csv_attempted_ = false;
     double observer_age_ = 0.0, last_publish_s_ = -1.0, last_flush_s_ = -1.0;
     std::array<int, 4> state_{}, reason_{}, flags_{}, changes_{}, transitions_{}, contact_{};
-    std::array<double, 4> pending_s_{}, raw_fz_{}, fz_{}, rcond_{}, relative_z_{}, relative_vz_{};
+    std::array<double, 4> pending_s_{}, lift_pending_s_{}, raw_fz_{}, fz_{}, rcond_{}, relative_z_{}, relative_vz_{};
     std::ofstream csv_;
     rclcpp::Node::SharedPtr node_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr diagnostics_;
@@ -310,7 +345,7 @@ public:
     Impl(const std::vector<std::string>& joints, const std::vector<std::string>& feet,
          const std::string& base, const std::string& imu, const Settings& settings)
         : observer(std::make_shared<ForceContactObserver>(base, feet, settings)),
-          filter(joints, feet, base, imu, observer) {}
+          filter(joints, feet, base, imu, observer, settings.serve_odometry) {}
     std::shared_ptr<ForceContactObserver> observer;
     ShadowInEKF filter;
 };
@@ -326,5 +361,11 @@ void ContactShadowInEKF::submit(const rclcpp::Time& time, const rclcpp::Duration
     const CtrlInterfaces& io, const WaveGenerator& wave, const Estimator& reference,
     bool fixed_stance_prior, bool reference_ready) noexcept {
     impl_->filter.submit(time, period, io, wave, reference, fixed_stance_prior, reference_ready);
+}
+bool ContactShadowInEKF::selectForControl(const rclcpp::Time& time, Estimator& estimator) noexcept {
+    return impl_->filter.selectForControl(time, estimator);
+}
+bool ContactShadowInEKF::controlContact(const rclcpp::Time& time, ContactObservation& observation) const noexcept {
+    return impl_->filter.controlContact(time, observation);
 }
 } // namespace sysu219_guide_controller

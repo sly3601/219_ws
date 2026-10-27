@@ -8,11 +8,11 @@
  * 活动机器人模型，不调用状态机，不写控制命令，也不修改原 KF 的内部状态。
  * 队列满时丢弃当前快照，控制线程不等待后台线程。
  * selectForControl() 通过另一条有界队列读取完整结果，由 Estimator 统一切换输出。
- * 主控制器源码中的 kUseInEKFOdometry 当前为 true，红色实例是控制状态来源。
+ * 配置 odometry_source=legacy_kf / inekf / contact_inekf 选择在役来源；当前默认原 InEKF，修复版保留影子。
  * 两套状态完全独立；初始化前不进入运动控制，严重故障由主控制器切固定站立，不回退旧 KF。
  * 检查控制时钟及稳态时钟年龄；缓存最长100 ms，连续拒收50 ms时锁存故障。
  * 在这段短延迟内用恒定线速度和角速度推到控制时刻；不是重新执行滤波校正。
- * 开关只在重新编译后生效，不提供运行中切换。
+ * 开关在重新配置/激活时读取，不在运动中热切换坐标原点。
  * 跳变保护：异常校正不提交状态或协方差；控制入口另查位姿、速度和角速度连续性。
  * 孤立异常仅使用本系统可信状态预测；持续 50 ms 异常锁存故障，重新激活后才清除。
  * 两线程仍共享处理器与内存带宽；这是功能隔离，不能据此宣称严格实时隔离。
@@ -46,13 +46,16 @@
  * 严重异常观测降权。没有外部参考时，一般不能识别所有足端同向滑移。
  *
  * RViz 使用：固定坐标系设为 world，按话题添加 /shadow_inekf/markers，类型 MarkerArray。
- * 红色为在役 InEKF；同话题的黄色机身来自独立 ContactShadowInEKF，不显示旧 KF。
+ * 红色为原 InEKF，黄色为接触修复 InEKF；在役来源由 odometry_source 决定，不显示旧 KF。
  * 默认显示机身、腿部轮廓和足端可信度球；其他辅助图形默认关闭。
  * 不向场景发布文字，等待或异常原因写入终端日志；数值诊断保留在独立话题中。
  * /shadow_inekf/pose 发布机身在世界系的位姿及协方差。
  * /shadow_inekf/twist 发布机身坐标系下的速度及协方差。
  * /shadow_inekf/diagnostics 发布带列名的在役数值诊断，不再混入旧 KF 状态。
- * 可选 ContactObserver 仅服务黄色实例；该实例禁止回传控制状态。
+ * 可选 ContactObserver 仅服务黄色实例；仅启动时明确授权的实例可回传控制状态。
+ * 黄色使用足端校正前的水平静止一致性调整每腿 R（q 定义在标准差上），
+ * 复用现有滑移评分和速度融合权重，不改变红色公式；实现并非 OCELOT 的 GLRT 复现。
+ * 参考自适应方差定义：https://arxiv.org/html/2605.21863v1#S3.SS2.SSS3。
  * 新增 world -> shadow_inekf_base；原 world/base 变换跟随主算法选择的状态来源。
  * 以下参数为工程起始值，不是 N100 厂家标定参数。
  * 控制器参数 shadow_inekf_enabled 默认为 true，在配置阶段读取。
@@ -161,9 +164,10 @@ public:
     Impl(const std::vector<std::string>& joint_names,
                 const std::vector<std::string>& foot_names,
                 const std::string& base_name, const std::string& imu_name,
-                std::shared_ptr<ContactObserver> contact_observer)
+                std::shared_ptr<ContactObserver> contact_observer, bool allow_contact_control)
         : joint_names_(joint_names), foot_names_(foot_names),
-          base_name_(base_name), imu_name_(imu_name), contact_observer_(std::move(contact_observer)) {
+          base_name_(base_name), imu_name_(imu_name), contact_observer_(std::move(contact_observer)),
+          control_enabled_(!contact_observer_ || allow_contact_control) {
         if (joint_names_.size() != 12 || foot_names_.size() != 4)
             throw std::runtime_error("shadow InEKF requires 12 named joints and four named feet");
         rclcpp::NodeOptions options;
@@ -271,8 +275,8 @@ public:
     }
 
     bool selectForControl(const rclcpp::Time& time, Estimator& estimator) noexcept {
-        // 黄色实例无论状态是否正常，都不能进入 Estimator 的控制缓存。
-        if (contact_observer_) return false;
+        // 只有配置阶段明确选中的接触 InEKF 才能接管；普通黄色影子继续只读。
+        if (!control_enabled_) return false;
         const auto session = session_.load(std::memory_order_acquire);
         if (control_guard_session_ != session) {
             control_guard_session_ = session;
@@ -361,12 +365,25 @@ public:
         return true;
     }
 
+    bool controlContact(const rclcpp::Time& time, ContactObservation& observation) const noexcept {
+        if (!contact_observer_ || !control_enabled_ || !have_control_result_ ||
+            !accepting_.load(std::memory_order_acquire) || guardFaulted(control_result_.session) ||
+            control_result_.session != session_.load(std::memory_order_acquire) ||
+            control_result_.epoch != control_epoch_.load(std::memory_order_acquire)) return false;
+        const double age = (steadyNanoseconds() - control_result_.steady_ns) * 1e-9;
+        const double dt = (time.nanoseconds() - control_result_.stamp_ns) * 1e-9;
+        if (age < 0.0 || age > tune_.max_gap || dt < 0.0 || dt > tune_.max_gap) return false;
+        observation = control_result_.observation;
+        return true;
+    }
+
 private:
     struct ControlResult {
         std::int64_t stamp_ns = 0, steady_ns = 0;
         std::uint64_t session = 0, epoch = 0;
         V3 position = V3::Zero(), velocity = V3::Zero(), gyro = V3::Zero();
         M3 rotation = M3::Identity();
+        ContactObservation observation;
     };
 
     bool guardFaulted(std::uint64_t session) const noexcept {
@@ -432,6 +449,11 @@ private:
         result.session = s.session; result.epoch = control_epoch_.load(std::memory_order_relaxed);
         result.position = basePosition(); result.velocity = baseVelocity();
         result.rotation = R_; result.gyro = gyro_ - bg_;
+        if (contact_observer_) {
+            contact_observer_->readObservation(result.observation);
+            result.observation.stamp_ns = s.stamp_ns;
+            result.observation.steady_ns = s.steady_ns;
+        }
         result_write_.store(next, std::memory_order_release);
         control_ready_.store(true, std::memory_order_release);
     }
@@ -546,8 +568,8 @@ private:
         if (contact_observer_) contact_observer_->setRobotDescription(xml);
         RCLCPP_INFO(node_->get_logger(),
             "InEKF ready: independent KDL, IMU lever [%.5f %.5f %.5f] m; "
-            "/shadow_inekf/markers: red=serving, yellow=contact-shadow; this instance=%s.",
-            lever_.x(), lever_.y(), lever_.z(), contact_observer_ ? "yellow / diagnostic only" : "red");
+            "/shadow_inekf/markers: red=original, yellow=contact-aware; this instance=%s.",
+            lever_.x(), lever_.y(), lever_.z(), contact_observer_ ? (control_enabled_ ? "yellow / selected" : "yellow / shadow") : "red / original");
     }
 
     void updateModel() {
@@ -586,7 +608,7 @@ private:
         // 后台线程使用普通调度策略，避免继承控制线程的实时优先级。
         sched_param scheduling{};
         (void)pthread_setschedparam(pthread_self(), SCHED_OTHER, &scheduling);
-        (void)setpriority(PRIO_PROCESS, static_cast<id_t>(syscall(SYS_gettid)), contact_observer_ ? 19 : 10);
+        (void)setpriority(PRIO_PROCESS, static_cast<id_t>(syscall(SYS_gettid)), contact_observer_ && !control_enabled_ ? 19 : 10);
         (void)pthread_setname_np(pthread_self(), contact_observer_ ? "contact_shadow" : "shadow_inekf");
 #endif
         while (running_.load(std::memory_order_acquire)) {
@@ -648,6 +670,7 @@ private:
         static_gyro_.setZero(); static_accel_.setZero();
         active_.fill(false); contact_age_.fill(0.0); trust_.fill(0.0);
         slip_score_.fill(0.0); noise_scale_.fill(1.0); nis_.fill(0.0);
+        stationary_quality_.fill(0.0); foot_speed_xy_.fill(std::nan("")); position_R_scale_.fill(std::nan(""));
         shadow_history_.clear(); history_time_.clear();
         if (contact_observer_) contact_observer_->reset();
         status_ = "WAITING FOR VALID IMU / SUPPORT PRIOR";
@@ -706,7 +729,7 @@ private:
         attitude_seen_ = Eigen::Quaterniond(measured_R_);
         status_ = "RUNNING / STATIC BIAS BOOTSTRAP";
         RCLCPP_INFO(node_->get_logger(), "InEKF initialized: %s; instance=%s; no display translation.",
-            status_.c_str(), contact_observer_ ? "yellow / diagnostic only" : "red / serving");
+            status_.c_str(), contact_observer_ ? (control_enabled_ ? "yellow / selected" : "yellow / shadow") : "red / original");
     }
 
     ContactSample contactSample(const Snapshot& s, double dt) const {
@@ -837,10 +860,16 @@ private:
             }
             // 以传感器处理频率回传状态，放在可能等待 DDS 的低频可视化发布之前。
             // 数值不变只作诊断，不据此拒绝完全静止的合法仿真或量化传感器数据。
-            if (!contact_observer_) writeControlResult(s);
+            if (control_enabled_) writeControlResult(s);
         }
-        if (contact_observer_)
+        if (contact_observer_) {
+            contact_sample.stationary_quality = stationary_quality_;
+            contact_sample.foot_speed_xy = foot_speed_xy_;
+            contact_sample.position_R_scale = position_R_scale_;
+            contact_sample.stationary_speed_scale = tune_.slip_speed;
+            contact_sample.contact_noise_limit = tune_.max_contact_noise_scale;
             contact_observer_->recordEstimate(contact_sample, basePosition(), baseVelocity(), initialized_);
+        }
         previous_imu_ = s.imu; previous_gyro_ = gyro_; previous_accel_ = accel_; have_imu_ = true;
         if (last_publish_ < 0.0 || now - last_publish_ >= tune_.publish_period) {
             publish(observed, now); last_publish_ = now;
@@ -998,6 +1027,11 @@ private:
 
     void updateContacts(const Snapshot& s, double dt) {
         const V3 omega = gyro_ - bg_;
+        // 固定本拍足端校正前的 IMU 点速度，避免先校正的腿改变后续腿的静止评分。
+        const V3 velocity_prior = v_;
+        if (contact_observer_) {
+            stationary_quality_.fill(0.0); foot_speed_xy_.fill(std::nan("")); position_R_scale_.fill(std::nan(""));
+        }
         std::array<V3, 4> implied_velocity;
         std::array<std::vector<double>, 3> support_velocities;
         for (int leg = 0; leg < 4; ++leg) {
@@ -1024,14 +1058,23 @@ private:
             // 将每条腿推算的速度同时与惯性预测、其他支撑腿比较。
             // 此处评估位置观测可靠性；水平速度另以低频、保守噪声聚合融合。
             // 所有足端同向滑移时，这项检查可能无法发现异常。
-            const double disagreement = std::min((implied_velocity[leg] - v_).norm(),
+            double disagreement = std::min((implied_velocity[leg] - v_).norm(),
                                                  (implied_velocity[leg] - consensus).norm() + 0.02);
+            if (contact_observer_) {
+                // 仅黄色：世界系水平足速的一致性残差，m/s；不要求达到任何抬脚高度。
+                // 它依赖估计的惯性速度，不是真实滑移速度或独立观测。
+                disagreement = (implied_velocity[leg] - velocity_prior).head<2>().norm();
+                foot_speed_xy_[leg] = disagreement;
+            }
             const double target = std::clamp(disagreement / tune_.slip_speed, 0.0, 10.0);
             const double alpha = 1.0 - std::exp(-dt / 0.04);
             slip_score_[leg] += alpha * (target - slip_score_[leg]);
             noise_scale_[leg] = std::clamp(1.0 + slip_score_[leg] * slip_score_[leg] +
                 30.0 * (1.0 - contact_trust), 1.0, tune_.max_contact_noise_scale);
             trust_[leg] = contact_trust / std::sqrt(noise_scale_[leg]);
+            if (contact_observer_)
+                stationary_quality_[leg] = 1.0 / std::sqrt(std::clamp(1.0 + slip_score_[leg] * slip_score_[leg],
+                    1.0, tune_.max_contact_noise_scale));
             if (contact_age_[leg] < tune_.touchdown_delay || contact_trust < 0.05) continue;
             if (!active_[leg]) { resetContact(leg, true); continue; }
             H3 h = H3::Zero();
@@ -1040,6 +1083,14 @@ private:
             const V3 residual = R_ * (legs_[leg].r - lever_) + p_ - anchors_[leg];
             M3 covariance = R_ * legs_[leg].covariance * R_.transpose();
             covariance *= (1.0 + slip_score_[leg]) / std::max(contact_trust, 0.05);
+            if (contact_observer_) {
+                // q 对标准差定义：sigma=base/q，因此方差下限为 base_R/(q*q)。
+                // 与原有触地/滑移放大取较大者，不再乘一层 q 导致重复降权。
+                const double original_scale = (1.0 + slip_score_[leg]) / std::max(contact_trust, 0.05);
+                const double q = stationary_quality_[leg];
+                position_R_scale_[leg] = std::max(original_scale, 1.0 / (q * q));
+                covariance *= position_R_scale_[leg] / original_scale;
+            }
             const M3 innovation_covariance = h * P_ * h.transpose() + covariance;
             const Eigen::LDLT<M3> ldlt(innovation_covariance);
             if (ldlt.info() != Eigen::Success || !ldlt.isPositive() || ldlt.vectorD().minCoeff() < 1e-12) continue;
@@ -1050,6 +1101,7 @@ private:
                 noise_scale_[leg] = std::max(noise_scale_[leg], scale);
                 trust_[leg] /= std::sqrt(scale);
                 covariance *= scale;
+                if (contact_observer_) position_R_scale_[leg] *= scale;
             }
             if (nis_[leg] > tune_.position_nis_hard) {
                 // 异常触地点保留较大的移动不确定度，避免强行固定错误的足端锚点。
@@ -1327,6 +1379,7 @@ private:
     std::vector<std::string> joint_names_, foot_names_;
     std::string base_name_, imu_name_;
     const std::shared_ptr<ContactObserver> contact_observer_;
+    const bool control_enabled_;
     std::array<std::size_t, 12> q_indices_{}, qd_indices_{}, tau_indices_{};
     std::array<std::size_t, 10> imu_indices_{};
     std::array<Snapshot, kQueueSize> queue_{};
@@ -1370,6 +1423,7 @@ private:
     std::array<V3, 4> anchors_{{V3::Zero(), V3::Zero(), V3::Zero(), V3::Zero()}};
     std::array<bool, 4> active_{};
     std::array<double, 4> contact_age_{}, trust_{}, slip_score_{}, noise_scale_{}, nis_{};
+    std::array<double, 4> stationary_quality_{}, foot_speed_xy_{}, position_R_scale_{};
     bool initialized_ = false, have_imu_ = false, imu_stale_ = false, attitude_reacquiring_ = false;
     // 以下校正拒绝状态只由后台线程访问；故障按会话锁存，不自动重置原点恢复控制。
     bool ever_initialized_ = false, correction_rejected_this_sample_ = false, correction_accepted_this_sample_ = false;
@@ -1396,8 +1450,9 @@ private:
 ShadowInEKF::ShadowInEKF(const std::vector<std::string>& joint_names,
                          const std::vector<std::string>& foot_names,
                          const std::string& base_name, const std::string& imu_name,
-                         std::shared_ptr<ContactObserver> contact_observer)
-    : impl_(std::make_unique<Impl>(joint_names, foot_names, base_name, imu_name, std::move(contact_observer))) {}
+                         std::shared_ptr<ContactObserver> contact_observer, bool allow_contact_control)
+    : impl_(std::make_unique<Impl>(joint_names, foot_names, base_name, imu_name,
+                                 std::move(contact_observer), allow_contact_control)) {}
 
 ShadowInEKF::~ShadowInEKF() = default;
 
@@ -1411,6 +1466,9 @@ void ShadowInEKF::submit(const rclcpp::Time& time, const rclcpp::Duration& perio
 }
 bool ShadowInEKF::selectForControl(const rclcpp::Time& time, Estimator& estimator) noexcept {
     return impl_->selectForControl(time, estimator);
+}
+bool ShadowInEKF::controlContact(const rclcpp::Time& time, ContactObservation& observation) const noexcept {
+    return impl_->controlContact(time, observation);
 }
 
 } // 命名空间 sysu219_guide_controller

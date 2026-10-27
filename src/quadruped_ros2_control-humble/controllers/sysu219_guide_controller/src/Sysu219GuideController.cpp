@@ -21,8 +21,6 @@ namespace sysu219_guide_controller
 {
     using config_type = controller_interface::interface_configuration_type;
 
-    // 在役里程计选择：当前 true=红色 InEKF；黄色影子始终不能接管控制。
-    constexpr bool kUseInEKFOdometry = true;
 
     controller_interface::InterfaceConfiguration Sysu219GuideController::command_interface_configuration() const
     {
@@ -93,44 +91,43 @@ namespace sysu219_guide_controller
         ctrl_component_.robot_model_->update();
         ctrl_component_.wave_generator_->update(period.seconds());
         ctrl_component_.estimator_->update();
-        bool odometry_ready = !kUseInEKFOdometry;
-        if (shadow_inekf_) {
-            shadow_inekf_->submit(time, period, ctrl_interfaces_,
-                *ctrl_component_.wave_generator_, *ctrl_component_.estimator_,
-                current_state_ == state_list_.fixedStand || current_state_ == state_list_.freeStand);
-            // 保留旧 KF 内部计算的兼容路径；控制输出只选红色 InEKF，不向旧 KF 回退。
-            if constexpr (kUseInEKFOdometry)
-                odometry_ready = shadow_inekf_->selectForControl(time, *ctrl_component_.estimator_);
-        }
-        if constexpr (kUseInEKFOdometry) {
-            if (!odometry_ready && (current_state_ == state_list_.trotting ||
-                current_state_ == state_list_.balanceTest || current_state_ == state_list_.rlWalk)) {
-                // 短暂拒收由估计器内部容忍；只有无法继续提供可信状态才走到这里。
-                // 不能提前返回：本机控制管理器仍会写硬件，必须当周期覆盖行走命令。
-                // 手动失能优先；其余严重里程计故障转入不依赖里程计的关节固定站立。
-                std::shared_ptr<FSMState> stop_state = state_list_.fixedStand;
-                if (ctrl_interfaces_.control_inputs_.command == 1) stop_state = state_list_.passive;
-                stop_state->previous_state_name = current_state_->state_name;
-                current_state_->exit();
-                current_state_ = next_state_ = stop_state;
-                next_state_name_ = current_state_->state_name;
-                mode_ = FSMMode::NORMAL;
-                current_state_->enter(); // 立即清前馈、清目标速度，从实测关节位置开始站立过渡。
-                RCLCPP_ERROR(get_node()->get_logger(),
-                    "[ODOMETRY] 严重里程计故障，已切入%s并覆盖行走命令；不切换旧 KF，须重新激活估计器后才能进入运动状态。",
-                    current_state_->state_name_string.c_str());
-            }
-        }
-
-        // 只复制传感器和在役状态用于对照。黄色结果不进入 odometry_ready/FSM/命令链。
+        const bool fixed_prior = current_state_ == state_list_.fixedStand || current_state_ == state_list_.freeStand;
+        if (shadow_inekf_)
+            shadow_inekf_->submit(time, period, ctrl_interfaces_, *ctrl_component_.wave_generator_,
+                                  *ctrl_component_.estimator_, fixed_prior);
 #ifdef SYSU219_ENABLE_CONTACT_SHADOW
-        if (contact_shadow_inekf_) {
-            contact_shadow_inekf_->submit(time, period, ctrl_interfaces_,
-                *ctrl_component_.wave_generator_, *ctrl_component_.estimator_,
-                current_state_ == state_list_.fixedStand || current_state_ == state_list_.freeStand,
-                odometry_ready);
+        if (contact_shadow_inekf_)
+            contact_shadow_inekf_->submit(time, period, ctrl_interfaces_, *ctrl_component_.wave_generator_,
+                *ctrl_component_.estimator_, fixed_prior, last_odometry_ready_);
+#endif
+        bool odometry_ready = ctrl_component_.odometry_mode == 0;
+        ctrl_component_.contact_observation_ready = false;
+        if (ctrl_component_.odometry_mode == 1 && shadow_inekf_)
+            odometry_ready = shadow_inekf_->selectForControl(time, *ctrl_component_.estimator_);
+#ifdef SYSU219_ENABLE_CONTACT_SHADOW
+        if (ctrl_component_.odometry_mode == 2 && contact_shadow_inekf_) {
+            odometry_ready = contact_shadow_inekf_->selectForControl(time, *ctrl_component_.estimator_);
+            if (odometry_ready)
+                ctrl_component_.contact_observation_ready = contact_shadow_inekf_->controlContact(
+                    time, ctrl_component_.contact_observation);
         }
 #endif
+        last_odometry_ready_ = odometry_ready;
+        if (ctrl_component_.odometry_mode != 0 && !odometry_ready &&
+            (current_state_ == state_list_.trotting || current_state_ == state_list_.balanceTest ||
+             current_state_ == state_list_.rlWalk)) {
+            auto stop_state = ctrl_interfaces_.control_inputs_.command == 1 ?
+                std::shared_ptr<FSMState>(state_list_.passive) : std::shared_ptr<FSMState>(state_list_.fixedStand);
+            stop_state->previous_state_name = current_state_->state_name;
+            current_state_->exit();
+            current_state_ = next_state_ = stop_state;
+            next_state_name_ = current_state_->state_name;
+            mode_ = FSMMode::NORMAL;
+            current_state_->enter();
+            RCLCPP_ERROR(get_node()->get_logger(),
+                "[ODOMETRY] %s失效，已切入%s；不自动切换估计器/原点。",
+                odometry_source_.c_str(), current_state_->state_name_string.c_str());
+        }
 
         // 仅 Gazebo 配置开启；所有 FSM 状态都以约 25 Hz 输出 MPC 的估计质心。
         if (com_estimated_pub_ && ctrl_component_.convex_mpc_) {
@@ -287,7 +284,10 @@ namespace sysu219_guide_controller
                 constexpr double trotting_entry_tilt_limit_deg = 5.0;
                 constexpr double rad_to_deg = 180.0 / M_PI;
                 const Vec3 entry_rpy = rotMatToRPY(ctrl_component_.estimator_->getRotation());
-                reject_trotting = !entry_rpy.allFinite() ||
+                const bool contact_not_ready = ctrl_component_.contact_feedback_enabled &&
+                    (!ctrl_component_.contact_observation_ready ||
+                     ctrl_component_.contact_observation.contact != std::array<int, 4>{{1, 1, 1, 1}});
+                reject_trotting = contact_not_ready || !entry_rpy.allFinite() ||
                     std::abs(entry_rpy(0)) * rad_to_deg > trotting_entry_tilt_limit_deg ||
                     std::abs(entry_rpy(1)) * rad_to_deg > trotting_entry_tilt_limit_deg;
                 if (reject_trotting)
@@ -321,6 +321,20 @@ namespace sysu219_guide_controller
             mode_ = FSMMode::NORMAL;
         }
 
+        // 接触故障在硬件write前同步切站立；绝不将上一帧行走命令留给硬件。
+        if (current_state_ == state_list_.trotting && state_list_.trotting->contactControlFault()) {
+            if (quadruped_debug::Csv_DebugMode)
+                state_list_.trotting->recordDebug(time, period, debug_begin, debug_system_begin);
+            auto stop_state = ctrl_interfaces_.control_inputs_.command == 1 ?
+                std::shared_ptr<FSMState>(state_list_.passive) : std::shared_ptr<FSMState>(state_list_.fixedStand);
+            stop_state->previous_state_name = current_state_->state_name;
+            current_state_->exit(); current_state_ = next_state_ = stop_state;
+            next_state_name_ = current_state_->state_name; mode_ = FSMMode::NORMAL;
+            current_state_->enter(); current_state_->run(time, period);
+            trotting_ran = false;
+            RCLCPP_ERROR(get_node()->get_logger(), "[CONTACT_CONTROL] 交接失效，已覆盖行走命令并切入%s",
+                current_state_->state_name_string.c_str());
+        }
         // ========== 发布关节目标位置（cmd_pos）镜像到 /joint_cmd_states ==========
         if (joint_cmd_pub_) {
             sensor_msgs::msg::JointState msg;
@@ -377,6 +391,12 @@ namespace sysu219_guide_controller
             base_name_ = auto_declare<std::string>("base_name", base_name_);
             auto_declare<bool>("gazebo_com_visualization", false);
             auto_declare<bool>("shadow_inekf_enabled", true);
+#ifdef SYSU219_ENABLE_CONTACT_SHADOW
+            auto_declare<std::string>("odometry_source", "inekf");
+#else
+            auto_declare<std::string>("odometry_source", "inekf");
+#endif
+            auto_declare<bool>("contact_feedback_control", false);
             imu_interface_types_ = auto_declare<std::vector<std::string>>("imu_interfaces", state_interface_types_);
             command_prefix_ = auto_declare<std::string>("command_prefix", command_prefix_);
             feet_names_ =
@@ -444,12 +464,26 @@ namespace sysu219_guide_controller
     controller_interface::CallbackReturn Sysu219GuideController::on_configure(
         const rclcpp_lifecycle::State& /*previous_state*/)
     {
+        odometry_source_ = get_node()->get_parameter("odometry_source").as_string();
+        if (odometry_source_ != "legacy_kf" && odometry_source_ != "inekf" && odometry_source_ != "contact_inekf") {
+            RCLCPP_ERROR(get_node()->get_logger(), "odometry_source只能为legacy_kf / inekf / contact_inekf");
+            return CallbackReturn::ERROR;
+        }
+#ifndef SYSU219_ENABLE_CONTACT_SHADOW
+        if (odometry_source_ == "contact_inekf") {
+            RCLCPP_ERROR(get_node()->get_logger(), "当前构建未包含contact_inekf，请选择inekf或legacy_kf");
+            return CallbackReturn::ERROR;
+        }
+#endif
+        ctrl_component_.odometry_mode = odometry_source_ == "legacy_kf" ? 0 : odometry_source_ == "inekf" ? 1 : 2;
+        ctrl_component_.contact_feedback_enabled = ctrl_component_.odometry_mode == 2 &&
+            get_node()->get_parameter("contact_feedback_control").as_bool();
         // MPC 权重初始化不依赖机器人描述。先创建，保证 FSM/调参初值始终可读。
         // 异步描述回调不再替换此实例，避免启动竞态以及已调参数被覆盖。
         ctrl_component_.convex_mpc_ = std::make_shared<ConvexMpcSolver>();
         // 可选影子观测器：初始化失败时仅停用该模块，主控制器继续运行。
         shadow_inekf_.reset();
-        if (kUseInEKFOdometry || get_node()->get_parameter("shadow_inekf_enabled").as_bool()) {
+        if (ctrl_component_.odometry_mode == 1 || get_node()->get_parameter("shadow_inekf_enabled").as_bool()) {
             try {
                 shadow_inekf_ = std::make_shared<ShadowInEKF>(
                     joint_names_, feet_names_, base_name_, imu_name_);
@@ -460,8 +494,9 @@ namespace sysu219_guide_controller
         contact_shadow_inekf_.reset();
 #ifdef SYSU219_ENABLE_CONTACT_SHADOW
         try {
-            if (get_node()->get_parameter("contact_shadow_inekf_enabled").as_bool()) {
+            if (ctrl_component_.odometry_mode == 2 || get_node()->get_parameter("contact_shadow_inekf_enabled").as_bool()) {
                 ContactShadowInEKF::Settings settings;
+                settings.serve_odometry = ctrl_component_.odometry_mode == 2;
                 settings.force_on_N = get_node()->get_parameter("contact_shadow_force_on_N").as_double();
                 settings.force_off_N = get_node()->get_parameter("contact_shadow_force_off_N").as_double();
                 settings.confirm_on_s = get_node()->get_parameter("contact_shadow_confirm_on_s").as_double();
@@ -476,6 +511,13 @@ namespace sysu219_guide_controller
             RCLCPP_ERROR(get_node()->get_logger(), "[CONTACT_SHADOW] disabled after unknown exception; serving loop unchanged");
         }
 #endif
+        if ((ctrl_component_.odometry_mode == 1 && !shadow_inekf_) ||
+            (ctrl_component_.odometry_mode == 2 && !contact_shadow_inekf_)) {
+            RCLCPP_ERROR(get_node()->get_logger(), "所选估计器%s构造失败，拒绝配置；不静默换源", odometry_source_.c_str());
+            return CallbackReturn::ERROR;
+        }
+        RCLCPP_INFO(get_node()->get_logger(), "[ODOMETRY_SELECT] source=%s contact_feedback=%d (重新配置后生效)",
+            odometry_source_.c_str(), ctrl_component_.contact_feedback_enabled);
         control_input_subscription_ = get_node()->create_subscription<control_input_msgs::msg::Inputs>(
             "/control_input", 10, [this](const control_input_msgs::msg::Inputs::SharedPtr msg)
             {
@@ -583,11 +625,14 @@ namespace sysu219_guide_controller
         }
 
         // Create FSM List
-        ctrl_component_.estimator_->selectInEKF(kUseInEKFOdometry);
+        ctrl_component_.estimator_->selectInEKF(ctrl_component_.odometry_mode != 0);
+        last_odometry_ready_ = false;
+        ctrl_component_.contact_observation_ready = false;
         if (shadow_inekf_) {
             try { shadow_inekf_->startSession(ctrl_interfaces_); }
             catch (const std::exception& e) {
                 RCLCPP_ERROR(get_node()->get_logger(), "[SHADOW_INEKF] inactive: %s", e.what());
+                if (ctrl_component_.odometry_mode == 1) return CallbackReturn::ERROR;
             }
         }
 #ifdef SYSU219_ENABLE_CONTACT_SHADOW
@@ -595,10 +640,12 @@ namespace sysu219_guide_controller
             try { contact_shadow_inekf_->startSession(ctrl_interfaces_); }
             catch (const std::exception& e) {
                 contact_shadow_inekf_->stopSession();
-                RCLCPP_ERROR(get_node()->get_logger(), "[CONTACT_SHADOW] inactive; red unchanged: %s", e.what());
+                RCLCPP_ERROR(get_node()->get_logger(), "[CONTACT_SHADOW] inactive: %s", e.what());
+                if (ctrl_component_.odometry_mode == 2) return CallbackReturn::ERROR;
             } catch (...) {
                 contact_shadow_inekf_->stopSession();
-                RCLCPP_ERROR(get_node()->get_logger(), "[CONTACT_SHADOW] inactive after unknown exception; red unchanged");
+                RCLCPP_ERROR(get_node()->get_logger(), "[CONTACT_SHADOW] inactive after unknown exception");
+                if (ctrl_component_.odometry_mode == 2) return CallbackReturn::ERROR;
             }
         }
 #endif

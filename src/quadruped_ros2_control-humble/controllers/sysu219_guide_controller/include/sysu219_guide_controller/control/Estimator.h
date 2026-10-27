@@ -111,7 +111,7 @@ public:
 
     void update();
 
-    // 仅由源码开关在激活时选定；新系统暂未产出结果时也不改用旧 KF。
+    // 由 odometry_source 配置在激活时选定；新系统未就绪时不自动改用旧 KF。
     void selectInEKF(bool enabled) { use_inekf_ = enabled; }
     // 只供对照发布读取旧 KF，避免显示链误把选定的新输出当作旧估计。
     void legacyState(Vec3& position, Vec3& velocity, RotMat& rotation) const {

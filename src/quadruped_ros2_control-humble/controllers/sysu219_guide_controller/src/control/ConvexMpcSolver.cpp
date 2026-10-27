@@ -328,10 +328,10 @@ ConvexMpcSolver::ConvexMpcSolver()
   Q.setZero();
   R.setZero();
   S.setZero();
-  Q.diagonal() << 500, 550, 23, // 3轴角度；按2026-10-27 02:41快照更新。
+  Q.diagonal() << 650, 650, 23, // 3轴角度；按2026-10-27 02:41快照更新。
                       950.0,  1225.0,  1990.0,// 3轴位置。
-                      153.802816901,   160.669014085,   5, // 3轴角速度。
-                      717.349856179,   798.591549296,   970.0, // 3轴速度。
+                      146.220987898,   160.669014085,   5, // 3轴角速度。
+                      825.962686516,   860.454274946,   1143.42045229, // 3轴速度。
                       0.0;          // 重力
 
   R.diagonal() << 1, 1, 1,  // 力大小限制惩罚权重
@@ -350,10 +350,10 @@ ConvexMpcSolver::ConvexMpcSolver()
                   1e-4, 1e-4, 1e-6,  // FL
                   1e-4, 1e-4, 1e-6,  // RR
                   1e-4, 1e-4, 1e-6;  // RL
-  S.diagonal() << 2e-3, 2e-3, 1e-5,  // FR: fx, fy, fz
-                  2e-3, 2e-3, 1e-5,  // FL
-                  2e-3, 2e-3, 1e-5,  // RR
-                  2e-3, 2e-3, 1e-5;  // RL
+  S.diagonal() << 0.00240797293182, 0.002458840618908, 0.000160319049132,  // FR: fx, fy, fz
+                  0.00240797293182, 0.002458840618908, 0.000160319049132,  // FL
+                  0.00240797293182, 0.002458840618908, 0.000160319049132,  // RR
+                  0.00240797293182, 0.002458840618908, 0.000160319049132;  // RL
   // 额外惩罚 1e-3 * (本次总 fz - 上次总 fz)^2；腿间转移承重不受此项惩罚。
   const Vec12 total_fz = (Vec12() << 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1).finished();
   S.noalias() += 1e-3 * total_fz * total_fz.transpose();
@@ -519,7 +519,8 @@ Vec34 ConvexMpcSolver::makeFallbackForces(const VecInt4& contact_now) const {
   }
 
   const bool no_stance = (stance_count == 0);
-  const int effective_stance_count = no_stance ? 4 : stance_count;  // 如果没有任何支撑腿，就假设四条腿都在支撑，以平均分配力。
+  if (no_stance) return force; // 不为悬空脚编造重力支撑；上层负责零/单足失载保护。
+  const int effective_stance_count = stance_count;
 
   const double fz_nominal =
       mass * std::abs(g(2)) / static_cast<double>(effective_stance_count);
@@ -542,7 +543,7 @@ Vec34 ConvexMpcSolver::makeFallbackForces(const VecInt4& contact_now) const {
   );
 
   for (int leg = 0; leg < 4; ++leg) {
-    if (no_stance || contact_now(leg) == 1) {
+    if (contact_now(leg) == 1) {
       force(2, leg) = fz;
     }
   }
@@ -638,6 +639,17 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
 
 
   // 设置摩擦锥的上下界矩阵ci
+  if (!in.stage_force_limits.empty()) {
+    if (static_cast<int>(in.stage_force_limits.size()) != horizon_N) return out;
+    for (const auto& cap : in.stage_force_limits)
+      if (!cap.allFinite() || (cap.array() < 0.0).any()) return out;
+  }
+  if (!in.stage_force_minimum.empty()) {
+    if (static_cast<int>(in.stage_force_minimum.size()) != horizon_N || in.stage_force_limits.empty()) return out;
+    for (int k = 0; k < horizon_N; ++k)
+      if (!in.stage_force_minimum[k].allFinite() || (in.stage_force_minimum[k].array() < 0.0).any() ||
+          (in.stage_force_minimum[k].array() > in.stage_force_limits[k].array()).any()) return out;
+  }
   for (int k = 0; k < horizon_N; ++k) {
     for (int leg = 0; leg < 4; ++leg) {
       const int row = rows_per_leg * leg;
@@ -651,6 +663,10 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
         hpipm_->lg_stage[k].segment(row, rows_per_leg) = lower_bound_stance_;
         hpipm_->ug_stage[k].segment(row, rows_per_leg) = upper_bound_stance_;
         if (k == 0) hpipm_->ug_stage[k](row + 4) = std::min(fzMax, in.liftoff_fz_limit(leg));     // 支撑腿的 fz 上界，受 liftoff_fz_limit 限制
+        if (!in.stage_force_limits.empty())
+          hpipm_->ug_stage[k](row + 4) = std::min(hpipm_->ug_stage[k](row + 4), in.stage_force_limits[k](leg));
+        if (!in.stage_force_minimum.empty())
+          hpipm_->lg_stage[k](row + 4) = std::max(fzMin, in.stage_force_minimum[k](leg));
       }
     }
   }
@@ -1045,7 +1061,9 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
     const Vec3& gyro_G,          // 当前机身角速度，G 系表达。对应论文状态里的 omega。
     const RotMat& Rd_GB,         // 期望机身姿态旋转矩阵，B 系到 G 系。用于生成参考姿态 theta_ref。
     const Vec3& v_ref_G,         // 期望机身/质心线速度，G 系表达。用于生成参考速度和参考位置轨迹。
-    const Vec4& liftoff_fz_limit
+    const Vec4& liftoff_fz_limit,
+    const std::vector<Vec4>* stage_force_limits,
+    const std::vector<Vec4>* stage_force_minimum
     ) {
   // 新增诊断：只记录原因，不改变原来的保底返回和控制参数。
   // finite 数组中 1 表示数值有限，0 表示该输入含 NaN 或 Inf。
@@ -1118,6 +1136,8 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   in.liftoff_fz_limit = liftoff_fz_limit.cwiseMax(fzMin).cwiseMin(fzMax);
 
   in.N = predictionSteps(in.dt, gait_period);
+  if (stage_force_limits) in.stage_force_limits = *stage_force_limits;
+  if (stage_force_minimum) in.stage_force_minimum = *stage_force_minimum;
 
   if (in.N <= 0) {
     log_fallback_reason("empty_horizon");

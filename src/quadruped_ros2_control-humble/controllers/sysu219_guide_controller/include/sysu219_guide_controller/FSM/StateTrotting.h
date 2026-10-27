@@ -9,6 +9,7 @@
 #include <sysu219_guide_controller/control/ConvexMpcSolver.h>
 #include <sysu219_guide_controller/control/MpcWbcRelaxation.h>
 #include <sysu219_guide_controller/control/OnlineTuning.h>
+#include <sysu219_guide_controller/control/ContactCoordinator.hpp>
 
 #include "controller_common/FSM/FSMState.h"
 // marker array可视化插件
@@ -31,6 +32,7 @@ public:
     void applyOnlineTuning() noexcept;
     // 生命周期停用回调只通知后台退出，不等待/回收线程。
     void stopOnlineTuning() noexcept;
+    bool contactControlFault() const { return contact_fault_; }
 
     FSMStateName checkChange() override;
     void recordDebug(const rclcpp::Time& time, const rclcpp::Duration& period,
@@ -90,6 +92,13 @@ private:
     std::shared_ptr<ConvexMpcSolver> &convex_mpc_;
 
     GaitGenerator gait_generator_;
+    CtrlComponent& ctrl_component_;
+    sysu219_guide_controller::ContactCoordinator contact_coordinator_;
+    VecInt4 control_contact_ = VecInt4::Ones();
+    Vec4 control_phase_ = Vec4::Constant(0.5);
+    bool contact_control_enabled_ = false, contact_fault_ = false, allocation_ok_ = false;
+    std::vector<Vec4> contact_fz_preview_;
+    std::vector<Vec4> contact_fz_min_preview_;
 
     // Robot State
     Vec3 pos_body_, vel_body_;

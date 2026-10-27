@@ -29,12 +29,16 @@ struct Parameters {
   static constexpr std::size_t kQSize = 13 * 13;
   static constexpr std::size_t kForceSize = 12 * 12;
   static constexpr std::size_t kWbcOffset = kQSize + 2 * kForceSize;
-  static constexpr std::size_t kCount = kWbcOffset + 21;
+  static constexpr std::size_t kRelaxationOffset = kWbcOffset + 21;
+  static constexpr std::size_t kMotorOffset = kRelaxationOffset + 3;
+  static constexpr std::size_t kCount = kMotorOffset + 4;
 
   // 行优先：Q[0..168]、R[169..312]、S[313..456]，完整矩阵，含非对角项。
   // WBC[457..477]：kp_orientation.xyz、kd_orientation.xyz、
   // kp_body_position.xyz、kd_body_position.xyz、kp_swing.xyz、kd_swing.xyz、
   // swing_hip_posture_weight、kp_swing_hip_posture、kd_swing_hip_posture。
+  // Relaxation[478..480]：Q_WBC、Q_MPC、joint_acceleration_weight_ratio。
+  // MotorMIT[481..484]：kp_stance、kd_stance、kp_swing、kd_swing。
   // 调用者必须提供全部实际值；不提供会在初始化时拒绝，禁止静默使用零默认值。
   std::array<double, kCount> values;
   Parameters() noexcept;

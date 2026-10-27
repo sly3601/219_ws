@@ -125,6 +125,14 @@ class MpcWbcRelaxation {
  public:
   explicit MpcWbcRelaxation(RelaxationSettings settings = {});
 
+  const RelaxationSettings& settings() const noexcept { return settings_; }
+  // 仅控制线程调用；在线调参后台已校验正数、有限性及关节权重乘积。
+  void updateCostWeights(double q_wbc, double q_mpc, double joint_ratio) noexcept {
+    settings_.Q_WBC = q_wbc;
+    settings_.Q_MPC = q_mpc;
+    settings_.joint_acceleration_weight_ratio = joint_ratio;
+  }
+
   // 按论文顺序构造QP，复用内部固定容量缓存；下次调用会覆盖返回的内容。
   // 同一实例仅供一个控制线程使用，正常构造路径不向堆申请Eigen内存。
   const RelaxationQp& buildQp(const RelaxationInput& input) const;

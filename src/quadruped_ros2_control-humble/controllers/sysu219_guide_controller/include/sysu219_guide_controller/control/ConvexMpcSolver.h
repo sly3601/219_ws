@@ -25,6 +25,8 @@ struct ConvexMpcInput {
   std::vector<std::array<Vec3, 4>> rFeet;   // 力臂r
   Mat3 Iw_inv = Mat3::Identity();           // 世界系下的机身转动惯量逆矩阵
   Vec4 liftoff_fz_limit = Vec4::Constant(1e19); // 当前控制帧的抬脚前卸载上限。
+  std::vector<Vec4> stage_force_limits; // 可选：闭环交接逐节点的法向力上限，N；空表示原行为。
+  std::vector<Vec4> stage_force_minimum; // 可选：仅限力预加载阶段的法向力下限。
 };
 
 // MPC 输出
@@ -51,6 +53,7 @@ public:
   double frictionCoefficient() const { return mu; }
   double normalForceMin() const { return fzMin; }
   double normalForceMax() const { return fzMax; }
+  double nominalWeight() const { return mass * 9.81; }
   struct DebugInfo {
     size_t id = 0;
     int status = -1, iter = -1, result = -1; // result: 1新解、2缓存、0保底。
@@ -74,7 +77,9 @@ public:
       const Vec3& gyro_G,           // 机身角速度（世界系）
       const RotMat& Rd_GB,          // 机身期望姿态
       const Vec3& v_ref_G,          // 机身指令速度（世界系），直接用于参考轨迹
-      const Vec4& liftoff_fz_limit = Vec4::Constant(1e19)
+      const Vec4& liftoff_fz_limit = Vec4::Constant(1e19),
+      const std::vector<Vec4>* stage_force_limits = nullptr,
+      const std::vector<Vec4>* stage_force_minimum = nullptr
   );
 
 private:

@@ -39,7 +39,10 @@ void GaitGenerator::setGait(Vec2 vxy_goal_global, const double d_yaw_goal, const
 }
 
 /* 核心：步态生成函数 */
-void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
+void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel,
+    const VecInt4* motion_contact, const Vec4* motion_phase) {
+    motion_contact_ = motion_contact ? *motion_contact : wave_generator_->contact_;
+    motion_phase_ = motion_phase ? *motion_phase : wave_generator_->phase_;
     if (first_run_) 
     {
         if (trotting_ptr_ && trotting_ptr_->troting_kalman == 2) 
@@ -90,7 +93,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 end_p_.col(i) = start_p_.col(i);
             }
         }
-        contact_last_ = wave_generator_->contact_;
+        contact_last_ = motion_contact_;
         swing_start_offset_.setZero();
         swing_pos_ = start_p_;
         swing_vel_.setZero();
@@ -120,11 +123,16 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
     for (int i = 0; i < 4; i++) 
     {
         // 条件1：当前腿处于支撑相（踩地）
-        if (wave_generator_->contact_(i) == 1) 
+        if (motion_contact_(i) == 1)
         {
-            if (contact_last_(i) == 0)
-                start_p_.col(i) = end_p_.col(i);
-            else if (wave_generator_->phase_(i) < 0.5 &&
+            if (contact_last_(i) == 0) {
+                if (motion_contact) {
+                    // 闭环提前落地以本次测得足点为锚；过渡轨迹由接触交接器保持连续。
+                    start_p_.col(i) = estimator_->getFootPos(i);
+                    end_p_.col(i) = start_p_.col(i);
+                } else start_p_.col(i) = end_p_.col(i);
+            }
+            else if (motion_phase_(i) < 0.5 &&
                      wave_generator_->status_ == WaveStatus::STANCE_ALL)
             {
                 if (trotting_ptr_ &&
@@ -174,13 +182,13 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 // k_x/k_y 为无量纲速度反馈比例：1 保留原响应，0.5 减半速度偏差引起的落点修正。
                 // 期望速度前馈保留；剩余摆动时间预测、半摆动时间修正和原 5 ms 额外修正均保留。
                 next_step(0) = (vxy_goal_(0) + k_x * (body_vel_global(0) - vxy_goal_(0)))
-                            * (1.0 - wave_generator_->phase_(i)) * t_swing
+                            * (1.0 - motion_phase_(i)) * t_swing
                             + vxy_goal_(0) * t_stance / 2.0
                             + k_x * (body_vel_global(0) - vxy_goal_(0)) * t_swing / 2.0
                             + k_x * 0.005 * (body_vel_global(0) - vxy_goal_(0));
 
                 next_step(1) = (vxy_goal_(1) + k_y * (body_vel_global(1) - vxy_goal_(1)))
-                            * (1.0 - wave_generator_->phase_(i)) * t_swing
+                            * (1.0 - motion_phase_(i)) * t_swing
                             + vxy_goal_(1) * t_stance / 2.0
                             + k_y * (body_vel_global(1) - vxy_goal_(1)) * t_swing / 2.0
                             + k_y * 0.005 * (body_vel_global(1) - vxy_goal_(1));
@@ -194,7 +202,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                     : estimator_->getDYaw();
 
                 const double k_yaw = 0.005;
-                double next_yaw = d_yaw * (1.0 - wave_generator_->phase_(i)) * t_swing
+                double next_yaw = d_yaw * (1.0 - motion_phase_(i)) * t_swing
                     + d_yaw_goal_ * t_stance / 2.0
                     + (d_yaw - d_yaw_goal_) * t_swing / 2.0
                     + k_yaw * (d_yaw_goal_ - d_yaw);
@@ -258,14 +266,14 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
             else if (trotting_ptr_ && trotting_ptr_->troting_kalman == 1)
             {
                 // 闭环：保持原来的逻辑不变
-                end_p_.col(i) = feet_end_calc_.calcFootPos(i, vxy_goal_, d_yaw_goal_, wave_generator_->phase_(i));
+                end_p_.col(i) = feet_end_calc_.calcFootPos(i, vxy_goal_, d_yaw_goal_, motion_phase_(i));
             }
 
             // 调用你原有的摆线函数：计算足端轨迹/速度
             feet_pos.col(i) = getFootPos(i);
             feet_vel.col(i) = getFootVel(i);
             // 修正本步起点，仍落回原实时终点/地面高度；速度与位置修正一致。
-            const double angle = 2.0 * M_PI * wave_generator_->phase_(i);
+            const double angle = 2.0 * M_PI * motion_phase_(i);
             const double blend = (angle - std::sin(angle)) / (2.0 * M_PI);
             feet_pos.col(i) += (1.0 - blend) * swing_start_offset_.col(i);
             feet_vel.col(i) -= (1.0 - std::cos(angle)) / wave_generator_->get_t_swing()
@@ -275,7 +283,12 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 // 末端速度为零，避免直接替换摆线终点导致位置跳变和速度漏项。
                 const double remaining = (1.0 - swing_phase_last_(i))
                     * wave_generator_->get_t_swing();
-                const double u = (wave_generator_->phase_(i) - swing_phase_last_(i))
+                if (remaining <= 1e-9) {
+                    feet_pos.col(i).head<2>() = end_p_.col(i).head<2>();
+                    feet_vel.col(i).head<2>().setZero();
+                    continue; // 搜地时phase可保持1，禁止下一帧除以零。
+                }
+                const double u = (motion_phase_(i) - swing_phase_last_(i))
                     / (1.0 - swing_phase_last_(i));
                 const Vec2 delta = end_p_.col(i).head<2>() - swing_pos_.col(i).head<2>();
                 feet_pos.col(i).head<2>() = swing_pos_.col(i).head<2>()
@@ -285,11 +298,11 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                     + (1.0 - 4.0 * u + 3.0 * u * u) * swing_vel_.col(i).head<2>();
                 swing_pos_.col(i) = feet_pos.col(i);
                 swing_vel_.col(i) = feet_vel.col(i);
-                swing_phase_last_(i) = wave_generator_->phase_(i);
+                swing_phase_last_(i) = motion_phase_(i);
             }
         }
     }
-    contact_last_ = wave_generator_->contact_;
+    contact_last_ = motion_contact_;
 }
 
 void GaitGenerator::restart() {
@@ -304,10 +317,10 @@ Vec3 GaitGenerator::getFootPos(const int i) {
     Vec3 foot_pos;
 
     foot_pos(0) =
-            cycloidXYPosition(start_p_.col(i)(0), end_p_.col(i)(0), wave_generator_->phase_(i));
+            cycloidXYPosition(start_p_.col(i)(0), end_p_.col(i)(0), motion_phase_(i));
     foot_pos(1) =
-            cycloidXYPosition(start_p_.col(i)(1), end_p_.col(i)(1), wave_generator_->phase_(i));
-    foot_pos(2) = cycloidZPosition(start_p_.col(i)(2), gait_height_, wave_generator_->phase_(i));
+            cycloidXYPosition(start_p_.col(i)(1), end_p_.col(i)(1), motion_phase_(i));
+    foot_pos(2) = cycloidZPosition(start_p_.col(i)(2), gait_height_, motion_phase_(i));
 
     return foot_pos;
 }
@@ -317,10 +330,10 @@ Vec3 GaitGenerator::getFootVel(const int i) {
     Vec3 foot_vel;
 
     foot_vel(0) =
-            cycloidXYVelocity(start_p_.col(i)(0), end_p_.col(i)(0), wave_generator_->phase_(i));
+            cycloidXYVelocity(start_p_.col(i)(0), end_p_.col(i)(0), motion_phase_(i));
     foot_vel(1) =
-            cycloidXYVelocity(start_p_.col(i)(1), end_p_.col(i)(1), wave_generator_->phase_(i));
-    foot_vel(2) = cycloidZVelocity(gait_height_, wave_generator_->phase_(i));
+            cycloidXYVelocity(start_p_.col(i)(1), end_p_.col(i)(1), motion_phase_(i));
+    foot_vel(2) = cycloidZVelocity(gait_height_, motion_phase_(i));
 
     return foot_vel;
 }

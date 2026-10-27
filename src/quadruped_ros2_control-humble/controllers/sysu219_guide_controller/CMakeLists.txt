@@ -69,6 +69,7 @@ add_library(${PROJECT_NAME} SHARED
 
         src/control/Estimator.cpp
         src/control/ShadowInEKF.cpp
+        src/control/ContactCoordinator.cpp
         src/control/LowPassFilter.cpp
         src/control/BalanceCtrl.cpp
         src/control/ConvexMpcSolver.cpp

@@ -48,8 +48,12 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-COUNT = 478
+COUNT = 485
 WBC_OFFSET = 457
+RELAXATION_OFFSET = 478
+RELAXATION_NAMES = ('Q_WBC', 'Q_MPC', 'joint_acceleration_weight_ratio')
+MOTOR_OFFSET = 481
+MOTOR_NAMES = ('kp_stance', 'kd_stance', 'kp_swing', 'kd_swing')
 Q_AXES = ('roll', 'pitch', 'yaw', 'px', 'py', 'pz',
           'wx', 'wy', 'wz', 'vx', 'vy', 'vz', 'g')
 FORCE_AXES = tuple(leg + '.' + axis for leg in ('FR', 'FL', 'RR', 'RL')
@@ -63,6 +67,12 @@ WBC_NAMES = tuple(name + '.' + axis for name in
 
 
 def parameter(index):
+    if index >= MOTOR_OFFSET:
+        return 'MotorMIT.' + MOTOR_NAMES[index - MOTOR_OFFSET], False
+    if index >= RELAXATION_OFFSET:
+        return 'Relaxation.' + RELAXATION_NAMES[index - RELAXATION_OFFSET], False
+    if index in (313, 326, 339):
+        return ('S_fx', 'S_fy', 'S_fz')[(index - 313) // 13], False
     for name, offset, size, axes in (('Q', 0, 13, Q_AXES),
                                    ('R', 169, 12, FORCE_AXES),
                                    ('S', 313, 12, FORCE_AXES)):
@@ -85,7 +95,9 @@ def snapshot(values, revision):
                      for i, name in enumerate(('kp_orientation', 'kd_orientation',
                                                'kp_body_position', 'kd_body_position',
                                                'kp_swing', 'kd_swing'))}
-    result['WBC'].update(zip(WBC_NAMES[-3:], values[-3:]))
+    result['WBC'].update(zip(WBC_NAMES[-3:], values[RELAXATION_OFFSET - 3:RELAXATION_OFFSET]))
+    result['Relaxation'] = dict(zip(RELAXATION_NAMES, values[RELAXATION_OFFSET:MOTOR_OFFSET]))
+    result['MotorMIT'] = dict(zip(MOTOR_NAMES, values[MOTOR_OFFSET:]))
     return result
 
 
@@ -137,13 +149,16 @@ class Window:
         if self.values is None:
             return
         groups = []
-        for name, offset, size in (('Q', 0, 13), ('R', 169, 12), ('S', 313, 12)):
+        for name, offset, size in (('Q', 0, 13), ('R', 169, 12)):
             indices = [offset + row * size + col for row in range(size)
                        for col in range(row, size)
                        if row == col or self.all_entries.get()
                        or self.values[offset + row * size + col] != 0.0]
             groups.append((name, indices))
-        groups.append(('WBC', list(range(WBC_OFFSET, COUNT))))
+        groups.append(('S', [313, 326, 339]))
+        groups.append(('WBC', list(range(WBC_OFFSET, RELAXATION_OFFSET))))
+        groups.append(('松弛优化', list(range(RELAXATION_OFFSET, MOTOR_OFFSET))))
+        groups.append(('电机 MIT', list(range(MOTOR_OFFSET, COUNT))))
         for name, indices in groups:
             frame = ttk.Frame(self.tabs)
             self.tabs.add(frame, text=name)
@@ -210,7 +225,9 @@ class Window:
             try:
                 value = float(text.get())
                 if not math.isfinite(value) or (not signed and value < 0.0):
-                    raise ValueError('请输入有限数值；对角权重和 WBC 增益须 ≥ 0。')
+                    raise ValueError('请输入有限数值；对角权重、WBC 和 MIT 增益须 ≥ 0。')
+                if RELAXATION_OFFSET <= index < MOTOR_OFFSET and value <= 0.0:
+                    raise ValueError('松弛优化权重须 > 0。')
             except ValueError as exc:
                 error.set(str(exc))
                 return
@@ -369,9 +386,22 @@ bool validate(const Parameters& p, std::string& reason) {
       return false;
     }
   }
-  for (std::size_t i = Parameters::kWbcOffset; i < Parameters::kCount; ++i) {
+  for (std::size_t i = Parameters::kWbcOffset; i < Parameters::kRelaxationOffset; ++i) {
     if (p.values[i] < 0.0) {
       reason = "WBC gains and hip posture weight must be nonnegative.";
+      return false;
+    }
+  }
+  const auto relaxation = Parameters::kRelaxationOffset;
+  const double joint_weight = p.values[relaxation] * p.values[relaxation + 2];
+  if (p.values[relaxation] <= 0.0 || p.values[relaxation + 1] <= 0.0 ||
+      p.values[relaxation + 2] <= 0.0 || !std::isfinite(joint_weight) || joint_weight <= 0.0) {
+    reason = "Relaxation weights and Q_WBC * joint_acceleration_weight_ratio must be positive and finite.";
+    return false;
+  }
+  for (std::size_t i = Parameters::kMotorOffset; i < Parameters::kCount; ++i) {
+    if (p.values[i] < 0.0) {
+      reason = "Motor MIT gains must be nonnegative.";
       return false;
     }
   }
@@ -396,6 +426,14 @@ bool setParameter(Parameters& p, std::size_t index, double value) {
     if (index >= offset && index < offset + size * size) {
       const auto row = (index - offset) / size, col = (index - offset) % size;
       if (row > col) return false;
+      if (offset == 313 && row == col) {
+        // S 的同一力方向由四条腿共用；一次请求统一更新，保留非对角耦合项。
+        for (std::size_t leg = 0; leg < 4; ++leg) {
+          const auto axis = 3 * leg + row % 3;
+          p.values[offset + axis * size + axis] = value;
+        }
+        return true;
+      }
       p.values[index] = value;
       p.values[offset + col * size + row] = value;
       return true;

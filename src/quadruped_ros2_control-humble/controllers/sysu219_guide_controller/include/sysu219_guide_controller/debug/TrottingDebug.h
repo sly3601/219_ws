@@ -3,6 +3,7 @@
 #include <sysu219_guide_controller/common/mathTypes.h>
 #include <sysu219_guide_controller/common/mathTools.h>
 #include <sysu219_guide_controller/control/OnlineTuning.h>
+#include <sysu219_guide_controller/control/ContactCoordinator.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <atomic>
 #include <algorithm>
@@ -61,7 +62,7 @@ public:
     // event 位：1时间、2估计、4足端目标、8关节目标、16运动学、32姿态、64非法值/异常、128相位、256退出、512起步、1024接触切换。
     struct Frame {
         std::array<double, META_COUNT> meta{};
-        // 只复制实际生效值，后台按版本写JSON，不逐帧扩展478个CSV列。
+        // 只复制实际生效值，后台按版本写JSON，不逐帧扩展485个CSV列。
         sysu219::tuning::Parameters applied_parameters;
         std::array<double, kContextSize> settings{};
         bool end_of_run = false;
@@ -98,6 +99,13 @@ public:
         VecInt4 touchdown_gates = VecInt4::Zero(); // 位1末段、2高度、4下降误差、8相对速度、16代理力；全通过=31。
         VecInt4 touchdown_candidate = VecInt4::Zero();
         double touchdown_fz_threshold_N = 0.0;
+        int odometry_mode = 1, contact_feedback = 0, contact_control_fault = 0;
+        VecInt4 planned_contact = VecInt4::Zero(), observed_contact = VecInt4::Constant(-1);
+        VecInt4 contact_stage = VecInt4::Zero();
+        Vec4 planned_phase = Vec4::Zero(), contact_load = Vec4::Ones();
+        double contact_observation_age_s = -1.0;
+        Vec4 contact_preload_N = Vec4::Zero(), contact_blocked_s = Vec4::Zero();
+        int contact_fault_leg = -1;
     };
 
     explicit TrottingDebug(double dt)
@@ -272,6 +280,27 @@ private:
         field("ik_q", f.ik_q); field("ik_qd", f.ik_qd);
         field("fk_q", f.fk_q); field("fk_qd", f.fk_qd); field("sigma_qd", f.sigma_qd);
         field("com_p", f.com_p);
+        field("planned_contact", f.planned_contact); field("planned_phase", f.planned_phase);
+        field("observed_contact", f.observed_contact); field("contact_stage", f.contact_stage);
+        field("contact_load", f.contact_load);
+        field("contact_preload_N", f.contact_preload_N); field("contact_blocked_s", f.contact_blocked_s);
+        if (header) out << ",odometry_mode,contact_feedback,contact_control_fault,contact_observation_age_s,"
+            "contact_transition_s,contact_search_speed_m_s,contact_search_depth_m,contact_search_timeout_s,"
+            "contact_touchdown_height_m,contact_touchdown_rise_m_s,contact_blocked_confirm_s,"
+            "contact_blocked_gap_m,contact_probe_force_ratio,contact_fault_leg,contact_hold_s,contact_unknown_hold_s";
+        else out << ',' << f.odometry_mode << ',' << f.contact_feedback << ',' << f.contact_control_fault
+                 << ',' << f.contact_observation_age_s << ',' << sysu219_guide_controller::ContactCoordinator::transition_s
+                 << ',' << sysu219_guide_controller::ContactCoordinator::search_speed_m_s
+                 << ',' << sysu219_guide_controller::ContactCoordinator::search_depth_m
+                 << ',' << sysu219_guide_controller::ContactCoordinator::search_timeout_s
+                 << ',' << sysu219_guide_controller::ContactCoordinator::touchdown_height_m
+                 << ',' << sysu219_guide_controller::ContactCoordinator::touchdown_rise_m_s
+                 << ',' << sysu219_guide_controller::ContactCoordinator::blocked_confirm_s
+                 << ',' << sysu219_guide_controller::ContactCoordinator::blocked_gap_m
+                 << ',' << sysu219_guide_controller::ContactCoordinator::probe_force_ratio
+                 << ',' << f.contact_fault_leg
+                 << ',' << sysu219_guide_controller::ContactCoordinator::contact_hold_s
+                 << ',' << sysu219_guide_controller::ContactCoordinator::contact_unknown_hold_s;
         if (header) out << ",check_dt_s,support_line_distance_m";
         else out << ',' << f.check_dt_s << ',' << f.support_line_distance_m;
         field("tau_feedback", f.tau_feedback); field("tau_ff_cmd", f.tau_ff_cmd);
@@ -349,6 +378,20 @@ private:
         }
         for (const char* name : {"swing_hip_posture_weight", "kp_swing_hip_posture", "kd_swing_hip_posture"})
             out << ",\"" << name << "\":" << values[offset++];
+        out << "},\n\"Relaxation\":{";
+        bool first_relaxation = true;
+        for (const char* name : {"Q_WBC", "Q_MPC", "joint_acceleration_weight_ratio"}) {
+            if (!first_relaxation) out << ',';
+            first_relaxation = false;
+            out << '"' << name << "\":" << values[offset++];
+        }
+        out << "},\n\"MotorMIT\":{";
+        bool first_motor = true;
+        for (const char* name : {"kp_stance", "kd_stance", "kp_swing", "kd_swing"}) {
+            if (!first_motor) out << ',';
+            first_motor = false;
+            out << '"' << name << "\":" << values[offset++];
+        }
         const char* context[] = {"control_dt_s", "gait_period_s", "swing_time_s", "stance_time_s",
             "gait_height_m", "Q_WBC", "Q_MPC", "motor_kp_stance", "motor_kd_stance",
             "motor_kp_swing", "motor_kd_swing", "wbc_blend", "mu", "fz_min_N", "fz_max_N",

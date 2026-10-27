@@ -27,7 +27,8 @@ public:
 
     void setGait(Vec2 vxy_goal_global, double d_yaw_goal, double gait_height);
 
-    void generate(Vec34 &feet_pos, Vec34 &feet_vel);
+    void generate(Vec34 &feet_pos, Vec34 &feet_vel,
+                  const VecInt4* motion_contact = nullptr, const Vec4* motion_phase = nullptr);
 
     void restart();
 
@@ -91,6 +92,8 @@ private:
     Vec4 swing_phase_last_ = Vec4::Zero();
     Vec34 swing_start_offset_ = Vec34::Zero();
     VecInt4 contact_last_ = VecInt4::Zero();
+    VecInt4 motion_contact_ = VecInt4::Zero();
+    Vec4 motion_phase_ = Vec4::Zero();
     bool first_run_;
 
     StateTrotting* trotting_ptr_; // 【新增】保存 StateTrotting 的指针

@@ -8,6 +8,7 @@
 #include <Eigen/Core>
 #include <rclcpp/time.hpp>
 #include <rclcpp/duration.hpp>
+#include "ContactObservation.hpp"
 
 struct CtrlInterfaces;
 class WaveGenerator;
@@ -33,6 +34,9 @@ public:
         Eigen::Vector3d reference_position, reference_velocity;
         std::array<int, 4> planned_contact{};
         std::array<double, 4> phase{};
+        // 黄色实例本拍足端校正前的运动学一致性及候选位置观测噪声，仅用于诊断。
+        std::array<double, 4> stationary_quality{}, foot_speed_xy{}, position_R_scale{};
+        double stationary_speed_scale = 0.0, contact_noise_limit = 0.0;
     };
     class ContactObserver {
     public:
@@ -43,11 +47,13 @@ public:
                             std::array<double, 4>& phase) = 0;
         virtual void recordEstimate(const ContactSample& sample, const Eigen::Vector3d& p,
                                     const Eigen::Vector3d& v, bool ready) = 0;
+        virtual void readObservation(ContactObservation& observation) const = 0;
     };
     ShadowInEKF(const std::vector<std::string>& joint_names,
                 const std::vector<std::string>& foot_names,
                 const std::string& base_name, const std::string& imu_name,
-                std::shared_ptr<ContactObserver> contact_observer = nullptr);
+                std::shared_ptr<ContactObserver> contact_observer = nullptr,
+                bool allow_contact_control = false);
     ~ShadowInEKF();
     ShadowInEKF(const ShadowInEKF&) = delete;
     ShadowInEKF& operator=(const ShadowInEKF&) = delete;
@@ -60,6 +66,8 @@ public:
                 bool fixed_stance_prior = false, bool reference_ready = true) noexcept;
     // 实时线程调用；仅传递新系统结果，返回 false 表示新系统未就绪或自身失效。
     bool selectForControl(const rclcpp::Time& time, Estimator& estimator) noexcept;
+    // 只读已接受的控制结果；不另取后台新帧，避免状态与接触来自不同时间。
+    bool controlContact(const rclcpp::Time& time, ContactObservation& observation) const noexcept;
 
 private:
     class Impl;

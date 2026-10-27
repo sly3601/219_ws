@@ -23,6 +23,10 @@ imu_sensor_broadcaster:
 
 sysu219_guide_controller:
   ros__parameters:
+    # 一处选择：legacy_kf=旧KF，inekf=原InEKF，contact_inekf=接触/滑移修复版。
+    # 重新配置/激活后生效，禁止运动中热切换坐标原点。
+    odometry_source: inekf
+    contact_feedback_control: false  # 仅contact_inekf生效；false仅换估计，不改变原计划支撑。
     update_rate: 250  # Hz
     joints:
       - FR_hip_joint

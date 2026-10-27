@@ -150,6 +150,8 @@ namespace sysu219_guide_controller {
         // 可选影子观测器，估计结果不进入 CtrlComponent 或状态机。
         std::shared_ptr<ShadowInEKF> shadow_inekf_;
         std::shared_ptr<ContactShadowInEKF> contact_shadow_inekf_;
+        std::string odometry_source_ = "inekf";
+        bool last_odometry_ready_ = false;
 
 
 
