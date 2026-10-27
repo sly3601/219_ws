@@ -2,6 +2,7 @@
 
 #include <sysu219_guide_controller/common/mathTypes.h>
 #include <sysu219_guide_controller/common/mathTools.h>
+#include <sysu219_guide_controller/control/OnlineTuning.h>
 #include <rclcpp/rclcpp.hpp>
 #include <atomic>
 #include <algorithm>
@@ -14,13 +15,20 @@
 #include <string>
 #include <unistd.h>
 #include <vector>
+#include <stdexcept>
+#include <utility>
+#include <pthread.h>
+#include <sched.h>
 
 // 仅诊断：控制线程写预分配缓冲，后台线程导出；不改变控制命令。
 class TrottingDebug {
 public:
+    static_assert(std::atomic<size_t>::is_always_lock_free, "诊断队列索引必须无锁");
     enum Meta { CYCLE, ROS_S, STEADY_S, SYSTEM_S, PHASE_CONTROL_S, PERIOD_S,
                 WALL_DT_MS, UPDATE_MS, MODE, WAVE, FLAGS, EVENT,
-                SOLVER_ID, SOLVER_STATUS, SOLVER_ITER, SOLVER_RESULT, MPC_TOTAL_MS, META_COUNT };
+                SOLVER_ID, SOLVER_STATUS, SOLVER_ITER, SOLVER_RESULT, MPC_TOTAL_MS,
+                RUN_ID, PARAM_REVISION, PARAM_EFFECTIVE_CYCLE, DIAGNOSTIC_DROPPED, USE_SIM_TIME, META_COUNT };
+    static constexpr size_t kContextSize = 21;
     // wbc_flags为位标志，可同时成立；只按成功位读取对应数据，未执行项记NaN。
     enum WbcFlags { WBC_ATTEMPT = 1, WBC_OK = 2, RELAX_ATTEMPT = 4, RELAX_OK = 8,
                     WBC_APPLIED = 16, TORQUE_REJECTED = 32, COMMAND_CLAMPED = 64,
@@ -53,12 +61,16 @@ public:
     // event 位：1时间、2估计、4足端目标、8关节目标、16运动学、32姿态、64非法值/异常、128相位、256退出、512起步、1024接触切换。
     struct Frame {
         std::array<double, META_COUNT> meta{};
+        // 只复制实际生效值，后台按版本写JSON，不逐帧扩展478个CSV列。
+        sysu219::tuning::Parameters applied_parameters;
+        std::array<double, kContextSize> settings{};
+        bool end_of_run = false;
         Eigen::Matrix<double, 10, 1> imu = Eigen::Matrix<double, 10, 1>::Zero();
         Vec3 rpy = Vec3::Zero(), p = Vec3::Zero(), v = Vec3::Zero();
         Vec3 p_ref = Vec3::Zero(), v_ref = Vec3::Zero();
         Vec3 rpy_ref = Vec3::Zero(), gyro_G = Vec3::Zero();
         Vec3 a_ref = Vec3::Zero(), alpha_ref = Vec3::Zero();
-        Vec3 v_predicted = Vec3::Zero(), v_unfiltered = Vec3::Zero(), acc_G = Vec3::Zero();
+        Vec3 acc_G = Vec3::Zero();
         VecInt4 contact = VecInt4::Zero(), transition = VecInt4::Zero();
         Vec4 phase = Vec4::Zero();
         Vec34 feet_G = Vec34::Zero(), feet_B = Vec34::Zero();
@@ -89,9 +101,7 @@ public:
     };
 
     explicit TrottingDebug(double dt)
-        : dt_(dt), pre_(static_cast<size_t>(std::ceil(2.0 / dt))),
-          post_(static_cast<size_t>(std::ceil(1.0 / dt))),
-          ring_(std::max(pre_ + post_ + 1, static_cast<size_t>(std::ceil(10.0 / dt)) + 1)),
+        : dt_(dt), ring_(static_cast<size_t>(std::ceil(10.0 / dt)) + 2),
           worker_([this] { writeLoop(); }) {}
     ~TrottingDebug() {
         finish();
@@ -101,17 +111,22 @@ public:
     TrottingDebug(const TrottingDebug&) = delete;
     TrottingDebug& operator=(const TrottingDebug&) = delete;
 
-    void reset() { reset_pending_ = true; }
-    bool busy() const { return ready_.load(std::memory_order_acquire); }
+    void reset() {
+        ++run_id_;
+        dropped_ = 0;
+        active_ = true;
+        reset_pending_ = true;
+    }
+    bool busy() const { return read_.load(std::memory_order_acquire) != write_.load(std::memory_order_acquire); }
     void push(Frame f) {
-        if (ready_.load(std::memory_order_acquire)) return;
+        if (!active_) return;
         const bool startup = reset_pending_;
-        if (reset_pending_ || awaiting_dump_) {
-            head_ = count_ = remaining_ = 0;
-            // 起步保存十秒，覆盖起步和随后稳定阶段；普通重置不重复启动录制。
-            if (startup) remaining_ = ring_.size();
-            reset_pending_ = awaiting_dump_ = have_previous_ = false;
+        if (reset_pending_) {
+            reset_pending_ = have_previous_ = false;
+            previous_bad_ = 0;
         }
+        f.meta[RUN_ID] = run_id_;
+        f.meta[DIAGNOSTIC_DROPPED] = dropped_;
         unsigned event = startup ? 512u : 0u;
         const RotMat rotation = rotz(f.rpy(2)) * roty(f.rpy(1)) * rotx(f.rpy(0));
         int support_count = 0;
@@ -139,7 +154,7 @@ public:
             f.fk_qd.allFinite() && f.sigma_qd.allFinite() && f.rpy_ref.allFinite() &&
             f.gyro_G.allFinite() && f.a_ref.allFinite() && f.alpha_ref.allFinite() &&
             f.feet_v_G.allFinite() && f.ground_force_P.allFinite() &&
-            f.v_predicted.allFinite() && f.v_unfiltered.allFinite() && f.acc_G.allFinite();
+            f.acc_G.allFinite();
         // 新链路失败也按异常沿触发留档，持续失败不重复刷文件；未执行不算失败。
         const bool wbc_failed = ((f.wbc.flags & WBC_ATTEMPT) && !(f.wbc.flags & WBC_OK)) ||
             ((f.wbc.flags & RELAX_ATTEMPT) && !(f.wbc.flags & RELAX_OK)) ||
@@ -204,33 +219,32 @@ public:
         previous_ = f;
         previous_bad_ = bad;
         have_previous_ = true;
-        ring_[head_] = f;
-        head_ = (head_ + 1) % ring_.size();
-        count_ = std::min(count_ + 1, remaining_ ? ring_.size() : pre_ + 1);
-        if (remaining_) {
-            if (--remaining_ == 0) publish();
-        } else if ((event & ~1024u) && count_ >= pre_ + 1) {
-            // 正常接触切换记入 CSV，但不单独触发反复导出。
-            remaining_ = post_;
-        }
+        enqueue(f);
     }
-    // 退出时也保存最后一段，即使尚未触发或未录满后 1 秒。
+    // 控制线程只发结束标记；慢磁盘不等待，满队列明确计为丢帧。
     void finish() {
-        if (!ready_.load(std::memory_order_acquire) && !awaiting_dump_ && count_) {
-            ring_[(head_ + ring_.size() - 1) % ring_.size()].meta[EVENT] += 256;
-            publish();
+        if (active_ && have_previous_) {
+            Frame end = previous_;
+            end.end_of_run = true;
+            end.meta[DIAGNOSTIC_DROPPED] = dropped_;
+            enqueue(end);
         }
+        active_ = false;
     }
 
 private:
-    void publish() {
-        awaiting_dump_ = true;
-        ready_.store(true, std::memory_order_release); // 后台读取期间冻结缓冲。
+    void enqueue(const Frame& f) {
+        const size_t head = write_.load(std::memory_order_relaxed);
+        const size_t next = (head + 1) % ring_.size();
+        if (next == read_.load(std::memory_order_acquire)) { ++dropped_; return; }
+        ring_[head] = f;
+        write_.store(next, std::memory_order_release);
     }
     static void row(std::ostream& out, const Frame& f, bool header) {
         static const char* names[] = {"cycle", "ros_s", "steady_s", "system_s", "phase_control_s",
             "period_s", "wall_dt_ms", "update_ms", "mode", "wave", "flags", "event",
-            "solver_id", "solver_status", "solver_iter", "solver_result", "mpc_total_ms"};
+            "solver_id", "solver_status", "solver_iter", "solver_result", "mpc_total_ms",
+            "run_id", "param_revision", "param_effective_cycle", "diagnostic_dropped", "use_sim_time"};
         for (size_t i = 0; i < f.meta.size(); ++i) {
             if (i) out << ',';
             if (header) out << names[i]; else out << f.meta[i];
@@ -246,7 +260,7 @@ private:
         field("p_ref", f.p_ref); field("v_ref", f.v_ref);
         field("rpy_ref", f.rpy_ref); field("gyro_G", f.gyro_G);
         field("a_ref", f.a_ref); field("alpha_ref", f.alpha_ref);
-        field("v_predicted", f.v_predicted); field("v_unfiltered", f.v_unfiltered); field("acc_G", f.acc_G);
+        field("acc_G", f.acc_G);
         field("contact", f.contact); field("transition", f.transition); field("phase", f.phase);
         field("feet_G", f.feet_G); field("feet_B", f.feet_B);
         field("feet_v_G", f.feet_v_G); field("ground_force_P", f.ground_force_P);
@@ -292,49 +306,158 @@ private:
         field("wbc_omega_d_O", w.omega_d);
         out << std::setprecision(17) << '\n';
     }
+    static void writeParameters(const std::string& path, const Frame& f) {
+        const auto& values = f.applied_parameters.values;
+        if (!std::all_of(values.begin(), values.end(), [](double v) { return std::isfinite(v); }))
+            throw std::runtime_error("参数快照包含无效值");
+        std::ofstream out(path);
+        out.exceptions(std::ios::failbit | std::ios::badbit);
+        out << std::setprecision(17)
+            << "{\n\"format\":\"sysu219_mpc_wbc_snapshot_v1\",\n\"control_pid\":" << getpid()
+            << ",\n\"run_id\":" << f.meta[RUN_ID]
+            << ",\n\"applied_revision\":" << f.meta[PARAM_REVISION]
+            << ",\n\"effective_cycle\":" << f.meta[PARAM_EFFECTIVE_CYCLE]
+            << ",\n\"first_observed_cycle\":" << f.meta[CYCLE]
+            << ",\n\"ros_s\":" << f.meta[ROS_S]
+            << ",\n\"system_s\":" << f.meta[SYSTEM_S]
+            << ",\n\"use_sim_time\":" << f.meta[USE_SIM_TIME];
+        size_t offset = 0;
+        for (const auto& matrix : {std::make_pair("Q", 13), std::make_pair("R", 12), std::make_pair("S", 12)}) {
+            out << ",\n\"" << matrix.first << "\":[";
+            for (int row = 0; row < matrix.second; ++row) {
+                if (row) out << ',';
+                out << '[';
+                for (int col = 0; col < matrix.second; ++col) {
+                    if (col) out << ',';
+                    out << values[offset++];
+                }
+                out << ']';
+            }
+            out << ']';
+        }
+        out << ",\n\"WBC\":{";
+        const char* gains[] = {"kp_orientation", "kd_orientation", "kp_body_position",
+                               "kd_body_position", "kp_swing", "kd_swing"};
+        for (size_t gain = 0; gain < 6; ++gain) {
+            if (gain) out << ',';
+            out << '"' << gains[gain] << "\":[";
+            for (int axis = 0; axis < 3; ++axis) {
+                if (axis) out << ',';
+                out << values[offset++];
+            }
+            out << ']';
+        }
+        for (const char* name : {"swing_hip_posture_weight", "kp_swing_hip_posture", "kd_swing_hip_posture"})
+            out << ",\"" << name << "\":" << values[offset++];
+        const char* context[] = {"control_dt_s", "gait_period_s", "swing_time_s", "stance_time_s",
+            "gait_height_m", "Q_WBC", "Q_MPC", "motor_kp_stance", "motor_kd_stance",
+            "motor_kp_swing", "motor_kd_swing", "wbc_blend", "mu", "fz_min_N", "fz_max_N",
+            "tau_ff_scale", "tau_ff_limit_hip", "tau_ff_limit_thigh", "tau_ff_limit_calf", "prediction_dt_s",
+            "joint_acceleration_weight_ratio"};
+        out << "},\n\"settings\":{";
+        for (size_t i = 0; i < f.settings.size(); ++i) {
+            if (i) out << ',';
+            out << '"' << context[i] << "\":" << f.settings[i];
+        }
+        out << "}}\n";
+        out.close();
+    }
     void writeLoop() {
-        while (!stop_.load() || ready_.load(std::memory_order_acquire)) {
-            if (!ready_.load(std::memory_order_acquire)) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        // 文件IO不继承控制线程的实时调度优先级。
+        const sched_param normal{};
+        ::pthread_setschedparam(::pthread_self(), SCHED_OTHER, &normal);
+        std::ofstream out;
+        std::string prefix, csv_path;
+        double current_run = -1.0, revision = -1.0, chunk_start = 0.0, flush_s = 0.0;
+        size_t chunk = 0, written = 0, io_errors = 0;
+        auto close = [&] {
+            if (out.is_open()) {
+                out.close();
+                RCLCPP_INFO(rclcpp::get_logger("TrottingDebug"),
+                    "[TROT_DEBUG] saved=%s run=%.0f frames=%zu", csv_path.c_str(), current_run, written);
+            }
+        };
+        auto manifest = [&](const Frame& f, bool complete) {
+            std::ofstream meta(prefix + ".json");
+            meta.exceptions(std::ios::failbit | std::ios::badbit);
+            meta << std::setprecision(17) << "{\"format\":\"sysu219_trotting_run_v1\",\"control_pid\":"
+                 << getpid() << ",\"run_id\":" << current_run << ",\"complete\":" << (complete ? "true" : "false")
+                 << ",\"last_cycle\":" << f.meta[CYCLE] << ",\"diagnostic_dropped\":" << f.meta[DIAGNOSTIC_DROPPED]
+                 << ",\"io_errors\":" << io_errors
+                 << ",\"last_system_s\":" << f.meta[SYSTEM_S] << "}\n";
+            meta.close();
+        };
+        while (!stop_.load(std::memory_order_acquire) || busy()) {
+            const size_t tail = read_.load(std::memory_order_relaxed);
+            if (tail == write_.load(std::memory_order_acquire)) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
                 continue;
             }
+            // 先拷贝后释放槽位；后台慢写文件时控制线程仍可继续采样。
+            const Frame f = ring_[tail];
+            read_.store((tail + 1) % ring_.size(), std::memory_order_release);
             try {
-                const size_t begin = (head_ + ring_.size() - count_) % ring_.size();
-                const auto stamp = std::chrono::system_clock::now().time_since_epoch();
-                const std::string path = "/tmp/trotting_debug_" + std::to_string(getpid()) + "_" +
-                    std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(stamp).count()) + ".csv";
-                std::ofstream out(path);
-                out.exceptions(std::ios::failbit | std::ios::badbit);
-                out << std::setprecision(17);
-                row(out, ring_[begin], true);
-                for (size_t i = 0; i < count_; ++i) row(out, ring_[(begin + i) % ring_.size()], false);
-                out.close();
-                size_t wbc_success = 0, relax_success = 0, applied = 0, rejected = 0;
-                for (size_t i = 0; i < count_; ++i) {
-                    const auto flags = ring_[(begin + i) % ring_.size()].wbc.flags;
-                    wbc_success += !!(flags & WBC_OK);
-                    relax_success += !!(flags & RELAX_OK);
-                    applied += !!(flags & WBC_APPLIED);
-                    rejected += !!(flags & TORQUE_REJECTED);
+                if (f.meta[RUN_ID] != current_run) {
+                    close();
+                    current_run = f.meta[RUN_ID];
+                    revision = -1.0;
+                    chunk = 0;
+                    io_errors = 0;
+                    prefix = "/tmp/trotting_run_" + std::to_string(getpid()) + "_" +
+                        std::to_string(static_cast<long long>(f.meta[SYSTEM_S] * 1e6)) + "_run" +
+                        std::to_string(static_cast<unsigned long long>(current_run));
+                    manifest(f, false);
                 }
-                RCLCPP_INFO(rclcpp::get_logger("TrottingDebug"),
-                    "[TROT_DEBUG] %s采样已保存：%s，共%zu帧，周期%.0f..%.0f；WBC成功%zu，松弛成功%zu，采用%zu，力矩回退%zu",
-                    (static_cast<unsigned>(ring_[begin].meta[EVENT]) & 512u) ? "起步" : "事件",
-                    path.c_str(), count_, ring_[begin].meta[CYCLE],
-                    ring_[(head_ + ring_.size() - 1) % ring_.size()].meta[CYCLE],
-                    wbc_success, relax_success, applied, rejected);
+                if (f.end_of_run) {
+                    close();
+                    manifest(f, true);
+                    continue;
+                }
+                if (revision != f.meta[PARAM_REVISION]) {
+                    try {
+                        writeParameters(prefix + "_rev" + std::to_string(static_cast<unsigned long long>(f.meta[PARAM_REVISION])) + ".json", f);
+                    } catch (const std::exception& e) {
+                        ++io_errors;
+                        RCLCPP_ERROR(rclcpp::get_logger("TrottingDebug"), "[TROT_DEBUG] 参数保存失败：%s", e.what());
+                    }
+                    revision = f.meta[PARAM_REVISION];
+                }
+                if (!out.is_open() || f.meta[STEADY_S] - chunk_start >= 10.0) {
+                    close();
+                    csv_path = prefix + "_chunk" + std::to_string(chunk++) + ".csv";
+                    out.clear();
+                    out.open(csv_path);
+                    out.exceptions(std::ios::failbit | std::ios::badbit);
+                    out << std::setprecision(17);
+                    row(out, f, true);
+                    written = 0;
+                    chunk_start = flush_s = f.meta[STEADY_S];
+                }
+                row(out, f, false);
+                ++written;
+                if (f.meta[STEADY_S] - flush_s >= 0.5) {
+                    out.flush();
+                    manifest(f, false);
+                    flush_s = f.meta[STEADY_S];
+                }
             } catch (const std::exception& e) {
-                RCLCPP_ERROR(rclcpp::get_logger("TrottingDebug"), "[TROT_DEBUG] CSV保存失败：%s", e.what());
+                ++io_errors;
+                out.exceptions(std::ios::goodbit);
+                if (out.is_open()) out.close();
+                out.clear();
+                RCLCPP_ERROR(rclcpp::get_logger("TrottingDebug"), "[TROT_DEBUG] 保存失败：%s", e.what());
             }
-            ready_.store(false, std::memory_order_release);
         }
+        try { close(); } catch (...) {}
     }
     double dt_;
-    size_t pre_, post_, head_ = 0, count_ = 0, remaining_ = 0;
+    // 单生产者/单消费者有界队列，队满只丢诊断帧并计数，绝不阻塞控制。
     std::vector<Frame, Eigen::aligned_allocator<Frame>> ring_;
-    Frame previous_;
+    std::atomic<size_t> read_{0}, write_{0};
+    std::uint64_t run_id_ = 0, dropped_ = 0;
+    bool active_ = false, have_previous_ = false, reset_pending_ = false;
     unsigned previous_bad_ = 0;
-    bool have_previous_ = false, reset_pending_ = false, awaiting_dump_ = false;
-    std::atomic<bool> ready_{false}, stop_{false};
+    Frame previous_;
+    std::atomic<bool> stop_{false};
     std::thread worker_;
 };

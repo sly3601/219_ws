@@ -1,0 +1,1468 @@
+{
+  "quality": {
+    "rows": 1588,
+    "duration_s": 6.347969055175781,
+    "sample_dt_s": 0.003999948501586914,
+    "observed_sampling_hz": 250.00321869225726,
+    "missing_cycles": 0,
+    "coverage_between_first_last": 1.0,
+    "queue_dropped_max": 0.0,
+    "first_cycle": 0,
+    "last_cycle": 1587,
+    "gaps": [],
+    "duplicate_rows": 0,
+    "conflicting_duplicates": 0,
+    "source_malformed_rows": 0,
+    "partial_source_tails": 0,
+    "recorded_exit_marker": true,
+    "io_errors": 0
+  },
+  "orientation_error_deg": [
+    {
+      "rms": 2.215233488951322,
+      "p95_abs": 4.08160455573969,
+      "max_abs": 4.628861625165697
+    },
+    {
+      "rms": 3.6732847159865245,
+      "p95_abs": 6.533607022797339,
+      "max_abs": 9.57439571492828
+    },
+    {
+      "rms": 3.7580414132128857,
+      "p95_abs": 7.922268895456253,
+      "max_abs": 8.692256385452556
+    }
+  ],
+  "estimated_position_error_m": [
+    {
+      "rms": 0.07524651122978332,
+      "p95_abs": 0.11815239475504441,
+      "max_abs": 0.18028760527145604
+    },
+    {
+      "rms": 0.06822351771696644,
+      "p95_abs": 0.12697491267889824,
+      "max_abs": 0.14476238969112293
+    },
+    {
+      "rms": 0.04977725439498256,
+      "p95_abs": 0.0884088794313835,
+      "max_abs": 0.10740123822586972
+    }
+  ],
+  "estimated_velocity_m_s": [
+    {
+      "rms": 0.12040933980995748,
+      "p95_abs": 0.25466124771300996,
+      "max_abs": 0.37301228720938495
+    },
+    {
+      "rms": 0.1728334416016859,
+      "p95_abs": 0.36943556803521316,
+      "max_abs": 0.5460828757169064
+    },
+    {
+      "rms": 0.11905909575060913,
+      "p95_abs": 0.24851276345125303,
+      "max_abs": 0.36860366904383063
+    }
+  ],
+  "joint_position_error_rad": [
+    {
+      "rms": 0.11991009369545767,
+      "p95_abs": 0.2473592380473548,
+      "max_abs": 0.3562999757759507
+    },
+    {
+      "rms": 0.28589810446733893,
+      "p95_abs": 0.5495141958259727,
+      "max_abs": 0.5714653461683106
+    },
+    {
+      "rms": 0.2002074333375435,
+      "p95_abs": 0.381400497715589,
+      "max_abs": 0.45191960869133463
+    },
+    {
+      "rms": 0.15209610159430073,
+      "p95_abs": 0.29800835447733887,
+      "max_abs": 0.3622859541477196
+    },
+    {
+      "rms": 0.1925147856237975,
+      "p95_abs": 0.3273603377275918,
+      "max_abs": 0.45963980365696444
+    },
+    {
+      "rms": 0.12070792690230207,
+      "p95_abs": 0.23267757022253538,
+      "max_abs": 0.270311407544944
+    },
+    {
+      "rms": 0.22498566939141926,
+      "p95_abs": 0.44865489123512203,
+      "max_abs": 0.5611677088180397
+    },
+    {
+      "rms": 0.23804002950259848,
+      "p95_abs": 0.4430904761973396,
+      "max_abs": 0.5365416047745422
+    },
+    {
+      "rms": 0.27809402887284607,
+      "p95_abs": 0.6068320674908586,
+      "max_abs": 0.8076219533087776
+    },
+    {
+      "rms": 0.1917708516378805,
+      "p95_abs": 0.3796049337838012,
+      "max_abs": 0.4445608760937658
+    },
+    {
+      "rms": 0.1708638767411148,
+      "p95_abs": 0.30400205074128683,
+      "max_abs": 0.5035655175230571
+    },
+    {
+      "rms": 0.10742507766623406,
+      "p95_abs": 0.20236951505434064,
+      "max_abs": 0.34810544712539615
+    }
+  ],
+  "swing_tracking_error_m": [
+    {
+      "rms": 0.04234232592857205,
+      "p95_abs": 0.0865613733748371,
+      "max_abs": 0.13472044586012782
+    },
+    {
+      "rms": 0.032560154534036156,
+      "p95_abs": 0.06859621363706829,
+      "max_abs": 0.14553863619696936
+    },
+    {
+      "rms": 0.025484613136911277,
+      "p95_abs": 0.0478117847781644,
+      "max_abs": 0.058250242357343676
+    }
+  ],
+  "landing_z_error_m": {
+    "rms": 0.019900737531436733,
+    "p95_abs": 0.03210950658296219,
+    "max_abs": 0.038944502739810594
+  },
+  "liftoff_target_xy_error_m": {
+    "rms": 0.08891016566481981,
+    "p95_abs": 0.1395050355879111,
+    "max_abs": 0.16248204408587097
+  },
+  "transition_q_jump_rad": {
+    "rms": 0.29762302927501366,
+    "p95_abs": 0.5744830992721401,
+    "max_abs": 0.6571110583831934
+  },
+  "continuous_q_jump_rad": {
+    "rms": 0.009529182944529306,
+    "p95_abs": 0.014643280192791597,
+    "max_abs": 0.039693903481580195
+  },
+  "transition_ff_torque_jump_Nm": {
+    "rms": 6.763074989348337,
+    "p95_abs": 10.229335199432926,
+    "max_abs": 10.826423793172825
+  },
+  "motor_kd_jump": {
+    "rms": 0.10017313304849311,
+    "p95_abs": 0.3500000000000001,
+    "max_abs": 0.35000000000000053
+  },
+  "control_update_ms": {
+    "rms": 1.361426165554539,
+    "p95_abs": 2.019035699999998,
+    "max_abs": 4.514501
+  },
+  "observed_period_ms": {
+    "rms": 4.002590294577258,
+    "p95_abs": 4.039230305352248,
+    "max_abs": 5.737718995078467
+  },
+  "solvers": {
+    "unique_records": 872,
+    "failed": 18,
+    "cached": 18,
+    "fallback": 0
+  },
+  "wbc": {
+    "attempt": 1588,
+    "failed": 0,
+    "relaxation_failed": 0,
+    "applied": 1588,
+    "rejected": 0,
+    "command_clamped": 0
+  },
+  "events": {
+    "joint_jump": [
+      {
+        "cycle": 1576,
+        "ros_s": 1793035661.6763902,
+        "value": 0.6571110583831934
+      },
+      {
+        "cycle": 1332,
+        "ros_s": 1793035660.700388,
+        "value": 0.5884031468699498
+      },
+      {
+        "cycle": 1089,
+        "ros_s": 1793035659.7283545,
+        "value": 0.5327229564787113
+      },
+      {
+        "cycle": 1495,
+        "ros_s": 1793035661.3523867,
+        "value": 0.3898924836549269
+      },
+      {
+        "cycle": 1210,
+        "ros_s": 1793035660.2123547,
+        "value": 0.3828703997909927
+      },
+      {
+        "cycle": 1373,
+        "ros_s": 1793035660.8644807,
+        "value": 0.35011780633410283
+      }
+    ],
+    "torque_jump": [
+      {
+        "cycle": 1582,
+        "ros_s": 1793035661.7003915,
+        "value": 36.01604207914521
+      },
+      {
+        "cycle": 1460,
+        "ros_s": 1793035661.2123916,
+        "value": 33.97948824945718
+      },
+      {
+        "cycle": 1338,
+        "ros_s": 1793035660.724363,
+        "value": 31.16806050539615
+      },
+      {
+        "cycle": 1094,
+        "ros_s": 1793035659.7483907,
+        "value": 26.560197075509876
+      },
+      {
+        "cycle": 1580,
+        "ros_s": 1793035661.6923904,
+        "value": 26.55814956609217
+      },
+      {
+        "cycle": 1462,
+        "ros_s": 1793035661.2203913,
+        "value": 26.288358004142353
+      }
+    ],
+    "landing_z": [
+      {
+        "cycle": 357,
+        "ros_s": 1793035656.8003576,
+        "value": 0.038944502739810594
+      },
+      {
+        "cycle": 236,
+        "ros_s": 1793035656.3163915,
+        "value": 0.03253665624113056
+      },
+      {
+        "cycle": 1210,
+        "ros_s": 1793035660.2123547,
+        "value": 0.030828057608457082
+      },
+      {
+        "cycle": 114,
+        "ros_s": 1793035655.8283553,
+        "value": 0.02736969569731268
+      },
+      {
+        "cycle": 1454,
+        "ros_s": 1793035661.1883917,
+        "value": 0.027299848219726697
+      },
+      {
+        "cycle": 1576,
+        "ros_s": 1793035661.6763902,
+        "value": 0.027159606839216033
+      }
+    ],
+    "liftoff_target_xy": [
+      {
+        "cycle": 1251,
+        "ros_s": 1793035660.3763528,
+        "value": 0.16248204408587097
+      },
+      {
+        "cycle": 1373,
+        "ros_s": 1793035660.8644807,
+        "value": 0.1408189470301961
+      },
+      {
+        "cycle": 1129,
+        "ros_s": 1793035659.8883893,
+        "value": 0.13556330126105612
+      },
+      {
+        "cycle": 1495,
+        "ros_s": 1793035661.3523867,
+        "value": 0.13521115225262964
+      },
+      {
+        "cycle": 398,
+        "ros_s": 1793035656.9643931,
+        "value": 0.10062876349916039
+      },
+      {
+        "cycle": 276,
+        "ros_s": 1793035656.4780154,
+        "value": 0.09898687542254331
+      }
+    ]
+  },
+  "high_frequency": {
+    "status": "ok",
+    "band_hz": [
+      10,
+      80.0
+    ],
+    "window_s": 0.9999871253967285,
+    "channels": {
+      "imu_4": {
+        "unit": "gyro_B_rad_s",
+        "windows": 3,
+        "band_rms": 0.14208069654503272,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.3483726194852576,
+        "near_transition_power": 0.008702995377351851,
+        "away_transition_power": 0.007087468794258367
+      },
+      "imu_5": {
+        "unit": "gyro_B_rad_s",
+        "windows": 3,
+        "band_rms": 0.06509286003671988,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.10349752422601449,
+        "near_transition_power": 0.0022281400372642546,
+        "away_transition_power": 0.0013314865685199588
+      },
+      "imu_6": {
+        "unit": "gyro_B_rad_s",
+        "windows": 3,
+        "band_rms": 0.07374281146254401,
+        "peak_hz": 18.000231745842523,
+        "band_power_fraction": 0.042427859180168045,
+        "near_transition_power": 0.0029401322563972748,
+        "away_transition_power": 0.0016775788968684438
+      },
+      "imu_7": {
+        "unit": "acc_B_m_s2",
+        "windows": 3,
+        "band_rms": 2.2671620402011214,
+        "peak_hz": 64.00082398521786,
+        "band_power_fraction": 0.29776831777117935,
+        "near_transition_power": 2.2492298519232126,
+        "away_transition_power": 1.7916868049792343
+      },
+      "imu_8": {
+        "unit": "acc_B_m_s2",
+        "windows": 3,
+        "band_rms": 1.8332551305746807,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.22102002696823295,
+        "near_transition_power": 2.0212471472242366,
+        "away_transition_power": 0.9573870866436696
+      },
+      "imu_9": {
+        "unit": "acc_B_m_s2",
+        "windows": 3,
+        "band_rms": 4.211461443630621,
+        "peak_hz": 59.000759611372715,
+        "band_power_fraction": 0.13848831694690927,
+        "near_transition_power": 6.205626783850349,
+        "away_transition_power": 6.787462081222726
+      },
+      "qd_0": {
+        "unit": "joint_rad_s",
+        "windows": 3,
+        "band_rms": 0.18437790937192766,
+        "peak_hz": 11.00014162245932,
+        "band_power_fraction": 0.1417241214428417,
+        "near_transition_power": 0.019118622459283585,
+        "away_transition_power": 0.010199997139361242
+      },
+      "qd_1": {
+        "unit": "joint_rad_s",
+        "windows": 3,
+        "band_rms": 0.25483414061077486,
+        "peak_hz": 12.00015449722835,
+        "band_power_fraction": 0.19808044528872953,
+        "near_transition_power": 0.029614947828047244,
+        "away_transition_power": 0.022170928690454974
+      },
+      "qd_2": {
+        "unit": "joint_rad_s",
+        "windows": 3,
+        "band_rms": 0.22843340693040096,
+        "peak_hz": 11.00014162245932,
+        "band_power_fraction": 0.10338515908424423,
+        "near_transition_power": 0.026423010052452123,
+        "away_transition_power": 0.016793704831801353
+      },
+      "qd_3": {
+        "unit": "joint_rad_s",
+        "windows": 3,
+        "band_rms": 0.23805076077776643,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.34004355104899603,
+        "near_transition_power": 0.03309070856720506,
+        "away_transition_power": 0.016528001554444158
+      },
+      "qd_4": {
+        "unit": "joint_rad_s",
+        "windows": 3,
+        "band_rms": 0.24733053907952837,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.2593028593339958,
+        "near_transition_power": 0.029770223599853762,
+        "away_transition_power": 0.020155871019739834
+      },
+      "qd_5": {
+        "unit": "joint_rad_s",
+        "windows": 3,
+        "band_rms": 0.22639182216187087,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.26813687985098744,
+        "near_transition_power": 0.020861731039197886,
+        "away_transition_power": 0.018474731738161797
+      },
+      "qd_6": {
+        "unit": "joint_rad_s",
+        "windows": 3,
+        "band_rms": 0.28610844785063727,
+        "peak_hz": 11.00014162245932,
+        "band_power_fraction": 0.19607246202422884,
+        "near_transition_power": 0.04543068888322187,
+        "away_transition_power": 0.024796370168213105
+      },
+      "qd_7": {
+        "unit": "joint_rad_s",
+        "windows": 3,
+        "band_rms": 0.2508934015447994,
+        "peak_hz": 14.000180246766408,
+        "band_power_fraction": 0.14998080785430593,
+        "near_transition_power": 0.03687902631753507,
+        "away_transition_power": 0.01831217150653067
+      },
+      "qd_8": {
+        "unit": "joint_rad_s",
+        "windows": 3,
+        "band_rms": 0.34065217138249265,
+        "peak_hz": 14.000180246766408,
+        "band_power_fraction": 0.23525457406402636,
+        "near_transition_power": 0.06411594705994622,
+        "away_transition_power": 0.035263794681619894
+      },
+      "qd_9": {
+        "unit": "joint_rad_s",
+        "windows": 3,
+        "band_rms": 0.16142099121699857,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.1192784325410565,
+        "near_transition_power": 0.014387660086090204,
+        "away_transition_power": 0.007921730865751249
+      },
+      "qd_10": {
+        "unit": "joint_rad_s",
+        "windows": 3,
+        "band_rms": 0.20912937750240765,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.07202795860992975,
+        "near_transition_power": 0.028400144894268405,
+        "away_transition_power": 0.011643080535079483
+      },
+      "qd_11": {
+        "unit": "joint_rad_s",
+        "windows": 3,
+        "band_rms": 0.32599324170444693,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.12156549113729917,
+        "near_transition_power": 0.06624103002220261,
+        "away_transition_power": 0.029367988634990336
+      },
+      "tau_ff_cmd_0": {
+        "unit": "command_Nm",
+        "windows": 3,
+        "band_rms": 2.241735318326854,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.02800018769639813,
+        "near_transition_power": 3.33105563518073,
+        "away_transition_power": 1.3115039171263827
+      },
+      "tau_ff_cmd_1": {
+        "unit": "command_Nm",
+        "windows": 3,
+        "band_rms": 2.0979104135697577,
+        "peak_hz": 11.00014162245932,
+        "band_power_fraction": 0.03538203821125745,
+        "near_transition_power": 2.4284232098418923,
+        "away_transition_power": 1.3387502747928963
+      },
+      "tau_ff_cmd_2": {
+        "unit": "command_Nm",
+        "windows": 3,
+        "band_rms": 2.643289376637893,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.01672270890645812,
+        "near_transition_power": 5.269565454811128,
+        "away_transition_power": 1.5752197608367249
+      },
+      "tau_ff_cmd_3": {
+        "unit": "command_Nm",
+        "windows": 3,
+        "band_rms": 2.8722158062359964,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.05254118417715976,
+        "near_transition_power": 6.020365519925711,
+        "away_transition_power": 1.9382390042519082
+      },
+      "tau_ff_cmd_4": {
+        "unit": "command_Nm",
+        "windows": 3,
+        "band_rms": 3.456830996502807,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.08194209890230009,
+        "near_transition_power": 8.361680757858473,
+        "away_transition_power": 2.947132040118782
+      },
+      "tau_ff_cmd_5": {
+        "unit": "command_Nm",
+        "windows": 3,
+        "band_rms": 3.8587160027962892,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.03407671952693231,
+        "near_transition_power": 8.198723168468922,
+        "away_transition_power": 4.535633924141544
+      },
+      "tau_ff_cmd_6": {
+        "unit": "command_Nm",
+        "windows": 3,
+        "band_rms": 1.9060538717151208,
+        "peak_hz": 11.00014162245932,
+        "band_power_fraction": 0.01653634751516357,
+        "near_transition_power": 2.4824605553207983,
+        "away_transition_power": 0.9192388794061552
+      },
+      "tau_ff_cmd_7": {
+        "unit": "command_Nm",
+        "windows": 3,
+        "band_rms": 1.7657306633191079,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.01950276398365933,
+        "near_transition_power": 2.2686040508258394,
+        "away_transition_power": 0.7351263185766501
+      },
+      "tau_ff_cmd_8": {
+        "unit": "command_Nm",
+        "windows": 3,
+        "band_rms": 4.053006964046837,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.021020387833392645,
+        "near_transition_power": 13.003970822530617,
+        "away_transition_power": 3.4643366881875974
+      },
+      "tau_ff_cmd_9": {
+        "unit": "command_Nm",
+        "windows": 3,
+        "band_rms": 2.5275862795089648,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.03631169189541929,
+        "near_transition_power": 4.2038557239435095,
+        "away_transition_power": 1.6793014011541842
+      },
+      "tau_ff_cmd_10": {
+        "unit": "command_Nm",
+        "windows": 3,
+        "band_rms": 2.2842643707480423,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.07034101689840142,
+        "near_transition_power": 2.9672452005710164,
+        "away_transition_power": 1.5528381132885665
+      },
+      "tau_ff_cmd_11": {
+        "unit": "command_Nm",
+        "windows": 3,
+        "band_rms": 5.036694117973699,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.04140190135243307,
+        "near_transition_power": 19.597555135717574,
+        "away_transition_power": 5.538527770560564
+      },
+      "v_unfiltered_0": {
+        "unit": "estimated_m_s",
+        "windows": 3,
+        "band_rms": 0.023465610775253457,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.10397310732061825,
+        "near_transition_power": 0.0003069304441264804,
+        "away_transition_power": 0.0001662800093151196
+      },
+      "v_unfiltered_1": {
+        "unit": "estimated_m_s",
+        "windows": 3,
+        "band_rms": 0.028663114651088072,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.08174107399585599,
+        "near_transition_power": 0.0004379086097814894,
+        "away_transition_power": 0.00025589379321106013
+      },
+      "v_unfiltered_2": {
+        "unit": "estimated_m_s",
+        "windows": 3,
+        "band_rms": 0.021834194362930274,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.174934562164025,
+        "near_transition_power": 0.00024277279397401475,
+        "away_transition_power": 0.00015289310545331885
+      },
+      "v_0": {
+        "unit": "estimated_m_s",
+        "windows": 3,
+        "band_rms": 0.01591493998244198,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.04167480795554482,
+        "near_transition_power": 0.0001364714094378699,
+        "away_transition_power": 7.831954219056005e-05
+      },
+      "v_1": {
+        "unit": "estimated_m_s",
+        "windows": 3,
+        "band_rms": 0.017035770472708427,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.015321753108541761,
+        "near_transition_power": 0.00014524606604632726,
+        "away_transition_power": 9.406573422664132e-05
+      },
+      "v_2": {
+        "unit": "estimated_m_s",
+        "windows": 3,
+        "band_rms": 0.028088344937740553,
+        "peak_hz": 10.00012874769029,
+        "band_power_fraction": 0.030334348422558603,
+        "near_transition_power": 0.00026584070763116036,
+        "away_transition_power": 0.0003058879717837828
+      }
+    },
+    "note": "控制采样频率不等于传感器新反馈频率；10Hz起为筛查频带，不是故障判据。"
+  },
+  "planned_force_sum_N": [
+    {
+      "rms": 68.05335907585653,
+      "p95_abs": 120.67247632523176,
+      "max_abs": 191.81963971718307
+    },
+    {
+      "rms": 78.17755284201799,
+      "p95_abs": 140.31429097832316,
+      "max_abs": 185.71292301364005
+    },
+    {
+      "rms": 423.97091147858583,
+      "p95_abs": 600.4910742142941,
+      "max_abs": 742.1983546780328
+    }
+  ],
+  "applied_model_force_sum_N": [
+    {
+      "rms": 67.91203861865002,
+      "p95_abs": 120.56755355659176,
+      "max_abs": 192.12012092808305
+    },
+    {
+      "rms": 77.84244925316854,
+      "p95_abs": 141.20730647474576,
+      "max_abs": 184.44494809964004
+    },
+    {
+      "rms": 424.26174976772427,
+      "p95_abs": 600.237171901967,
+      "max_abs": 742.4859599460328
+    }
+  ],
+  "interpretation": "位置/速度为估计值；contact为计划相位；足力为规划/模型值，均非真实运动或实测接触力。",
+  "parameter_segments": [
+    {
+      "revision": 0,
+      "first_cycle": 0,
+      "last_cycle": 1587,
+      "metrics": {
+        "quality": {
+          "rows": 1588,
+          "duration_s": 6.347969055175781,
+          "sample_dt_s": 0.003999948501586914,
+          "observed_sampling_hz": 250.00321869225726,
+          "missing_cycles": 0,
+          "coverage_between_first_last": 1.0,
+          "queue_dropped_max": 0.0,
+          "first_cycle": 0,
+          "last_cycle": 1587,
+          "gaps": []
+        },
+        "orientation_error_deg": [
+          {
+            "rms": 2.215233488951322,
+            "p95_abs": 4.08160455573969,
+            "max_abs": 4.628861625165697
+          },
+          {
+            "rms": 3.6732847159865245,
+            "p95_abs": 6.533607022797339,
+            "max_abs": 9.57439571492828
+          },
+          {
+            "rms": 3.7580414132128857,
+            "p95_abs": 7.922268895456253,
+            "max_abs": 8.692256385452556
+          }
+        ],
+        "estimated_position_error_m": [
+          {
+            "rms": 0.07524651122978332,
+            "p95_abs": 0.11815239475504441,
+            "max_abs": 0.18028760527145604
+          },
+          {
+            "rms": 0.06822351771696644,
+            "p95_abs": 0.12697491267889824,
+            "max_abs": 0.14476238969112293
+          },
+          {
+            "rms": 0.04977725439498256,
+            "p95_abs": 0.0884088794313835,
+            "max_abs": 0.10740123822586972
+          }
+        ],
+        "estimated_velocity_m_s": [
+          {
+            "rms": 0.12040933980995748,
+            "p95_abs": 0.25466124771300996,
+            "max_abs": 0.37301228720938495
+          },
+          {
+            "rms": 0.1728334416016859,
+            "p95_abs": 0.36943556803521316,
+            "max_abs": 0.5460828757169064
+          },
+          {
+            "rms": 0.11905909575060913,
+            "p95_abs": 0.24851276345125303,
+            "max_abs": 0.36860366904383063
+          }
+        ],
+        "joint_position_error_rad": [
+          {
+            "rms": 0.11991009369545767,
+            "p95_abs": 0.2473592380473548,
+            "max_abs": 0.3562999757759507
+          },
+          {
+            "rms": 0.28589810446733893,
+            "p95_abs": 0.5495141958259727,
+            "max_abs": 0.5714653461683106
+          },
+          {
+            "rms": 0.2002074333375435,
+            "p95_abs": 0.381400497715589,
+            "max_abs": 0.45191960869133463
+          },
+          {
+            "rms": 0.15209610159430073,
+            "p95_abs": 0.29800835447733887,
+            "max_abs": 0.3622859541477196
+          },
+          {
+            "rms": 0.1925147856237975,
+            "p95_abs": 0.3273603377275918,
+            "max_abs": 0.45963980365696444
+          },
+          {
+            "rms": 0.12070792690230207,
+            "p95_abs": 0.23267757022253538,
+            "max_abs": 0.270311407544944
+          },
+          {
+            "rms": 0.22498566939141926,
+            "p95_abs": 0.44865489123512203,
+            "max_abs": 0.5611677088180397
+          },
+          {
+            "rms": 0.23804002950259848,
+            "p95_abs": 0.4430904761973396,
+            "max_abs": 0.5365416047745422
+          },
+          {
+            "rms": 0.27809402887284607,
+            "p95_abs": 0.6068320674908586,
+            "max_abs": 0.8076219533087776
+          },
+          {
+            "rms": 0.1917708516378805,
+            "p95_abs": 0.3796049337838012,
+            "max_abs": 0.4445608760937658
+          },
+          {
+            "rms": 0.1708638767411148,
+            "p95_abs": 0.30400205074128683,
+            "max_abs": 0.5035655175230571
+          },
+          {
+            "rms": 0.10742507766623406,
+            "p95_abs": 0.20236951505434064,
+            "max_abs": 0.34810544712539615
+          }
+        ],
+        "swing_tracking_error_m": [
+          {
+            "rms": 0.04234232592857205,
+            "p95_abs": 0.0865613733748371,
+            "max_abs": 0.13472044586012782
+          },
+          {
+            "rms": 0.032560154534036156,
+            "p95_abs": 0.06859621363706829,
+            "max_abs": 0.14553863619696936
+          },
+          {
+            "rms": 0.025484613136911277,
+            "p95_abs": 0.0478117847781644,
+            "max_abs": 0.058250242357343676
+          }
+        ],
+        "landing_z_error_m": {
+          "rms": 0.019900737531436733,
+          "p95_abs": 0.03210950658296219,
+          "max_abs": 0.038944502739810594
+        },
+        "liftoff_target_xy_error_m": {
+          "rms": 0.08891016566481981,
+          "p95_abs": 0.1395050355879111,
+          "max_abs": 0.16248204408587097
+        },
+        "transition_q_jump_rad": {
+          "rms": 0.29762302927501366,
+          "p95_abs": 0.5744830992721401,
+          "max_abs": 0.6571110583831934
+        },
+        "continuous_q_jump_rad": {
+          "rms": 0.009529182944529306,
+          "p95_abs": 0.014643280192791597,
+          "max_abs": 0.039693903481580195
+        },
+        "transition_ff_torque_jump_Nm": {
+          "rms": 6.763074989348337,
+          "p95_abs": 10.229335199432926,
+          "max_abs": 10.826423793172825
+        },
+        "motor_kd_jump": {
+          "rms": 0.10017313304849311,
+          "p95_abs": 0.3500000000000001,
+          "max_abs": 0.35000000000000053
+        },
+        "control_update_ms": {
+          "rms": 1.361426165554539,
+          "p95_abs": 2.019035699999998,
+          "max_abs": 4.514501
+        },
+        "observed_period_ms": {
+          "rms": 4.002590294577258,
+          "p95_abs": 4.039230305352248,
+          "max_abs": 5.737718995078467
+        },
+        "solvers": {
+          "unique_records": 872,
+          "failed": 18,
+          "cached": 18,
+          "fallback": 0
+        },
+        "wbc": {
+          "attempt": 1588,
+          "failed": 0,
+          "relaxation_failed": 0,
+          "applied": 1588,
+          "rejected": 0,
+          "command_clamped": 0
+        },
+        "events": {
+          "joint_jump": [
+            {
+              "cycle": 1576,
+              "ros_s": 1793035661.6763902,
+              "value": 0.6571110583831934
+            },
+            {
+              "cycle": 1332,
+              "ros_s": 1793035660.700388,
+              "value": 0.5884031468699498
+            },
+            {
+              "cycle": 1089,
+              "ros_s": 1793035659.7283545,
+              "value": 0.5327229564787113
+            },
+            {
+              "cycle": 1495,
+              "ros_s": 1793035661.3523867,
+              "value": 0.3898924836549269
+            },
+            {
+              "cycle": 1210,
+              "ros_s": 1793035660.2123547,
+              "value": 0.3828703997909927
+            },
+            {
+              "cycle": 1373,
+              "ros_s": 1793035660.8644807,
+              "value": 0.35011780633410283
+            }
+          ],
+          "torque_jump": [
+            {
+              "cycle": 1582,
+              "ros_s": 1793035661.7003915,
+              "value": 36.01604207914521
+            },
+            {
+              "cycle": 1460,
+              "ros_s": 1793035661.2123916,
+              "value": 33.97948824945718
+            },
+            {
+              "cycle": 1338,
+              "ros_s": 1793035660.724363,
+              "value": 31.16806050539615
+            },
+            {
+              "cycle": 1094,
+              "ros_s": 1793035659.7483907,
+              "value": 26.560197075509876
+            },
+            {
+              "cycle": 1580,
+              "ros_s": 1793035661.6923904,
+              "value": 26.55814956609217
+            },
+            {
+              "cycle": 1462,
+              "ros_s": 1793035661.2203913,
+              "value": 26.288358004142353
+            }
+          ],
+          "landing_z": [
+            {
+              "cycle": 357,
+              "ros_s": 1793035656.8003576,
+              "value": 0.038944502739810594
+            },
+            {
+              "cycle": 236,
+              "ros_s": 1793035656.3163915,
+              "value": 0.03253665624113056
+            },
+            {
+              "cycle": 1210,
+              "ros_s": 1793035660.2123547,
+              "value": 0.030828057608457082
+            },
+            {
+              "cycle": 114,
+              "ros_s": 1793035655.8283553,
+              "value": 0.02736969569731268
+            },
+            {
+              "cycle": 1454,
+              "ros_s": 1793035661.1883917,
+              "value": 0.027299848219726697
+            },
+            {
+              "cycle": 1576,
+              "ros_s": 1793035661.6763902,
+              "value": 0.027159606839216033
+            }
+          ],
+          "liftoff_target_xy": [
+            {
+              "cycle": 1251,
+              "ros_s": 1793035660.3763528,
+              "value": 0.16248204408587097
+            },
+            {
+              "cycle": 1373,
+              "ros_s": 1793035660.8644807,
+              "value": 0.1408189470301961
+            },
+            {
+              "cycle": 1129,
+              "ros_s": 1793035659.8883893,
+              "value": 0.13556330126105612
+            },
+            {
+              "cycle": 1495,
+              "ros_s": 1793035661.3523867,
+              "value": 0.13521115225262964
+            },
+            {
+              "cycle": 398,
+              "ros_s": 1793035656.9643931,
+              "value": 0.10062876349916039
+            },
+            {
+              "cycle": 276,
+              "ros_s": 1793035656.4780154,
+              "value": 0.09898687542254331
+            }
+          ]
+        },
+        "high_frequency": {
+          "status": "ok",
+          "band_hz": [
+            10,
+            80.0
+          ],
+          "window_s": 0.9999871253967285,
+          "channels": {
+            "imu_4": {
+              "unit": "gyro_B_rad_s",
+              "windows": 3,
+              "band_rms": 0.14208069654503272,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.3483726194852576,
+              "near_transition_power": 0.008702995377351851,
+              "away_transition_power": 0.007087468794258367
+            },
+            "imu_5": {
+              "unit": "gyro_B_rad_s",
+              "windows": 3,
+              "band_rms": 0.06509286003671988,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.10349752422601449,
+              "near_transition_power": 0.0022281400372642546,
+              "away_transition_power": 0.0013314865685199588
+            },
+            "imu_6": {
+              "unit": "gyro_B_rad_s",
+              "windows": 3,
+              "band_rms": 0.07374281146254401,
+              "peak_hz": 18.000231745842523,
+              "band_power_fraction": 0.042427859180168045,
+              "near_transition_power": 0.0029401322563972748,
+              "away_transition_power": 0.0016775788968684438
+            },
+            "imu_7": {
+              "unit": "acc_B_m_s2",
+              "windows": 3,
+              "band_rms": 2.2671620402011214,
+              "peak_hz": 64.00082398521786,
+              "band_power_fraction": 0.29776831777117935,
+              "near_transition_power": 2.2492298519232126,
+              "away_transition_power": 1.7916868049792343
+            },
+            "imu_8": {
+              "unit": "acc_B_m_s2",
+              "windows": 3,
+              "band_rms": 1.8332551305746807,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.22102002696823295,
+              "near_transition_power": 2.0212471472242366,
+              "away_transition_power": 0.9573870866436696
+            },
+            "imu_9": {
+              "unit": "acc_B_m_s2",
+              "windows": 3,
+              "band_rms": 4.211461443630621,
+              "peak_hz": 59.000759611372715,
+              "band_power_fraction": 0.13848831694690927,
+              "near_transition_power": 6.205626783850349,
+              "away_transition_power": 6.787462081222726
+            },
+            "qd_0": {
+              "unit": "joint_rad_s",
+              "windows": 3,
+              "band_rms": 0.18437790937192766,
+              "peak_hz": 11.00014162245932,
+              "band_power_fraction": 0.1417241214428417,
+              "near_transition_power": 0.019118622459283585,
+              "away_transition_power": 0.010199997139361242
+            },
+            "qd_1": {
+              "unit": "joint_rad_s",
+              "windows": 3,
+              "band_rms": 0.25483414061077486,
+              "peak_hz": 12.00015449722835,
+              "band_power_fraction": 0.19808044528872953,
+              "near_transition_power": 0.029614947828047244,
+              "away_transition_power": 0.022170928690454974
+            },
+            "qd_2": {
+              "unit": "joint_rad_s",
+              "windows": 3,
+              "band_rms": 0.22843340693040096,
+              "peak_hz": 11.00014162245932,
+              "band_power_fraction": 0.10338515908424423,
+              "near_transition_power": 0.026423010052452123,
+              "away_transition_power": 0.016793704831801353
+            },
+            "qd_3": {
+              "unit": "joint_rad_s",
+              "windows": 3,
+              "band_rms": 0.23805076077776643,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.34004355104899603,
+              "near_transition_power": 0.03309070856720506,
+              "away_transition_power": 0.016528001554444158
+            },
+            "qd_4": {
+              "unit": "joint_rad_s",
+              "windows": 3,
+              "band_rms": 0.24733053907952837,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.2593028593339958,
+              "near_transition_power": 0.029770223599853762,
+              "away_transition_power": 0.020155871019739834
+            },
+            "qd_5": {
+              "unit": "joint_rad_s",
+              "windows": 3,
+              "band_rms": 0.22639182216187087,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.26813687985098744,
+              "near_transition_power": 0.020861731039197886,
+              "away_transition_power": 0.018474731738161797
+            },
+            "qd_6": {
+              "unit": "joint_rad_s",
+              "windows": 3,
+              "band_rms": 0.28610844785063727,
+              "peak_hz": 11.00014162245932,
+              "band_power_fraction": 0.19607246202422884,
+              "near_transition_power": 0.04543068888322187,
+              "away_transition_power": 0.024796370168213105
+            },
+            "qd_7": {
+              "unit": "joint_rad_s",
+              "windows": 3,
+              "band_rms": 0.2508934015447994,
+              "peak_hz": 14.000180246766408,
+              "band_power_fraction": 0.14998080785430593,
+              "near_transition_power": 0.03687902631753507,
+              "away_transition_power": 0.01831217150653067
+            },
+            "qd_8": {
+              "unit": "joint_rad_s",
+              "windows": 3,
+              "band_rms": 0.34065217138249265,
+              "peak_hz": 14.000180246766408,
+              "band_power_fraction": 0.23525457406402636,
+              "near_transition_power": 0.06411594705994622,
+              "away_transition_power": 0.035263794681619894
+            },
+            "qd_9": {
+              "unit": "joint_rad_s",
+              "windows": 3,
+              "band_rms": 0.16142099121699857,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.1192784325410565,
+              "near_transition_power": 0.014387660086090204,
+              "away_transition_power": 0.007921730865751249
+            },
+            "qd_10": {
+              "unit": "joint_rad_s",
+              "windows": 3,
+              "band_rms": 0.20912937750240765,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.07202795860992975,
+              "near_transition_power": 0.028400144894268405,
+              "away_transition_power": 0.011643080535079483
+            },
+            "qd_11": {
+              "unit": "joint_rad_s",
+              "windows": 3,
+              "band_rms": 0.32599324170444693,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.12156549113729917,
+              "near_transition_power": 0.06624103002220261,
+              "away_transition_power": 0.029367988634990336
+            },
+            "tau_ff_cmd_0": {
+              "unit": "command_Nm",
+              "windows": 3,
+              "band_rms": 2.241735318326854,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.02800018769639813,
+              "near_transition_power": 3.33105563518073,
+              "away_transition_power": 1.3115039171263827
+            },
+            "tau_ff_cmd_1": {
+              "unit": "command_Nm",
+              "windows": 3,
+              "band_rms": 2.0979104135697577,
+              "peak_hz": 11.00014162245932,
+              "band_power_fraction": 0.03538203821125745,
+              "near_transition_power": 2.4284232098418923,
+              "away_transition_power": 1.3387502747928963
+            },
+            "tau_ff_cmd_2": {
+              "unit": "command_Nm",
+              "windows": 3,
+              "band_rms": 2.643289376637893,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.01672270890645812,
+              "near_transition_power": 5.269565454811128,
+              "away_transition_power": 1.5752197608367249
+            },
+            "tau_ff_cmd_3": {
+              "unit": "command_Nm",
+              "windows": 3,
+              "band_rms": 2.8722158062359964,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.05254118417715976,
+              "near_transition_power": 6.020365519925711,
+              "away_transition_power": 1.9382390042519082
+            },
+            "tau_ff_cmd_4": {
+              "unit": "command_Nm",
+              "windows": 3,
+              "band_rms": 3.456830996502807,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.08194209890230009,
+              "near_transition_power": 8.361680757858473,
+              "away_transition_power": 2.947132040118782
+            },
+            "tau_ff_cmd_5": {
+              "unit": "command_Nm",
+              "windows": 3,
+              "band_rms": 3.8587160027962892,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.03407671952693231,
+              "near_transition_power": 8.198723168468922,
+              "away_transition_power": 4.535633924141544
+            },
+            "tau_ff_cmd_6": {
+              "unit": "command_Nm",
+              "windows": 3,
+              "band_rms": 1.9060538717151208,
+              "peak_hz": 11.00014162245932,
+              "band_power_fraction": 0.01653634751516357,
+              "near_transition_power": 2.4824605553207983,
+              "away_transition_power": 0.9192388794061552
+            },
+            "tau_ff_cmd_7": {
+              "unit": "command_Nm",
+              "windows": 3,
+              "band_rms": 1.7657306633191079,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.01950276398365933,
+              "near_transition_power": 2.2686040508258394,
+              "away_transition_power": 0.7351263185766501
+            },
+            "tau_ff_cmd_8": {
+              "unit": "command_Nm",
+              "windows": 3,
+              "band_rms": 4.053006964046837,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.021020387833392645,
+              "near_transition_power": 13.003970822530617,
+              "away_transition_power": 3.4643366881875974
+            },
+            "tau_ff_cmd_9": {
+              "unit": "command_Nm",
+              "windows": 3,
+              "band_rms": 2.5275862795089648,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.03631169189541929,
+              "near_transition_power": 4.2038557239435095,
+              "away_transition_power": 1.6793014011541842
+            },
+            "tau_ff_cmd_10": {
+              "unit": "command_Nm",
+              "windows": 3,
+              "band_rms": 2.2842643707480423,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.07034101689840142,
+              "near_transition_power": 2.9672452005710164,
+              "away_transition_power": 1.5528381132885665
+            },
+            "tau_ff_cmd_11": {
+              "unit": "command_Nm",
+              "windows": 3,
+              "band_rms": 5.036694117973699,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.04140190135243307,
+              "near_transition_power": 19.597555135717574,
+              "away_transition_power": 5.538527770560564
+            },
+            "v_unfiltered_0": {
+              "unit": "estimated_m_s",
+              "windows": 3,
+              "band_rms": 0.023465610775253457,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.10397310732061825,
+              "near_transition_power": 0.0003069304441264804,
+              "away_transition_power": 0.0001662800093151196
+            },
+            "v_unfiltered_1": {
+              "unit": "estimated_m_s",
+              "windows": 3,
+              "band_rms": 0.028663114651088072,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.08174107399585599,
+              "near_transition_power": 0.0004379086097814894,
+              "away_transition_power": 0.00025589379321106013
+            },
+            "v_unfiltered_2": {
+              "unit": "estimated_m_s",
+              "windows": 3,
+              "band_rms": 0.021834194362930274,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.174934562164025,
+              "near_transition_power": 0.00024277279397401475,
+              "away_transition_power": 0.00015289310545331885
+            },
+            "v_0": {
+              "unit": "estimated_m_s",
+              "windows": 3,
+              "band_rms": 0.01591493998244198,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.04167480795554482,
+              "near_transition_power": 0.0001364714094378699,
+              "away_transition_power": 7.831954219056005e-05
+            },
+            "v_1": {
+              "unit": "estimated_m_s",
+              "windows": 3,
+              "band_rms": 0.017035770472708427,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.015321753108541761,
+              "near_transition_power": 0.00014524606604632726,
+              "away_transition_power": 9.406573422664132e-05
+            },
+            "v_2": {
+              "unit": "estimated_m_s",
+              "windows": 3,
+              "band_rms": 0.028088344937740553,
+              "peak_hz": 10.00012874769029,
+              "band_power_fraction": 0.030334348422558603,
+              "near_transition_power": 0.00026584070763116036,
+              "away_transition_power": 0.0003058879717837828
+            }
+          },
+          "note": "控制采样频率不等于传感器新反馈频率；10Hz起为筛查频带，不是故障判据。"
+        },
+        "planned_force_sum_N": [
+          {
+            "rms": 68.05335907585653,
+            "p95_abs": 120.67247632523176,
+            "max_abs": 191.81963971718307
+          },
+          {
+            "rms": 78.17755284201799,
+            "p95_abs": 140.31429097832316,
+            "max_abs": 185.71292301364005
+          },
+          {
+            "rms": 423.97091147858583,
+            "p95_abs": 600.4910742142941,
+            "max_abs": 742.1983546780328
+          }
+        ],
+        "applied_model_force_sum_N": [
+          {
+            "rms": 67.91203861865002,
+            "p95_abs": 120.56755355659176,
+            "max_abs": 192.12012092808305
+          },
+          {
+            "rms": 77.84244925316854,
+            "p95_abs": 141.20730647474576,
+            "max_abs": 184.44494809964004
+          },
+          {
+            "rms": 424.26174976772427,
+            "p95_abs": 600.237171901967,
+            "max_abs": 742.4859599460328
+          }
+        ],
+        "interpretation": "位置/速度为估计值；contact为计划相位；足力为规划/模型值，均非真实运动或实测接触力。"
+      }
+    }
+  ],
+  "comparison": {
+    "archive": "/home/sysu219/219_ws/src/quadruped_ros2_control-humble/Troting_Dataset/real_trials/real_20261027_011436_pid257535_trot1",
+    "hf_band_rms_ratios": {
+      "imu_4": 1.42491540474501,
+      "imu_5": 1.101834072198414,
+      "imu_6": 1.3113565569435555,
+      "imu_7": 1.1777380250264242,
+      "imu_8": 0.9968242705984126,
+      "imu_9": 1.0860562142421992,
+      "qd_0": 1.1737112337498266,
+      "qd_1": 1.2285035363581598,
+      "qd_2": 0.7708411444694453,
+      "qd_3": 1.3359504629356593,
+      "qd_4": 1.5240423823083398,
+      "qd_5": 1.0920688907150227,
+      "qd_6": 1.3780208062555208,
+      "qd_7": 1.5861468175082585,
+      "qd_8": 1.1566813658430954,
+      "qd_9": 1.0814111881085156,
+      "qd_10": 1.260170048763043,
+      "qd_11": 1.0227536832990145,
+      "tau_ff_cmd_0": 1.308521698497299,
+      "tau_ff_cmd_1": 1.1896570595006166,
+      "tau_ff_cmd_2": 0.9402431909452413,
+      "tau_ff_cmd_3": 1.5949125615800812,
+      "tau_ff_cmd_4": 2.021952441107117,
+      "tau_ff_cmd_5": 1.3494493944702144,
+      "tau_ff_cmd_6": 1.0530571711058831,
+      "tau_ff_cmd_7": 1.5396884218023603,
+      "tau_ff_cmd_8": 1.1732982932537415,
+      "tau_ff_cmd_9": 1.4081273044344509,
+      "tau_ff_cmd_10": 1.2641878775414601,
+      "tau_ff_cmd_11": 1.1394725469427154,
+      "v_unfiltered_0": 1.1484696463756872,
+      "v_unfiltered_1": 1.0081080387197972,
+      "v_unfiltered_2": 1.382447536892274,
+      "v_0": 1.6331569027854218,
+      "v_1": 1.0559615033342968,
+      "v_2": 1.492885512825577
+    },
+    "note": "仅描述记录信号变化，未控制步态、命令、参数、持续时间等混杂因素。"
+  },
+  "spoken_summary": [
+    "真机 PID 260476，第1次 trotting，已记录 6.35 秒。",
+    "参数：已按实际生效版本对应。",
+    "关注：换相关节目标跳变 37.6°；计划落地时竖直跟踪误差 3.9cm；落点相对反馈脚的XY偏差 16.2cm。",
+    "高频：imu_7 在筛查频带内有较强分量，峰值 64.0 Hz；需结合换相与反馈判断来源。",
+    "数据：记录中间缺 0 个周期；估计位置和模型足力不当作真值。"
+  ],
+  "input_signature": "1088359e2a988af324aaca701851b0ee32aa2a342b2cbc71b1ee99140fe491c7",
+  "tool_version": 2,
+  "screening_limits": {
+    "q_jump_rad": 0.05,
+    "torque_jump_Nm": 20.0,
+    "landing_z_m": 0.03,
+    "lift_target_xy_m": 0.05,
+    "hf_gyro_rad_s": 0.2,
+    "hf_acc_m_s2": 0.8
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "format": "sysu219_real_trial_archive_v1",
+  "tool_version": 2,
+  "frozen_at_s": 1793017581.9754734,
+  "selected_end_s": 1793017503.6552982,
+  "input_signature": "2da4aef9aa59868d3a246161cb44c6de306e20419553395afc20c69ceb13ac35",
+  "trial": {
+    "pid": 179535,
+    "trial_number": 1,
+    "start_s": 1793017462.699294,
+    "end_s": 1793017503.6552982,
+    "log_path": "/home/sysu219/.ros/log/ros2_control_node_179535_1793017441660.log",
+    "range_clipped": false
+  },
+  "sources": [
+    {
+      "path": "/tmp/trotting_run_179535_1793017462703215_run1_chunk0.csv",
+      "sha256": "ce709504fc25ffa5e6fb3eaa400d42572f7884a10e66590422f32fe8ab8395b6",
+      "selected_rows": 2501,
+      "malformed_rows": 0,
+      "partial_tail": false
+    },
+    {
+      "path": "/tmp/trotting_run_179535_1793017462703215_run1_chunk1.csv",
+      "sha256": "a52c4b775697a6e3918d119a200a01f506322136cc82d5073859df3a2cb2b60e",
+      "selected_rows": 2501,
+      "malformed_rows": 0,
+      "partial_tail": false
+    },
+    {
+      "path": "/tmp/trotting_run_179535_1793017462703215_run1_chunk2.csv",
+      "sha256": "fe8aff99c1713008f2364d4082f7b61216fe9dbc15c6f57ea77061c30d46f6b1",
+      "selected_rows": 2501,
+      "malformed_rows": 0,
+      "partial_tail": false
+    },
+    {
+      "path": "/tmp/trotting_run_179535_1793017462703215_run1_chunk3.csv",
+      "sha256": "c5c67b28ff7fc19771426618dd030392a45a9ed0a260acf1af8ebf53cd9da471",
+      "selected_rows": 2501,
+      "malformed_rows": 0,
+      "partial_tail": false
+    },
+    {
+      "path": "/tmp/trotting_run_179535_1793017462703215_run1_chunk4.csv",
+      "sha256": "7e3c2fd4566ba60848454a3d9b375ed549d8e9f29f0d27a293ace60a81c6918c",
+      "selected_rows": 233,
+      "malformed_rows": 0,
+      "partial_tail": false
+    }
+  ],
+  "duplicate_rows": 0,
+  "conflicting_duplicates": 0
+}

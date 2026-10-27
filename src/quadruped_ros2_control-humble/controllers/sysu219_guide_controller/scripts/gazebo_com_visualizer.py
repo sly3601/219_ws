@@ -84,11 +84,15 @@ class GazeboComVisualizer(Node):
 
     def on_debug(self, msg):
         # C++ 数据顺序见 TrottingDebug.md；保留异常数值用于诊断。
-        if len(msg.data) != 28 or not math.isfinite(msg.data[0]):
+        if len(msg.data) not in (22, 28) or not math.isfinite(msg.data[0]):
             return
         if self.debug_estimates and msg.data[0] < self.debug_estimates[-1][0]:
             self.reset_debug_pairing()
-        self.debug_estimates.append(tuple(msg.data))
+        # 接受旧的 28 列发布端，但不再记录旧 KF 预测/低通前速度。
+        data = tuple(msg.data)
+        if len(data) == 28:
+            data = data[:9] + data[15:]
+        self.debug_estimates.append(data)
         self.write_debug_pairs()
 
     def write_debug_pairs(self):
@@ -109,7 +113,7 @@ class GazeboComVisualizer(Node):
                 for name in ('truth_p', 'truth_v'):
                     header.extend(f'{name}_{axis}' for axis in 'xyz')
                 header.extend(('est_s', 'state', 'period_s'))
-                for name in ('est_p', 'v_filtered', 'v_predicted', 'v_raw', 'acc_G'):
+                for name in ('est_p', 'estimated_v', 'acc_G'):
                     header.extend(f'{name}_{axis}' for axis in 'xyz')
                 header.extend(f'contact_{leg}' for leg in ('FR', 'FL', 'RR', 'RL'))
                 header.extend(f'phase_{leg}' for leg in ('FR', 'FL', 'RR', 'RL'))

@@ -204,7 +204,9 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel) {
                 
 
                 // 始终使用起步实际布局，保留完整的实时速度/转向修正。
-                const Vec2 feet_layout = startup_feet_yaw_.col(i).head<2>();
+                const double nominal_foot_x_offset = 0.01; // 唯一手调项，单位m：正数向前、负数向后；仍经过下方原有限幅。
+                Vec2 feet_layout = startup_feet_yaw_.col(i).head<2>();
+                feet_layout(0) += nominal_foot_x_offset; // 四脚名义落点同向偏移，不逐步累加。
                 const double feet_radius = feet_layout.norm();
 
                 const double feet_init_angle =

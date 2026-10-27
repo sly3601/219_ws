@@ -1,0 +1,165 @@
+[INFO] [1793025944.738945877] [controller_manager]: Subscribing to '~/robot_description' topic for robot description file.
+[INFO] [1793025944.739736756] [controller_manager]: update rate is 500 Hz
+[INFO] [1793025944.739757864] [controller_manager]: Spawning controller_manager RT thread with scheduler priority: 50
+[WARN] [1793025944.739844683] [controller_manager]: Could not enable FIFO RT scheduling policy: with error number <1>(Operation not permitted). See [https://control.ros.org/master/doc/ros2_control/controller_manager/doc/userdoc.html] for details on how to enable realtime scheduling.
+[INFO] [1793025944.750072353] [controller_manager]: Received robot description file.
+[INFO] [1793025944.750698074] [resource_manager]: Loading hardware 'Sysu219System' 
+[INFO] [1793025944.751721242] [resource_manager]: Initialize hardware 'Sysu219System' 
+[INFO] [1793025944.755372853] [IMU_Node]: Serial port initialized successfully! Port: /dev/ttyUSB0, Baudrate: 921600, Parity: None, Stopbits: 1, Bytesize: 8, Flow control: None, Timeout: 1000 ms
+[INFO] [1793025944.756612625] [IMU_Node]: SUCCESS: Serial Port Opened
+[INFO] [1793025944.756637056] [IMU_Node]: Serial Port initialized
+[INFO] [1793025944.760020664] [sysu219_hardware]: 添加电机：RL_hip_joint (串口：/dev/ttyACM3, CAN ID：1, Master ID：17)
+[INFO] [1793025944.760035497] [sysu219_hardware]: 添加电机：RL_thigh_joint (串口：/dev/ttyACM3, CAN ID：2, Master ID：18)
+[INFO] [1793025944.760040805] [sysu219_hardware]: 添加电机：RL_calf_joint (串口：/dev/ttyACM3, CAN ID：3, Master ID：19)
+[INFO] [1793025944.760045216] [sysu219_hardware]: 添加电机：FR_hip_joint (串口：/dev/ttyACM1, CAN ID：1, Master ID：17)
+[INFO] [1793025944.760049821] [sysu219_hardware]: 添加电机：FR_thigh_joint (串口：/dev/ttyACM1, CAN ID：2, Master ID：18)
+[INFO] [1793025944.760053851] [sysu219_hardware]: 添加电机：FR_calf_joint (串口：/dev/ttyACM1, CAN ID：3, Master ID：19)
+[INFO] [1793025944.760057829] [sysu219_hardware]: 添加电机：FL_hip_joint (串口：/dev/ttyACM2, CAN ID：1, Master ID：17)
+[INFO] [1793025944.760061647] [sysu219_hardware]: 添加电机：FL_thigh_joint (串口：/dev/ttyACM2, CAN ID：2, Master ID：18)
+[INFO] [1793025944.760065421] [sysu219_hardware]: 添加电机：FL_calf_joint (串口：/dev/ttyACM2, CAN ID：3, Master ID：19)
+[INFO] [1793025944.760069276] [sysu219_hardware]: 添加电机：RR_hip_joint (串口：/dev/ttyACM0, CAN ID：1, Master ID：17)
+[INFO] [1793025944.760073056] [sysu219_hardware]: 添加电机：RR_thigh_joint (串口：/dev/ttyACM0, CAN ID：2, Master ID：18)
+[INFO] [1793025944.760076838] [sysu219_hardware]: 添加电机：RR_calf_joint (串口：/dev/ttyACM0, CAN ID：3, Master ID：19)
+[INFO] [1793025944.760082500] [motor_hw]: Created Motor_Control for port: /dev/ttyACM0, baudrate: 921600
+[INFO] [1793025944.760086224] [motor_hw]: Created motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793025944.760091237] [motor_hw]: Added motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793025944.760093255] [motor_hw]: Created motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793025944.760094858] [motor_hw]: Added motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793025944.760096373] [motor_hw]: Created motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793025944.760097936] [motor_hw]: Added motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793025944.860383673] [motor_hw]: Serial port /dev/ttyACM0 opened successfully with baudrate 921600
+[INFO] [1793025945.161317080] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793025945.462316053] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793025945.763289660] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793025946.064285626] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793025946.365105808] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793025946.666103350] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793025947.023896817] [sysu219_hardware]: 初始化串口：/dev/ttyACM0 (波特率：921600)
+[INFO] [1793025947.023951636] [motor_hw]: Created Motor_Control for port: /dev/ttyACM1, baudrate: 921600
+[INFO] [1793025947.023962714] [motor_hw]: Created motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793025947.023973481] [motor_hw]: Added motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793025947.023980848] [motor_hw]: Created motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793025947.023985973] [motor_hw]: Added motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793025947.023990587] [motor_hw]: Created motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793025947.023995065] [motor_hw]: Added motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793025947.124299324] [motor_hw]: Serial port /dev/ttyACM1 opened successfully with baudrate 921600
+[INFO] [1793025947.425300511] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793025947.726237004] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793025948.027046875] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793025948.327924101] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793025948.628683940] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793025948.929396360] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793025949.289691398] [sysu219_hardware]: 初始化串口：/dev/ttyACM1 (波特率：921600)
+[INFO] [1793025949.289746398] [motor_hw]: Created Motor_Control for port: /dev/ttyACM2, baudrate: 921600
+[INFO] [1793025949.289753943] [motor_hw]: Created motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793025949.289762087] [motor_hw]: Added motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793025949.289767797] [motor_hw]: Created motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793025949.289772256] [motor_hw]: Added motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793025949.289776793] [motor_hw]: Created motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793025949.289781339] [motor_hw]: Added motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793025949.390236286] [motor_hw]: Serial port /dev/ttyACM2 opened successfully with baudrate 921600
+[INFO] [1793025949.691284211] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793025949.992107110] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793025950.293113820] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793025950.593740064] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793025950.894186203] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793025951.194703189] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793025951.554795681] [sysu219_hardware]: 初始化串口：/dev/ttyACM2 (波特率：921600)
+[INFO] [1793025951.554817428] [motor_hw]: Created Motor_Control for port: /dev/ttyACM3, baudrate: 921600
+[INFO] [1793025951.554819798] [motor_hw]: Created motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793025951.554822378] [motor_hw]: Added motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793025951.554824016] [motor_hw]: Created motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793025951.554825372] [motor_hw]: Added motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793025951.554826711] [motor_hw]: Created motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793025951.554828057] [motor_hw]: Added motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793025951.655205706] [motor_hw]: Serial port /dev/ttyACM3 opened successfully with baudrate 921600
+[INFO] [1793025951.955974191] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793025952.256908913] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793025952.557615495] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793025952.858603200] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793025953.159151242] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793025953.460019961] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793025953.815471789] [sysu219_hardware]: 初始化串口：/dev/ttyACM3 (波特率：921600)
+[INFO] [1793025953.815614590] [resource_manager]: Successful initialization of hardware 'Sysu219System'
+[INFO] [1793025953.815892734] [resource_manager]: 'configure' hardware 'Sysu219System' 
+[INFO] [1793025953.815906116] [resource_manager]: Successful 'configure' of hardware 'Sysu219System'
+[INFO] [1793025953.815941265] [resource_manager]: 'activate' hardware 'Sysu219System' 
+[INFO] [1793025953.815949124] [resource_manager]: Successful 'activate' of hardware 'Sysu219System'
+[INFO] [1793025953.913156171] [controller_manager]: Loading controller 'joint_state_broadcaster'
+[INFO] [1793025953.919568349] [controller_manager]: Configuring controller 'joint_state_broadcaster'
+[INFO] [1793025953.919639336] [joint_state_broadcaster]: 'joints' or 'interfaces' parameter is empty. All available state interfaces will be published
+[INFO] [1793025954.571896443] [controller_manager]: Loading controller 'imu_sensor_broadcaster'
+[INFO] [1793025954.587309632] [controller_manager]: Configuring controller 'imu_sensor_broadcaster'
+[INFO] [1793025955.236950651] [controller_manager]: Loading controller 'sysu219_guide_controller'
+[INFO] [1793025955.254768352] [sysu219_guide_controller]: Controller Manager Update Rate: 250 Hz
+[INFO] [1793025955.264480540] [controller_manager]: Configuring controller 'sysu219_guide_controller'
+[INFO] [1793025955.272223027] [sysu219_guide_controller]: [JOINT_DEBUG] position_count=12 velocity_count=12 effort_count=12
+[INFO] [1793025955.272250389] [sysu219_guide_controller]: [JOINT_DEBUG] index=0 position=FR_hip_joint/position velocity=FR_hip_joint/velocity effort=FR_hip_joint/effort
+[INFO] [1793025955.272260912] [sysu219_guide_controller]: [JOINT_DEBUG] index=1 position=FR_thigh_joint/position velocity=FR_thigh_joint/velocity effort=FR_thigh_joint/effort
+[INFO] [1793025955.272269627] [sysu219_guide_controller]: [JOINT_DEBUG] index=2 position=FR_calf_joint/position velocity=FR_calf_joint/velocity effort=FR_calf_joint/effort
+[INFO] [1793025955.272277957] [sysu219_guide_controller]: [JOINT_DEBUG] index=3 position=FL_hip_joint/position velocity=FL_hip_joint/velocity effort=FL_hip_joint/effort
+[INFO] [1793025955.272285645] [sysu219_guide_controller]: [JOINT_DEBUG] index=4 position=FL_thigh_joint/position velocity=FL_thigh_joint/velocity effort=FL_thigh_joint/effort
+[INFO] [1793025955.272293369] [sysu219_guide_controller]: [JOINT_DEBUG] index=5 position=FL_calf_joint/position velocity=FL_calf_joint/velocity effort=FL_calf_joint/effort
+[INFO] [1793025955.272304999] [sysu219_guide_controller]: [JOINT_DEBUG] index=6 position=RR_hip_joint/position velocity=RR_hip_joint/velocity effort=RR_hip_joint/effort
+[INFO] [1793025955.272316480] [sysu219_guide_controller]: [JOINT_DEBUG] index=7 position=RR_thigh_joint/position velocity=RR_thigh_joint/velocity effort=RR_thigh_joint/effort
+[INFO] [1793025955.272324364] [sysu219_guide_controller]: [JOINT_DEBUG] index=8 position=RR_calf_joint/position velocity=RR_calf_joint/velocity effort=RR_calf_joint/effort
+[INFO] [1793025955.272331753] [sysu219_guide_controller]: [JOINT_DEBUG] index=9 position=RL_hip_joint/position velocity=RL_hip_joint/velocity effort=RL_hip_joint/effort
+[INFO] [1793025955.272339155] [sysu219_guide_controller]: [JOINT_DEBUG] index=10 position=RL_thigh_joint/position velocity=RL_thigh_joint/velocity effort=RL_thigh_joint/effort
+[INFO] [1793025955.272346726] [sysu219_guide_controller]: [JOINT_DEBUG] index=11 position=RL_calf_joint/position velocity=RL_calf_joint/velocity effort=RL_calf_joint/effort
+[INFO] [1793025955.282179031] [sysu219_guide_controller]: 足底Marker发布器已启动
+[INFO] [1793025955.286292187] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FL_calf_joint velocity_index=11 B=1.6499038712067307e-09 Fc=1.0794450668988391 Ja=0.055704868111569605 (URDF/output-side)
+[INFO] [1793025955.286314595] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FL_hip_joint velocity_index=9 B=9.8339428752278218e-10 Fc=1.0170625680080705 Ja=0 (URDF/output-side)
+[INFO] [1793025955.286322218] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FL_thigh_joint velocity_index=10 B=0.095918411748936047 Fc=1.2980958388469037 Ja=0 (URDF/output-side)
+[INFO] [1793025955.286327897] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FR_calf_joint velocity_index=8 B=1.6499038712067307e-09 Fc=1.0794450668988391 Ja=0.055704868111569605 (URDF/output-side)
+[INFO] [1793025955.286333394] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FR_hip_joint velocity_index=6 B=9.8339428752278218e-10 Fc=1.0170625680080705 Ja=0 (URDF/output-side)
+[INFO] [1793025955.286338440] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FR_thigh_joint velocity_index=7 B=0.095918411748936047 Fc=1.2980958388469037 Ja=0 (URDF/output-side)
+[INFO] [1793025955.286343266] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RL_calf_joint velocity_index=17 B=1.6499038712067307e-09 Fc=1.0794450668988391 Ja=0.055704868111569605 (URDF/output-side)
+[INFO] [1793025955.286348535] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RL_hip_joint velocity_index=15 B=9.8339428752278218e-10 Fc=1.0170625680080705 Ja=0 (URDF/output-side)
+[INFO] [1793025955.286371478] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RL_thigh_joint velocity_index=16 B=0.095918411748936047 Fc=1.2980958388469037 Ja=0 (URDF/output-side)
+[INFO] [1793025955.286377801] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RR_calf_joint velocity_index=14 B=1.6499038712067307e-09 Fc=1.0794450668988391 Ja=0.055704868111569605 (URDF/output-side)
+[INFO] [1793025955.286382973] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RR_hip_joint velocity_index=12 B=9.8339428752278218e-10 Fc=1.0170625680080705 Ja=0 (URDF/output-side)
+[INFO] [1793025955.286387811] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RR_thigh_joint velocity_index=13 B=0.095918411748936047 Fc=1.2980958388469037 Ja=0 (URDF/output-side)
+[INFO] [1793025955.289233905] [sysu219_shadow_inekf]: Shadow InEKF ready: independent KDL, IMU lever [-0.01592 -0.06659 -0.00617] m. RViz world + /shadow_inekf/markers; red=new, light blue=legacy; raw world positions, neither is truth.
+[INFO] [1793025955.295645087] [sysu219_shadow_inekf]: [SHADOW_INEKF] WAITING / NO PLANNED SUPPORT
+[INFO] [1793025958.578118123] [sysu219_guide_controller]: Switched from passive to fixed prone
+[INFO] [1793025961.146117410] [sysu219_guide_controller]: Switched from fixed prone to fixed down
+[INFO] [1793025963.198072030] [sysu219_guide_controller]: Switched from fixed down to fixed stand
+[INFO] [1793025963.234159885] [sysu219_shadow_inekf]: [SHADOW_INEKF] INITIALIZING / WAITING FOR QUIET SUPPORT
+[INFO] [1793025966.822164316] [sysu219_shadow_inekf]: Shadow initialized: RUNNING / STATIC BIAS BOOTSTRAP; red=new, light blue=legacy; no display translation.
+[INFO] [1793025966.886790954] [sysu219_shadow_inekf]: [INEKF_VELOCITY] 支撑足水平速度融合：成功1，拒绝0，NIS 0.00；机身速度估计[-0.001 -0.001]，运动学观测[-0.002 -0.001] m/s
+[INFO] [1793025968.042191749] [sysu219_guide_controller]: Switched from fixed stand to trotting
+[INFO] [1793025968.046185678] [ConvexMpcSolver]: [MPC_STATE] first_pending=1 pz=0.3887 vz=0.0010 pz_ref=0.3887 vz_ref=-0.0000 rp_now=[-0.0129 0.0613] rp_ref=[0.0000 -0.0000]
+[INFO] [1793025968.048102046] [ConvexMpcSolver]: [MPC_RES] status=0 iter=23 res[stat,eq,ineq,comp]=[4.850e-12 3.469e-16 2.842e-14 6.024e-12]
+[INFO] [1793025968.048113489] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=1.521 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=23
+[INFO] [1793025968.048125457] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=395.229 expected_weight=397.305 contact=[1 1 1 1]
+[INFO] [1793025968.048691905] [sysu219_guide_controller]: [MPC_WBC] 本帧采用WBC，混合比例=1.00，最大力修正=2.894e-01 N，基座残差=6.73e-14，支撑足加速度残差=0.00 m/s²
+[ERROR] [1793025968.121027794] [ConvexMpcSolver]: [MPC_FAIL] id=14 status=1(MAX_ITER) iter=50/50 warm_start=0 solve_ms=2.916 N=15 prediction_ms=20.000 res[stat,eq,ineq,comp]=[9.095e-13 4.094e-16 2.842e-14 5.896e+00] tol[stat,eq,ineq,comp]=[1.000e-06 1.000e-06 1.000e-06 1.000e-06] action=cached reason=hold_last_success cached=1 same_contact=1 cache_age_ms=5.683 cache_limit_ms=none current_contact_changed=0 horizon_changed=0 prev_seq=1111>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110 seq=1111>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110 pz=0.3873 vz=-0.0370 pitch=0.0548 pitch_ref=-0.0000 omega_pitch=-0.1784
+[INFO] [1793025968.130097294] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 1 1 1] contact=[0 1 1 0] previous_ground_fz=[1.000 233.364 195.599 0.000]
+[INFO] [1793025969.047241772] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.001 solves=137 fresh=136 failed=1 cached_used=1 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[9.095e-13 4.094e-16 2.842e-14 5.896e+00]
+[INFO] [1793025969.047267074] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.152 avg_ms=1.339 max_ms=3.369 nominal_step_ms=4.000 over_budget=0/137
+[INFO] [1793025969.054057428] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.2951 vz=0.0496 pz_ref=0.3887 vz_ref=0.0000 rp_now=[-0.0081 0.1251] rp_ref=[0.0000 -0.0000]
+[INFO] [1793025969.055252396] [ConvexMpcSolver]: [MPC_RES] status=0 iter=20 res[stat,eq,ineq,comp]=[2.992e-12 3.331e-16 2.842e-14 1.695e-08]
+[INFO] [1793025969.055260042] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=1.153 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=20
+[INFO] [1793025969.055265282] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=525.265 expected_weight=397.305 contact=[1 1 1 1]
+[ERROR] [1793025969.093047868] [ConvexMpcSolver]: [MPC_FAIL] id=146 status=1(MAX_ITER) iter=50/50 warm_start=0 solve_ms=2.896 N=15 prediction_ms=20.000 res[stat,eq,ineq,comp]=[1.819e-12 2.220e-16 5.684e-14 1.491e+01] tol[stat,eq,ineq,comp]=[1.000e-06 1.000e-06 1.000e-06 1.000e-06] action=cached reason=hold_last_success cached=1 same_contact=1 cache_age_ms=5.758 cache_limit_ms=none current_contact_changed=0 horizon_changed=0 prev_seq=1111>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110 seq=1111>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110 pz=0.2975 vz=0.1377 pitch=0.1096 pitch_ref=-0.0000 omega_pitch=-0.3978
+[INFO] [1793025969.242073660] [sysu219_guide_controller]: Switched from trotting to fixed stand
+[INFO] [1793025969.244401592] [TrottingDebug]: [TROT_DEBUG] saved=/tmp/trotting_run_214702_1793025968046018_run1_chunk0.csv run=1 frames=298
+[INFO] [1793025971.891054013] [sysu219_shadow_inekf]: [INEKF_VELOCITY] 支撑足水平速度融合：成功224，拒绝0，NIS 0.00；机身速度估计[-0.008 -0.005]，运动学观测[-0.014 -0.008] m/s
+[INFO] [1793025972.178106649] [sysu219_guide_controller]: Switched from fixed stand to fixed down
+[INFO] [1793025975.138089061] [sysu219_guide_controller]: Switched from fixed down to fixed prone
+[INFO] [1793025976.906771660] [sysu219_shadow_inekf]: [INEKF_VELOCITY] 支撑足水平速度融合：成功449，拒绝0，NIS 0.00；机身速度估计[0.010 -0.001]，运动学观测[0.008 -0.005] m/s
+[INFO] [1793025977.754078413] [sysu219_guide_controller]: Switched from fixed prone to passive
+[INFO] [1793025979.587834988] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [1793025979.587923860] [controller_manager]: Shutdown request received....
+[INFO] [1793025979.587978338] [controller_manager]: Shutting down all controllers in the controller manager.
+[INFO] [1793025979.588004933] [controller_manager]: Deactivating controller 'joint_state_broadcaster'
+[INFO] [1793025979.588050790] [controller_manager]: Shutting down controller 'joint_state_broadcaster'
+[INFO] [1793025979.588078508] [controller_manager]: Deactivating controller 'imu_sensor_broadcaster'
+[INFO] [1793025979.588098616] [controller_manager]: Shutting down controller 'imu_sensor_broadcaster'
+[INFO] [1793025979.588128527] [controller_manager]: Deactivating controller 'sysu219_guide_controller'
+[INFO] [1793025979.590611619] [controller_manager]: Shutting down controller 'sysu219_guide_controller'
+[INFO] [1793025979.590658399] [resource_manager]: 'deactivate' hardware 'Sysu219System' 
+[INFO] [1793025979.590665850] [resource_manager]: Successful 'deactivate' of hardware 'Sysu219System'
+[INFO] [1793025979.590669924] [resource_manager]: 'shutdown' hardware 'Sysu219System' 
+[INFO] [1793025979.590674893] [resource_manager]: Successful 'shutdown' of hardware 'Sysu219System'
+[INFO] [1793025979.590679051] [controller_manager]: Shutting down the controller manager.

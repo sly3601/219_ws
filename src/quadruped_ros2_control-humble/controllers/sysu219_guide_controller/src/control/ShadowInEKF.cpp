@@ -8,9 +8,9 @@
  * 活动机器人模型，不调用状态机，不写控制命令，也不修改原 KF 的内部状态。
  * 队列满时丢弃当前快照，控制线程不等待后台线程。
  * selectForControl() 通过另一条有界队列读取完整结果，由 Estimator 统一切换输出。
- * 主控制器源码中的 kUseInEKFOdometry=false 为默认值，改为 true 并重新编译后接管。
- * 两套状态完全独立；初始化前不进入运动控制，新系统失效时报告错误，不回退旧 KF。
- * 检查控制时钟及稳态时钟年龄；100 ms 内复用新系统自身的缓存结果。
+ * 主控制器源码中的 kUseInEKFOdometry 当前为 true，红色实例是控制状态来源。
+ * 两套状态完全独立；初始化前不进入运动控制，严重故障由主控制器切固定站立，不回退旧 KF。
+ * 检查控制时钟及稳态时钟年龄；缓存最长100 ms，连续拒收50 ms时锁存故障。
  * 在这段短延迟内用恒定线速度和角速度推到控制时刻；不是重新执行滤波校正。
  * 开关只在重新编译后生效，不提供运行中切换。
  * 跳变保护：异常校正不提交状态或协方差；控制入口另查位姿、速度和角速度连续性。
@@ -40,15 +40,19 @@
  * 滑移处理：
  * 步态接触仅作为先验。根据运动学创新，以及足间/惯性速度不一致程度，连续增大
  * 水平与竖直方向的接触随机游走；支撑期噪声始终非零，允许小幅滑动。
+ * 复用旧 KF 的支撑足速度观测思路，以50 Hz融合可靠支撑腿的水平运动学速度。
+ * 速度观测包含IMU杆臂与陀螺零偏雅可比；与位置、惯性数据的相关性用保守噪声处理。
+ * 降低更新率与噪声放大是工程近似，不能据此宣称各观测严格统计独立。
  * 严重异常观测降权。没有外部参考时，一般不能识别所有足端同向滑移。
  *
  * RViz 使用：固定坐标系设为 world，按话题添加 /shadow_inekf/markers，类型 MarkerArray。
- * 红色为新估计，淡蓝色为旧估计；两者均直接使用原始世界系位置，不额外平移显示。
+ * 红色为在役 InEKF；同话题的黄色机身来自独立 ContactShadowInEKF，不显示旧 KF。
  * 默认显示机身、腿部轮廓和足端可信度球；其他辅助图形默认关闭。
  * 不向场景发布文字，等待或异常原因写入终端日志；数值诊断保留在独立话题中。
  * /shadow_inekf/pose 发布机身在世界系的位姿及协方差。
  * /shadow_inekf/twist 发布机身坐标系下的速度及协方差。
- * /shadow_inekf/diagnostics 发布带列名的数值诊断，记录两套估计的初始原点差。
+ * /shadow_inekf/diagnostics 发布带列名的在役数值诊断，不再混入旧 KF 状态。
+ * 可选 ContactObserver 仅服务黄色实例；该实例禁止回传控制状态。
  * 新增 world -> shadow_inekf_base；原 world/base 变换跟随主算法选择的状态来源。
  * 以下参数为工程起始值，不是 N100 厂家标定参数。
  * 控制器参数 shadow_inekf_enabled 默认为 true，在配置阶段读取。
@@ -88,6 +92,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 #ifdef __linux__
 #include <pthread.h>
@@ -121,12 +126,15 @@ public:
         double accel_noise = 0.30;             // 加速度噪声密度，包含振动，m/s^2/sqrt(Hz)
         double gyro_bias_walk = 0.00015;       // 陀螺仪零偏随机游走，rad/s/sqrt(s)
         double accel_bias_walk = 0.003;        // 加速度计零偏随机游走，m/s^2/sqrt(s)
-        double contact_xy_walk = 0.015;        // 水平接触随机游走，支撑期也非零，m/sqrt(s)
+        double contact_xy_walk = 0.020;        // 水平接触随机游走，支撑期也非零，m/sqrt(s)
         double contact_z_walk = 0.008;         // 竖直接触随机游走，m/sqrt(s)
         double ground_height_sigma = 0.010;    // 平地支撑足高度先验标准差，m，容纳柔性与几何误差
         double encoder_sigma = 0.002;          // 编码器标准差，经运动学雅可比传播，rad
         double fk_xy_sigma = 0.004;            // 水平柔性及模型误差标准差，m
         double fk_z_sigma = 0.006;             // 竖直柔性及模型误差标准差，m
+        double contact_velocity_xy_sigma = 0.10; // 支撑足水平速度观测的基础标准差，m/s
+        double encoder_velocity_sigma = 0.10; // 关节速度不确定度，rad/s；另加足端柔性噪声
+        double contact_velocity_period = 0.020; // 限制相关运动学速度观测的融合频率，s
         double attitude_rp_sigma = 0.20 * kPi / 180.0;
         double attitude_yaw_sigma = 0.35 * kPi / 180.0;
         double attitude_jump_gate = 0.60 * kPi / 180.0;
@@ -152,25 +160,28 @@ public:
 
     Impl(const std::vector<std::string>& joint_names,
                 const std::vector<std::string>& foot_names,
-                const std::string& base_name, const std::string& imu_name)
+                const std::string& base_name, const std::string& imu_name,
+                std::shared_ptr<ContactObserver> contact_observer)
         : joint_names_(joint_names), foot_names_(foot_names),
-          base_name_(base_name), imu_name_(imu_name) {
+          base_name_(base_name), imu_name_(imu_name), contact_observer_(std::move(contact_observer)) {
         if (joint_names_.size() != 12 || foot_names_.size() != 4)
             throw std::runtime_error("shadow InEKF requires 12 named joints and four named feet");
         rclcpp::NodeOptions options;
         options.use_global_arguments(false).start_parameter_services(false)
                .start_parameter_event_publisher(false);
-        node_ = std::make_shared<rclcpp::Node>("sysu219_shadow_inekf", options);
+        node_ = std::make_shared<rclcpp::Node>(contact_observer_ ?
+            "sysu219_contact_shadow_inekf" : "sysu219_shadow_inekf", options);
+        const std::string topic = contact_observer_ ? "/contact_shadow_inekf" : "/shadow_inekf";
         // 发布导致的等待仅发生在后台线程，不进入控制器的更新函数。
         const auto qos = rclcpp::QoS(1).reliable().durability_volatile();
         markers_pub_ = node_->create_publisher<visualization_msgs::msg::MarkerArray>(
             "/shadow_inekf/markers", qos);
         pose_pub_ = node_->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
-            "/shadow_inekf/pose", qos);
+            topic + "/pose", qos);
         twist_pub_ = node_->create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>(
-            "/shadow_inekf/twist", qos);
+            topic + "/twist", qos);
         diagnostics_pub_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>(
-            "/shadow_inekf/diagnostics", qos);
+            topic + "/diagnostics", qos);
         tf_ = std::make_unique<tf2_ros::TransformBroadcaster>(node_);
         worker_ = std::thread([this] { run(); });
     }
@@ -198,6 +209,8 @@ public:
         for (int j = 0; j < 12; ++j) {
             q_indices_[j] = findInterface(io.joint_position_state_interface_, joint_names_[j] + "/position");
             qd_indices_[j] = findInterface(io.joint_velocity_state_interface_, joint_names_[j] + "/velocity");
+            if (contact_observer_)
+                tau_indices_[j] = findInterface(io.joint_effort_state_interface_, joint_names_[j] + "/effort");
         }
         const std::array<std::string, 10> suffix{{
             "orientation.w", "orientation.x", "orientation.y", "orientation.z",
@@ -213,8 +226,8 @@ public:
 
     // 唯一实时入口：不分配内存、不加互斥锁、不发布消息、不执行滤波矩阵运算。
     void submit(const rclcpp::Time& time, const rclcpp::Duration& period,
-                const CtrlInterfaces& io, const WaveGenerator& wave, Estimator& legacy,
-                bool fixed_stance_prior) noexcept {
+                const CtrlInterfaces& io, const WaveGenerator& wave, const Estimator& reference,
+                bool fixed_stance_prior, bool reference_ready) noexcept {
         // 模型未就绪时也保留快照，让后台能够使用正确的控制时钟显示失败原因。
         if (!accepting_.load(std::memory_order_acquire)) return;
         try {
@@ -229,9 +242,13 @@ public:
             s.steady_ns = steadyNanoseconds();
             s.period = period.seconds();
             s.session = session_.load(std::memory_order_relaxed);
+            s.fixed_stance_prior = fixed_stance_prior;
+            s.reference_ready = reference_ready;
             for (int j = 0; j < 12; ++j) {
                 s.q[j] = io.joint_position_state_interface_[q_indices_[j]].get().get_value();
                 s.qd[j] = io.joint_velocity_state_interface_[qd_indices_[j]].get().get_value();
+                if (contact_observer_)
+                    s.tau[j] = io.joint_effort_state_interface_[tau_indices_[j]].get().get_value();
             }
             for (int j = 0; j < 10; ++j)
                 s.imu[j] = io.imu_state_interface_[imu_indices_[j]].get().get_value();
@@ -242,11 +259,10 @@ public:
             }
             s.stance = wave.get_t_stance();
             s.swing = wave.get_t_swing();
-            V3 p, v; M3 rotation;
-            legacy.legacyState(p, v, rotation); // 仅供显示与诊断，不参与新滤波器的状态传播或校正。
-            const Eigen::Quaterniond q(rotation);
-            for (int j = 0; j < 3; ++j) { s.legacy_p[j] = p(j); s.legacy_v[j] = v(j); }
-            s.legacy_quat = {{q.w(), q.x(), q.y(), q.z()}};
+            if (contact_observer_) {
+                const V3 p = reference.getPosition(), v = reference.getVelocity();
+                for (int j = 0; j < 3; ++j) { s.reference_p[j] = p(j); s.reference_v[j] = v(j); }
+            }
             write_.store(next, std::memory_order_release);
         } catch (...) {
             // 可选观测模块的异常不能改变主控制器的返回值。
@@ -255,12 +271,16 @@ public:
     }
 
     bool selectForControl(const rclcpp::Time& time, Estimator& estimator) noexcept {
+        // 黄色实例无论状态是否正常，都不能进入 Estimator 的控制缓存。
+        if (contact_observer_) return false;
         const auto session = session_.load(std::memory_order_acquire);
         if (control_guard_session_ != session) {
             control_guard_session_ = session;
             have_control_result_ = have_control_output_ = false;
             output_bad_since_ns_ = 0;
             control_result_ = ControlResult{};
+            output_first_reason_.store(0, std::memory_order_relaxed);
+            output_last_reason_.store(0, std::memory_order_relaxed);
         }
         if (guardFaulted(session)) return false;
         // 先在局部检查候选结果，坏结果绝不能覆盖上一次通过检查的参照。
@@ -272,8 +292,7 @@ public:
             result_read_.store((read + 1) % kQueueSize, std::memory_order_release);
         }
         if (!accepting_.load(std::memory_order_acquire) ||
-            !model_ready_.load(std::memory_order_acquire) ||
-            !control_ready_.load(std::memory_order_acquire)) return false;
+            !model_ready_.load(std::memory_order_acquire)) return false;
         const auto epoch = control_epoch_.load(std::memory_order_acquire);
         if (have_control_result_ && control_result_.epoch != epoch) {
             latchGuardFault(session, 3); // 已接管后发生内部重置，禁止自动换原点再接回控制。
@@ -281,24 +300,54 @@ public:
         }
         const auto now_ns = time.nanoseconds(), steady_ns = steadyNanoseconds();
         ControlResult output;
-        bool valid = candidate.session == session && candidate.epoch == epoch &&
-            (!have_control_result_ || candidate.stamp_ns >= control_result_.stamp_ns) &&
-            projectControlResult(candidate, now_ns, steady_ns, output);
-        if (valid && have_control_output_) valid = continuousControlResult(control_output_, output);
+        // 拒绝原因位：1=会话/时序，2=年龄/数值，4=位置，8=速度，16=姿态，
+        // 32=角速度，64=后台输入暂不可用，128=可信源数据超时。
+        unsigned reason = 0;
+        if (!control_ready_.load(std::memory_order_acquire)) reason = 64;
+        else if (candidate.session != session || candidate.epoch != epoch ||
+            (have_control_result_ && candidate.stamp_ns < control_result_.stamp_ns)) reason = 1;
+        else if (!projectControlResult(candidate, now_ns, steady_ns, output)) reason = 2;
+        else if (have_control_output_) {
+            // 陀螺变化的时间跨度必须从最后接受的源样本算起；投影时间每拍推进，
+            // 但旧陀螺没有更新，不能仍只给4 ms的变化余量，否则正常回落也可能永久拒收。
+            const double gyro_dt = (candidate.stamp_ns - control_result_.stamp_ns) * 1e-9;
+            reason = controlDiscontinuity(control_output_, output, gyro_dt);
+        }
+        const bool valid = reason == 0;
+        if (!valid && !have_control_result_) {
+            // 首次可信输出之前属于启动等待，可能仍在被动/趴卧状态，没有支撑先验。
+            // 50 ms保护只检查已成功供给状态后的失效，不能在初始化前把会话锁死。
+            output_bad_since_ns_ = 0;
+            return false;
+        }
         if (!valid) {
             output_rejections_.fetch_add(1, std::memory_order_relaxed);
-            if (output_bad_since_ns_ == 0) output_bad_since_ns_ = steady_ns;
+            output_last_reason_.store(reason, std::memory_order_relaxed);
+            if (output_bad_since_ns_ == 0) {
+                output_bad_since_ns_ = steady_ns;
+                output_first_reason_.store(reason, std::memory_order_relaxed);
+            }
             if ((steady_ns - output_bad_since_ns_) * 1e-9 >= tune_.jump_fault_time) {
                 latchGuardFault(session, 2);
                 return false;
             }
             // 孤立异常只沿用最后可信的新状态预测；不抬高时间戳来伪装数据新鲜度。
-            if (!have_control_result_ || !projectControlResult(control_result_, now_ns, steady_ns, output)) return false;
+            if (!have_control_result_) return false;
+            if (!projectControlResult(control_result_, now_ns, steady_ns, output)) {
+                latchGuardFault(session, 2);
+                return false;
+            }
         } else {
             if (!have_control_result_ || candidate.stamp_ns > control_result_.stamp_ns)
                 output_bad_since_ns_ = 0;
             control_result_ = candidate;
             have_control_result_ = true;
+        }
+        // 保留原有100 ms缓存年龄上限；不因一次后台调度迟到就切站立。
+        if ((steady_ns - control_result_.steady_ns) * 1e-9 >= tune_.max_gap) {
+            output_last_reason_.store(128, std::memory_order_relaxed);
+            latchGuardFault(session, 2);
+            return false;
         }
         if (output_bad_since_ns_ != 0 &&
             (steady_ns - output_bad_since_ns_) * 1e-9 >= tune_.jump_fault_time) {
@@ -345,29 +394,34 @@ private:
         output.stamp_ns = now_ns;
         return output.position.allFinite() && output.rotation.allFinite();
     }
-    bool continuousControlResult(const ControlResult& previous, const ControlResult& next) const {
+    unsigned controlDiscontinuity(const ControlResult& previous, const ControlResult& next,
+                                  double gyro_dt) const {
         const double dt = (next.stamp_ns - previous.stamp_ns) * 1e-9;
-        if (dt < 0.0 || dt > tune_.max_gap) return false;
+        if (dt < 0.0 || dt > tune_.max_gap || gyro_dt < 0.0 || gyro_dt > tune_.max_gap) return 1;
         M3 dr, unused1, unused2;
         so3(previous.gyro * dt, dr, unused1, unused2);
-        return (next.position - previous.position - previous.velocity * dt).norm() <=
-                tune_.correction_position_limit + 0.5 * tune_.continuity_acceleration * dt * dt &&
-            (next.velocity - previous.velocity).norm() <=
-                tune_.correction_velocity_limit + tune_.continuity_acceleration * dt &&
-            logarithm((previous.rotation * dr).transpose() * next.rotation).norm() <=
-                tune_.correction_angle_limit + 0.5 * tune_.continuity_angular_acceleration * dt * dt &&
-            (next.gyro - previous.gyro).norm() <= 0.5 + tune_.continuity_angular_acceleration * dt;
+        unsigned reason = 0;
+        if ((next.position - previous.position - previous.velocity * dt).norm() >
+            tune_.correction_position_limit + 0.5 * tune_.continuity_acceleration * dt * dt) reason |= 4;
+        if ((next.velocity - previous.velocity).norm() >
+            tune_.correction_velocity_limit + tune_.continuity_acceleration * dt) reason |= 8;
+        if (logarithm((previous.rotation * dr).transpose() * next.rotation).norm() >
+            tune_.correction_angle_limit + 0.5 * tune_.continuity_angular_acceleration * dt * dt) reason |= 16;
+        if ((next.gyro - previous.gyro).norm() >
+            0.5 + tune_.continuity_angular_acceleration * gyro_dt) reason |= 32;
+        return reason;
     }
 
     struct Snapshot {
         std::int64_t stamp_ns = 0, steady_ns = 0;
         std::uint64_t session = 0;
         double period = 0.0, stance = 0.65, swing = 0.325;
-        std::array<double, 12> q{}, qd{};
+        std::array<double, 12> q{}, qd{}, tau{};
         std::array<double, 10> imu{};
         std::array<int, 4> contact{};
-        std::array<double, 4> phase{}, legacy_quat{};
-        std::array<double, 3> legacy_p{}, legacy_v{};
+        std::array<double, 4> phase{};
+        std::array<double, 3> reference_p{}, reference_v{};
+        bool fixed_stance_prior = false, reference_ready = false;
     };
     void writeControlResult(const Snapshot& s) {
         const std::size_t write = result_write_.load(std::memory_order_relaxed);
@@ -489,10 +543,11 @@ private:
         lever_ = V3(transform.p.x(), transform.p.y(), transform.p.z());
         for (int row = 0; row < 3; ++row)
             for (int col = 0; col < 3; ++col) imu_to_base_(row, col) = transform.M(row, col);
+        if (contact_observer_) contact_observer_->setRobotDescription(xml);
         RCLCPP_INFO(node_->get_logger(),
-            "Shadow InEKF ready: independent KDL, IMU lever [%.5f %.5f %.5f] m. "
-            "RViz world + /shadow_inekf/markers; red=new, light blue=legacy; raw world positions, neither is truth.",
-            lever_.x(), lever_.y(), lever_.z());
+            "InEKF ready: independent KDL, IMU lever [%.5f %.5f %.5f] m; "
+            "/shadow_inekf/markers: red=serving, yellow=contact-shadow; this instance=%s.",
+            lever_.x(), lever_.y(), lever_.z(), contact_observer_ ? "yellow / diagnostic only" : "red");
     }
 
     void updateModel() {
@@ -531,8 +586,8 @@ private:
         // 后台线程使用普通调度策略，避免继承控制线程的实时优先级。
         sched_param scheduling{};
         (void)pthread_setschedparam(pthread_self(), SCHED_OTHER, &scheduling);
-        (void)setpriority(PRIO_PROCESS, static_cast<id_t>(syscall(SYS_gettid)), 10);
-        (void)pthread_setname_np(pthread_self(), "shadow_inekf");
+        (void)setpriority(PRIO_PROCESS, static_cast<id_t>(syscall(SYS_gettid)), contact_observer_ ? 19 : 10);
+        (void)pthread_setname_np(pthread_self(), contact_observer_ ? "contact_shadow" : "shadow_inekf");
 #endif
         while (running_.load(std::memory_order_acquire)) {
             try {
@@ -586,13 +641,15 @@ private:
         last_publish_ = -1.0; last_attitude_ = -1.0; last_imu_change_ = -1.0;
         attitude_mismatch_since_ = -1.0;
         correction_bad_since_ = -1.0;
+        last_contact_velocity_ = -1.0; contact_velocity_nis_ = 0.0;
         correction_rejected_this_sample_ = correction_accepted_this_sample_ = false;
         have_imu_ = false; static_samples_ = 0;
         imu_stale_ = false; attitude_reacquiring_ = false; attitude_residual_ = 0.0;
         static_gyro_.setZero(); static_accel_.setZero();
         active_.fill(false); contact_age_.fill(0.0); trust_.fill(0.0);
         slip_score_.fill(0.0); noise_scale_.fill(1.0); nis_.fill(0.0);
-        shadow_history_.clear(); legacy_history_.clear(); history_time_.clear();
+        shadow_history_.clear(); history_time_.clear();
+        if (contact_observer_) contact_observer_->reset();
         status_ = "WAITING FOR VALID IMU / SUPPORT PRIOR";
     }
 
@@ -645,12 +702,37 @@ private:
             P_.block<3, 3>(9 + 3 * leg, 9 + 3 * leg).diagonal().setConstant(1.0);
             active_[leg] = false;
         }
-        initial_origin_delta_ = initial_base - arrayVector(s.legacy_p); // 仅记录初始原点差，不移动显示
-        if (!initial_origin_delta_.allFinite()) initial_origin_delta_.setZero();
         initialized_ = true; ever_initialized_ = true; last_attitude_ = now;
         attitude_seen_ = Eigen::Quaterniond(measured_R_);
         status_ = "RUNNING / STATIC BIAS BOOTSTRAP";
-        RCLCPP_INFO(node_->get_logger(), "Shadow initialized: %s; red=new, light blue=legacy; no display translation.", status_.c_str());
+        RCLCPP_INFO(node_->get_logger(), "InEKF initialized: %s; instance=%s; no display translation.",
+            status_.c_str(), contact_observer_ ? "yellow / diagnostic only" : "red / serving");
+    }
+
+    ContactSample contactSample(const Snapshot& s, double dt) const {
+        ContactSample sample;
+        sample.stamp_ns = s.stamp_ns; sample.session = s.session;
+        sample.dt = dt; sample.period = s.period; sample.worker_age = processing_age_;
+        sample.initialized = initialized_; sample.fixed_stance_prior = s.fixed_stance_prior;
+        sample.reference_ready = s.reference_ready;
+        sample.R_OB = initialized_ ? R_ : measured_R_;
+        sample.position.setZero(); sample.velocity.setZero(); sample.gyro = gyro_;
+        if (initialized_) {
+            sample.position = basePosition(); sample.velocity = baseVelocity(); sample.gyro -= bg_;
+        }
+        sample.reference_position = arrayVector(s.reference_p);
+        sample.reference_velocity = arrayVector(s.reference_v);
+        sample.planned_contact = s.contact; sample.phase = s.phase;
+        for (int leg = 0; leg < 4; ++leg) {
+            const auto& k = legs_[leg];
+            sample.feet_B.col(leg) = k.r; sample.feet_velocity_B.col(leg) = k.dr;
+            for (int joint = 0; joint < 3; ++joint) {
+                sample.q(3 * leg + joint) = k.q(joint);
+                sample.qd(3 * leg + joint) = k.qd(joint);
+                sample.tau(3 * leg + joint) = s.tau[k.input_index[joint]];
+            }
+        }
+        return sample;
     }
 
     void process(const Snapshot& s) {
@@ -660,7 +742,10 @@ private:
             control_ready_.store(false, std::memory_order_release);
             publishStatusIfDue(s, now, "FAULT / JUMP GUARD code=" +
                 std::to_string(guard_fault_code_.load(std::memory_order_relaxed)) +
-                " / REACTIVATE REQUIRED (1=correction,2=output,3=reset,4=numerical)");
+                " / REACTIVATE REQUIRED (1=correction,2=output,3=reset,4=numerical)" +
+                " / output_reason_first=" + std::to_string(output_first_reason_.load(std::memory_order_relaxed)) +
+                " last=" + std::to_string(output_last_reason_.load(std::memory_order_relaxed)) +
+                " (1=time,2=age/numeric,4=p,8=v,16=R,32=gyro,64=input,128=stale)");
             return;
         }
         Eigen::Quaterniond attitude(s.imu[0], s.imu[1], s.imu[2], s.imu[3]);
@@ -693,9 +778,17 @@ private:
         if (imu_changed) last_imu_change_ = now;
         imu_stale_ = now - last_imu_change_ > tune_.imu_stale_time;
 
+        // 只有黄色实例替换本地副本的接触。原始 s、WaveGenerator 及红色实例不受影响。
+        Snapshot observed = s;
+        ContactSample contact_sample;
+        const bool was_initialized = initialized_;
+        if (contact_observer_ && !was_initialized) {
+            contact_sample = contactSample(s, dt);
+            contact_observer_->update(contact_sample, observed.contact, observed.phase);
+        }
         if (!initialized_) {
             int support = 0;
-            for (int leg = 0; leg < 4; ++leg) support += s.contact[leg] != 0;
+            for (int leg = 0; leg < 4; ++leg) support += observed.contact[leg] != 0;
             double max_qd = 0.0;
             for (double qd : s.qd) max_qd = std::max(max_qd, std::abs(qd));
             const bool static_candidate = support >= 2 && gyro_.norm() < 0.03 && max_qd < 0.12 &&
@@ -711,7 +804,7 @@ private:
             }
             const bool calibrated = static_since_ >= 0.0 && now - static_since_ >= tune_.static_init_time && static_samples_ >= 10;
             if (support > 0 && calibrated)
-                initialize(s, now);
+                initialize(observed, now);
             else status_ = support ? "INITIALIZING / WAITING FOR QUIET SUPPORT" : "WAITING / NO PLANNED SUPPORT";
         } else if (dt > 0.0) {
             const V3 wm = have_imu_ ? V3(0.5 * (previous_gyro_ + gyro_)) : gyro_;
@@ -721,26 +814,36 @@ private:
             updateAttitude(now, imu_changed);
         }
 
+        if (contact_observer_ && was_initialized) {
+            contact_sample = contactSample(s, dt);
+            contact_observer_->update(contact_sample, observed.contact, observed.phase);
+        }
         if (initialized_) {
-            updateContacts(s, dt);
+            updateContacts(observed, dt);
+            updateContactVelocity(observed, now);
             if (!P_.allFinite() || P_.diagonal().minCoeff() < -1e-9 || P_.diagonal().maxCoeff() > 1e6 ||
                 !p_.allFinite() || !v_.allFinite() || !R_.allFinite() || bg_.norm() > 0.5 || ba_.norm() > 5.0)
                 throw std::runtime_error("nonfinite/unbounded shadow state or covariance");
-            if (correction_rejected_this_sample_) {
+            // 一条打滑腿的观测被拒，不代表整个滤波器失效；本拍仍有成功校正就清计时。
+            if (correction_accepted_this_sample_) correction_bad_since_ = -1.0;
+            else if (correction_rejected_this_sample_) {
                 if (correction_bad_since_ < 0.0) correction_bad_since_ = now;
-            } else if (correction_accepted_this_sample_) correction_bad_since_ = -1.0;
-            if (correction_bad_since_ >= 0.0 && now - correction_bad_since_ >= tune_.jump_fault_time) {
+            }
+            if (correction_rejected_this_sample_ && correction_bad_since_ >= 0.0 &&
+                now - correction_bad_since_ >= tune_.jump_fault_time) {
                 latchGuardFault(s.session, 1);
                 control_ready_.store(false, std::memory_order_release);
                 return;
             }
             // 以传感器处理频率回传状态，放在可能等待 DDS 的低频可视化发布之前。
             // 数值不变只作诊断，不据此拒绝完全静止的合法仿真或量化传感器数据。
-            writeControlResult(s);
+            if (!contact_observer_) writeControlResult(s);
         }
+        if (contact_observer_)
+            contact_observer_->recordEstimate(contact_sample, basePosition(), baseVelocity(), initialized_);
         previous_imu_ = s.imu; previous_gyro_ = gyro_; previous_accel_ = accel_; have_imu_ = true;
         if (last_publish_ < 0.0 || now - last_publish_ >= tune_.publish_period) {
-            publish(s, now); last_publish_ = now;
+            publish(observed, now); last_publish_ = now;
         }
     }
 
@@ -919,7 +1022,7 @@ private:
             const double phase_trust = std::clamp(std::min(phase, 1.0 - phase) / std::max(window, 0.01), 0.0, 1.0);
             const double contact_trust = phase_trust * std::clamp(contact_age_[leg] / 0.065, 0.0, 1.0);
             // 将每条腿推算的速度同时与惯性预测、其他支撑腿比较。
-            // 关节速度仅参与可靠性判断，不作为额外的相关卡尔曼观测重复融合。
+            // 此处评估位置观测可靠性；水平速度另以低频、保守噪声聚合融合。
             // 所有足端同向滑移时，这项检查可能无法发现异常。
             const double disagreement = std::min((implied_velocity[leg] - v_).norm(),
                                                  (implied_velocity[leg] - consensus).norm() + 0.02);
@@ -967,6 +1070,78 @@ private:
         }
     }
 
+    void updateContactVelocity(const Snapshot& s, double now) {
+        if (last_contact_velocity_ >= 0.0 && now - last_contact_velocity_ < tune_.contact_velocity_period)
+            return;
+        const V3 omega = gyro_ - bg_;
+        V3 relative_velocity = V3::Zero(), arm = V3::Zero();
+        M3 encoder_covariance = M3::Zero();
+        std::array<V3, 4> relative{};
+        std::array<double, 4> weight{};
+        double total = 0.0, confidence = 0.0;
+        for (int leg = 0; leg < 4; ++leg) {
+            // 仅使用已建立接触且越过落地过渡的支撑脚；摆动脚不参与。
+            if (!s.contact[leg] || !active_[leg] || contact_age_[leg] < 0.065 || trust_[leg] < 0.15)
+                continue;
+            weight[leg] = trust_[leg] * trust_[leg];
+            const V3 r = legs_[leg].r - lever_;
+            relative[leg] = legs_[leg].dr + omega.cross(r);
+            relative_velocity += weight[leg] * relative[leg];
+            arm += weight[leg] * r;
+            const M3 j = legs_[leg].J.data.topRows(3);
+            encoder_covariance.noalias() += weight[leg] *
+                (tune_.encoder_velocity_sigma * tune_.encoder_velocity_sigma) * j * j.transpose();
+            total += weight[leg]; confidence += weight[leg] * trust_[leg];
+        }
+        if (total < 1e-6) return;
+        last_contact_velocity_ = now;
+        relative_velocity /= total; arm /= total; encoder_covariance /= total; confidence /= total;
+        // 保留腿间分歧，不因支撑脚数量增加而把共有陀螺噪声或共同滑移错误地平均掉。
+        M3 dispersion = M3::Zero();
+        for (int leg = 0; leg < 4; ++leg) {
+            if (weight[leg] == 0.0) continue;
+            const V3 difference = relative[leg] - relative_velocity;
+            dispersion.noalias() += (weight[leg] / total) * difference * difference.transpose();
+        }
+        const M3 arm_cross = cross(arm);
+        const double gyro_variance = tune_.gyro_noise * tune_.gyro_noise / std::max(s.period, 0.001);
+        M3 covariance_B = encoder_covariance + dispersion + gyro_variance * arm_cross * arm_cross.transpose();
+        covariance_B.diagonal().array() += tune_.contact_velocity_xy_sigma * tune_.contact_velocity_xy_sigma;
+        const M3 covariance_G = (2.0 / std::max(confidence, 0.05)) * R_ * covariance_B * R_.transpose();
+        // 足端静止约束为 v_GI + R*(J*dq + (gyro-bg)×(r_B-lever)) = 0。
+        // 使用右不变误差的左侧注入，必须保留姿态、速度、陀螺零偏三项导数。
+        const V3 foot_velocity = v_ + R_ * relative_velocity;
+        H3 full_h = H3::Zero();
+        full_h.block<3, 3>(0, kTheta) = -cross(foot_velocity);
+        full_h.block<3, 3>(0, kVel).setIdentity();
+        full_h.block<3, 3>(0, kGyroBias) = R_ * arm_cross;
+        H3 h = H3::Zero(); h.topRows<2>() = full_h.topRows<2>();
+        const V3 innovation(-foot_velocity.x(), -foot_velocity.y(), 0.0);
+        // 只新增世界系XY观测；第三行置零，保持现有地面高度观测方式。
+        M3 covariance = M3::Identity(); covariance.topLeftCorner<2, 2>() = covariance_G.topLeftCorner<2, 2>();
+        const M3 innovation_covariance = h * P_ * h.transpose() + covariance;
+        const Eigen::LDLT<M3> ldlt(innovation_covariance);
+        if (ldlt.info() != Eigen::Success || !ldlt.isPositive() || ldlt.vectorD().minCoeff() < 1e-12) {
+            ++contact_velocity_rejected_; return;
+        }
+        contact_velocity_nis_ = innovation.dot(ldlt.solve(innovation));
+        if (!std::isfinite(contact_velocity_nis_) || contact_velocity_nis_ > 100.0) {
+            ++contact_velocity_rejected_; return;
+        }
+        // 二自由度99%阈值；中等不一致只降权，不单独触发站立切换。
+        covariance *= std::clamp(contact_velocity_nis_ / 9.210, 1.0, tune_.max_contact_noise_scale);
+        const V3 kinematic_base_velocity = -R_ * relative_velocity - R_ * omega.cross(lever_);
+        if (correct(h, innovation, covariance)) {
+            ++contact_velocity_accepted_;
+            const V3 estimate = baseVelocity();
+            RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
+                "[INEKF_VELOCITY] 支撑足水平速度融合：成功%llu，拒绝%llu，NIS %.2f；机身速度估计[%.3f %.3f]，运动学观测[%.3f %.3f] m/s",
+                static_cast<unsigned long long>(contact_velocity_accepted_),
+                static_cast<unsigned long long>(contact_velocity_rejected_), contact_velocity_nis_,
+                estimate.x(), estimate.y(), kinematic_base_velocity.x(), kinematic_base_velocity.y());
+        } else ++contact_velocity_rejected_;
+    }
+
     V3 basePosition() const { return p_ - R_ * lever_; }
     V3 baseVelocity() const { return v_ - R_ * ((gyro_ - bg_).cross(lever_)); }
     Eigen::Matrix<double, 6, 6> poseCovariance() const {
@@ -981,7 +1156,10 @@ private:
                   double red, double green, double blue, double alpha = 1.0) const {
         Marker m;
         m.header.frame_id = "world"; m.header.stamp = rclcpp::Time(s.stamp_ns);
-        m.ns = name; m.id = id; m.type = type; m.action = Marker::ADD;
+        const bool shared_body = name == "body" || name == "legs" ||
+            name == "velocity_0.4s" || name == "trajectory_60s";
+        m.ns = contact_observer_ && !shared_body ? "contact_shadow/" + name : name;
+        m.id = id; m.type = type; m.action = Marker::ADD;
         m.pose.orientation.w = 1.0;
         m.color.r = static_cast<float>(red); m.color.g = static_cast<float>(green);
         m.color.b = static_cast<float>(blue); m.color.a = static_cast<float>(alpha);
@@ -1003,11 +1181,12 @@ private:
             last_status_reason_ = reason;
         }
         visualization_msgs::msg::MarkerArray scene;
-        Marker clear;
-        clear.header.frame_id = "world";
-        clear.header.stamp = rclcpp::Time(s.stamp_ns);
-        clear.action = Marker::DELETEALL;
-        scene.markers.push_back(clear);
+        // 同话题有红/黄两套发布者；只删自己的 key，禁止 DELETEALL 清掉在役显示。
+        for (const char* name : {"body", "legs", "velocity_0.4s", "trajectory_60s"}) {
+            Marker clear = marker(s, name, contact_observer_ ? 1 : 0, Marker::CUBE, 0, 0, 0);
+            clear.action = Marker::DELETE;
+            scene.markers.push_back(clear);
+        }
         markers_pub_->publish(scene);
     }
 
@@ -1019,12 +1198,6 @@ private:
         visualization_msgs::msg::MarkerArray scene;
         last_status_reason_.clear();
         const V3 pb = basePosition(), vb = baseVelocity();
-        const V3 lp_raw = arrayVector(s.legacy_p), lv = arrayVector(s.legacy_v);
-        // 旧骨架采用旧估计器的原始位置，与主控制器发布的基座 TF 使用同一坐标定义。
-        const V3 lp = lp_raw;
-        const bool legacy_valid = lp.allFinite() && lv.allFinite();
-        Eigen::Quaterniond lq(s.legacy_quat[0], s.legacy_quat[1], s.legacy_quat[2], s.legacy_quat[3]);
-        const M3 lr = lq.coeffs().allFinite() && lq.norm() > 0.5 ? M3(lq.normalized().toRotationMatrix()) : R_;
         const auto pose_cov = poseCovariance();
         geometry_msgs::msg::PoseWithCovarianceStamped pose;
         pose.header.frame_id = "world"; pose.header.stamp = rclcpp::Time(s.stamp_ns);
@@ -1033,7 +1206,8 @@ private:
             for (int col = 0; col < 6; ++col) pose.pose.covariance[6 * row + col] = pose_cov(row, col);
         pose_pub_->publish(pose);
         geometry_msgs::msg::TwistWithCovarianceStamped twist;
-        twist.header = pose.header; twist.header.frame_id = "shadow_inekf_base";
+        const std::string frame = contact_observer_ ? "contact_shadow_inekf_base" : "shadow_inekf_base";
+        twist.header = pose.header; twist.header.frame_id = frame;
         const V3 body_v = R_.transpose() * vb, omega = gyro_ - bg_;
         twist.twist.twist.linear.x = body_v.x(); twist.twist.twist.linear.y = body_v.y(); twist.twist.twist.linear.z = body_v.z();
         twist.twist.twist.angular.x = omega.x(); twist.twist.twist.angular.y = omega.y(); twist.twist.twist.angular.z = omega.z();
@@ -1050,18 +1224,19 @@ private:
             for (int col = 0; col < 6; ++col) twist.twist.covariance[6 * row + col] = twist_cov(row, col);
         twist_pub_->publish(twist);
         geometry_msgs::msg::TransformStamped tf;
-        tf.header = pose.header; tf.child_frame_id = "shadow_inekf_base";
+        tf.header = pose.header; tf.child_frame_id = frame;
         tf.transform.translation.x = pb.x(); tf.transform.translation.y = pb.y(); tf.transform.translation.z = pb.z();
         tf.transform.rotation = pose.pose.pose.orientation; tf_->sendTransform(tf);
 
-        shadow_history_.push_back(point(pb)); legacy_history_.push_back(point(legacy_valid ? lp : pb)); history_time_.push_back(now);
+        shadow_history_.push_back(point(pb)); history_time_.push_back(now);
         while (history_time_.size() > 1600 || (!history_time_.empty() && now - history_time_.front() > tune_.history_seconds)) {
-            history_time_.pop_front(); shadow_history_.pop_front(); legacy_history_.pop_front();
+            history_time_.pop_front(); shadow_history_.pop_front();
         }
-        for (int which = 0; which < (legacy_valid ? 2 : 1); ++which) {
-            const V3 position = which ? lp : pb, velocity = which ? lv : vb;
-            const M3 rotation = which ? lr : R_;
-            const double red = which ? 0.45 : 1.0, green = which ? 0.78 : 0.08, blue = which ? 1.0 : 0.08;
+        {
+            const int which = contact_observer_ ? 1 : 0; // 复用旧浅蓝 id=1，改为真实的黄色影子实例。
+            const V3 position = pb, velocity = vb;
+            const M3 rotation = R_;
+            const double red = 1.0, green = contact_observer_ ? 1.0 : 0.08, blue = contact_observer_ ? 0.0 : 0.08;
             Marker body = marker(s, "body", which, Marker::CUBE, red, green, blue, 0.22);
             body.pose.position = point(position); body.pose.orientation = quaternion(rotation);
             body.scale.x = 0.35; body.scale.y = 0.18; body.scale.z = 0.09;
@@ -1084,8 +1259,7 @@ private:
             scene.markers.push_back(arrow);
             Marker trail = marker(s, "trajectory_60s", which, Marker::LINE_STRIP, red, green, blue);
             trail.scale.x = 0.008;
-            const auto& history = which ? legacy_history_ : shadow_history_;
-            trail.points.assign(history.begin(), history.end()); scene.markers.push_back(trail);
+            trail.points.assign(shadow_history_.begin(), shadow_history_.end()); scene.markers.push_back(trail);
         }
         for (int axis = 0; axis < 3; ++axis) {
             Marker line = marker(s, "shadow_axes", axis, Marker::ARROW, axis == 0, axis == 1, axis == 2);
@@ -1095,10 +1269,6 @@ private:
         Marker raw_heading = marker(s, "raw_n100_heading", 0, Marker::ARROW, 1.0, 0.1, 0.8, 0.7);
         raw_heading.scale.x = 0.005; raw_heading.scale.y = 0.012; raw_heading.scale.z = 0.016;
         raw_heading.points = {point(pb), point(pb + 0.20 * measured_R_.col(0))}; scene.markers.push_back(raw_heading);
-        if (legacy_valid) {
-            Marker difference = marker(s, "estimate_difference", 0, Marker::LINE_LIST, 1.0, 1.0, 0.2);
-            difference.scale.x = 0.004; difference.points = {point(pb), point(lp)}; scene.markers.push_back(difference);
-        }
         Eigen::SelfAdjointEigenSolver<M3> eig(pose_cov.topLeftCorner<3, 3>());
         if (eig.info() == Eigen::Success && eig.eigenvalues().minCoeff() >= -1e-9) {
             Marker ellipsoid = marker(s, "position_2sigma", 0, Marker::SPHERE, 1.0, 0.08, 0.08, 0.10);
@@ -1121,15 +1291,14 @@ private:
             }
         }
         markers_pub_->publish(scene);
-        publishDiagnostics(s, now, pb, vb, lp_raw, lv);
+        publishDiagnostics(s, now, pb, vb);
     }
 
-    void publishDiagnostics(const Snapshot& s, double now, const V3& pb, const V3& vb,
-                            const V3& legacy_p, const V3& legacy_v) {
+    void publishDiagnostics(const Snapshot& s, double now, const V3& pb, const V3& vb) {
         std_msgs::msg::Float64MultiArray m;
         const auto append = [&m](const V3& value) { for (int j = 0; j < 3; ++j) m.data.push_back(value(j)); };
         m.data = {now, sample_dt_, s.period, processing_age_};
-        append(pb); append(vb); append(legacy_p); append(legacy_v); append(initial_origin_delta_); append(bg_); append(ba_);
+        append(pb); append(vb); append(bg_); append(ba_);
         m.data.insert(m.data.end(), {attitude_residual_, imu_stale_ ? 1.0 : 0.0,
             static_cast<double>(attitude_accepted_), static_cast<double>(attitude_rejected_),
             static_cast<double>(dropped_.load(std::memory_order_relaxed)), static_cast<double>(late_),
@@ -1139,13 +1308,16 @@ private:
         m.data.insert(m.data.end(), {static_cast<double>(correction_rejections_),
             static_cast<double>(output_rejections_.load(std::memory_order_relaxed)),
             guardFaulted(s.session) ? static_cast<double>(guard_fault_code_.load(std::memory_order_relaxed)) : 0.0});
+        m.data.insert(m.data.end(), {contact_velocity_nis_, static_cast<double>(contact_velocity_accepted_),
+            static_cast<double>(contact_velocity_rejected_)});
         m.layout.dim.resize(1);
-        m.layout.dim[0].label = "t_control,dt_stamp,dt_period,worker_age,shadow_px,py,pz,vx,vy,vz,"
-            "legacy_raw_px,py,pz,vx,vy,vz,initial_origin_dx,dy,dz,bgx,bgy,bgz,bax,bay,baz,"
+        m.layout.dim[0].label = "t_control,dt_stamp,dt_period,worker_age,px,py,pz,vx,vy,vz,"
+            "bgx,bgy,bgz,bax,bay,baz,"
             "att_residual_rad,imu_values_unchanged,att_accept,att_reject,queue_drop,late_drop,gaps,faults,invalid,"
             "FR_prior,trust,slip_score,nis,Qscale,FL_prior,trust,slip_score,nis,Qscale,"
             "RR_prior,trust,slip_score,nis,Qscale,RL_prior,trust,slip_score,nis,Qscale,"
-            "guard_correction_reject,guard_output_reject,guard_fault_code";
+            "guard_correction_reject,guard_output_reject,guard_fault_code,"
+            "contact_velocity_xy_nis,contact_velocity_accept,contact_velocity_reject";
         m.layout.dim[0].size = static_cast<std::uint32_t>(m.data.size());
         m.layout.dim[0].stride = m.layout.dim[0].size;
         diagnostics_pub_->publish(m);
@@ -1154,7 +1326,8 @@ private:
     Tuning tune_;
     std::vector<std::string> joint_names_, foot_names_;
     std::string base_name_, imu_name_;
-    std::array<std::size_t, 12> q_indices_{}, qd_indices_{};
+    const std::shared_ptr<ContactObserver> contact_observer_;
+    std::array<std::size_t, 12> q_indices_{}, qd_indices_{}, tau_indices_{};
     std::array<std::size_t, 10> imu_indices_{};
     std::array<Snapshot, kQueueSize> queue_{};
     alignas(64) std::atomic<std::size_t> write_{0};
@@ -1169,6 +1342,7 @@ private:
     std::int64_t output_bad_since_ns_ = 0;
     std::atomic<std::uint64_t> output_rejections_{0}, guard_fault_session_{0};
     std::atomic<int> guard_fault_code_{0};
+    std::atomic<unsigned> output_first_reason_{0}, output_last_reason_{0};
     alignas(64) std::atomic<std::size_t> result_write_{0}, result_read_{0};
     std::atomic<std::uint64_t> control_epoch_{0};
     std::atomic<bool> control_ready_{false};
@@ -1206,21 +1380,24 @@ private:
     double sample_dt_ = 0.0, processing_age_ = 0.0, attitude_residual_ = 0.0;
     std::uint64_t worker_session_ = 0, late_ = 0, gaps_ = 0, faults_ = 0, invalid_ = 0;
     std::uint64_t attitude_accepted_ = 0, attitude_rejected_ = 0;
+    double last_contact_velocity_ = -1.0, contact_velocity_nis_ = 0.0;
+    std::uint64_t contact_velocity_accepted_ = 0, contact_velocity_rejected_ = 0;
     int static_samples_ = 0;
     std::array<double, 10> previous_imu_{};
     V3 gyro_ = V3::Zero(), accel_ = V3::Zero(), previous_gyro_ = V3::Zero(), previous_accel_ = V3::Zero();
-    V3 static_gyro_ = V3::Zero(), static_accel_ = V3::Zero(), initial_origin_delta_ = V3::Zero();
+    V3 static_gyro_ = V3::Zero(), static_accel_ = V3::Zero();
     Eigen::Quaterniond attitude_seen_ = Eigen::Quaterniond::Identity();
     std::string status_;
     std::string last_status_reason_;
-    std::deque<geometry_msgs::msg::Point> shadow_history_, legacy_history_;
+    std::deque<geometry_msgs::msg::Point> shadow_history_;
     std::deque<double> history_time_;
 };
 
 ShadowInEKF::ShadowInEKF(const std::vector<std::string>& joint_names,
                          const std::vector<std::string>& foot_names,
-                         const std::string& base_name, const std::string& imu_name)
-    : impl_(std::make_unique<Impl>(joint_names, foot_names, base_name, imu_name)) {}
+                         const std::string& base_name, const std::string& imu_name,
+                         std::shared_ptr<ContactObserver> contact_observer)
+    : impl_(std::make_unique<Impl>(joint_names, foot_names, base_name, imu_name, std::move(contact_observer))) {}
 
 ShadowInEKF::~ShadowInEKF() = default;
 
@@ -1228,9 +1405,9 @@ void ShadowInEKF::setRobotDescription(const std::string& xml) { impl_->setRobotD
 void ShadowInEKF::startSession(const CtrlInterfaces& io) { impl_->startSession(io); }
 void ShadowInEKF::stopSession() noexcept { impl_->stopSession(); }
 void ShadowInEKF::submit(const rclcpp::Time& time, const rclcpp::Duration& period,
-                         const CtrlInterfaces& io, const WaveGenerator& wave, Estimator& legacy,
-                         bool fixed_stance_prior) noexcept {
-    impl_->submit(time, period, io, wave, legacy, fixed_stance_prior);
+                         const CtrlInterfaces& io, const WaveGenerator& wave, const Estimator& reference,
+                         bool fixed_stance_prior, bool reference_ready) noexcept {
+    impl_->submit(time, period, io, wave, reference, fixed_stance_prior, reference_ready);
 }
 bool ShadowInEKF::selectForControl(const rclcpp::Time& time, Estimator& estimator) noexcept {
     return impl_->selectForControl(time, estimator);

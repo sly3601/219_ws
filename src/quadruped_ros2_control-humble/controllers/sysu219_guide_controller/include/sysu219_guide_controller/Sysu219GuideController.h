@@ -31,6 +31,7 @@
 namespace sysu219_guide_controller {
     class StateComIdentification;
     class ShadowInEKF;
+    class ContactShadowInEKF;
     struct FSMStateList {
         std::shared_ptr<FSMState> invalid;
         std::shared_ptr<StatePassive> passive;
@@ -148,6 +149,7 @@ namespace sysu219_guide_controller {
         double last_estimator_debug_s_ = -1.0;
         // 可选影子观测器，估计结果不进入 CtrlComponent 或状态机。
         std::shared_ptr<ShadowInEKF> shadow_inekf_;
+        std::shared_ptr<ContactShadowInEKF> contact_shadow_inekf_;
 
 
 

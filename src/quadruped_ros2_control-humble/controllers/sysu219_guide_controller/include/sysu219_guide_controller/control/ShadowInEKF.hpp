@@ -1,8 +1,11 @@
 #pragma once
 
 #include <memory>
+#include <array>
+#include <cstdint>
 #include <string>
 #include <vector>
+#include <Eigen/Core>
 #include <rclcpp/time.hpp>
 #include <rclcpp/duration.hpp>
 
@@ -16,9 +19,35 @@ namespace sysu219_guide_controller {
 // 实现、调参与 RViz 使用说明位于 src/control/ShadowInEKF.cpp。
 class ShadowInEKF final {
 public:
+    // 可选的只读观测入口，只在该实例自己的后台线程调用。
+    // 不提供 Estimator、控制接口或主回路模型的可写引用。
+    struct ContactSample {
+        std::int64_t stamp_ns = 0;
+        std::uint64_t session = 0;
+        double dt = 0.0, period = 0.0, worker_age = 0.0;
+        bool initialized = false, fixed_stance_prior = false, reference_ready = false;
+        Eigen::Matrix<double, 12, 1> q, qd, tau;
+        Eigen::Matrix<double, 3, 4> feet_B, feet_velocity_B;
+        Eigen::Matrix3d R_OB;
+        Eigen::Vector3d position, velocity, gyro;
+        Eigen::Vector3d reference_position, reference_velocity;
+        std::array<int, 4> planned_contact{};
+        std::array<double, 4> phase{};
+    };
+    class ContactObserver {
+    public:
+        virtual ~ContactObserver() = default;
+        virtual void setRobotDescription(const std::string& xml) = 0;
+        virtual void reset() = 0;
+        virtual void update(const ContactSample& sample, std::array<int, 4>& contact,
+                            std::array<double, 4>& phase) = 0;
+        virtual void recordEstimate(const ContactSample& sample, const Eigen::Vector3d& p,
+                                    const Eigen::Vector3d& v, bool ready) = 0;
+    };
     ShadowInEKF(const std::vector<std::string>& joint_names,
                 const std::vector<std::string>& foot_names,
-                const std::string& base_name, const std::string& imu_name);
+                const std::string& base_name, const std::string& imu_name,
+                std::shared_ptr<ContactObserver> contact_observer = nullptr);
     ~ShadowInEKF();
     ShadowInEKF(const ShadowInEKF&) = delete;
     ShadowInEKF& operator=(const ShadowInEKF&) = delete;
@@ -27,8 +56,8 @@ public:
     void startSession(const CtrlInterfaces& io);
     void stopSession() noexcept;
     void submit(const rclcpp::Time& time, const rclcpp::Duration& period,
-                const CtrlInterfaces& io, const WaveGenerator& wave, Estimator& legacy,
-                bool fixed_stance_prior = false) noexcept;
+                const CtrlInterfaces& io, const WaveGenerator& wave, const Estimator& reference,
+                bool fixed_stance_prior = false, bool reference_ready = true) noexcept;
     // 实时线程调用；仅传递新系统结果，返回 false 表示新系统未就绪或自身失效。
     bool selectForControl(const rclcpp::Time& time, Estimator& estimator) noexcept;
 

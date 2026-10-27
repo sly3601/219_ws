@@ -5,6 +5,9 @@
 #include "sysu219_guide_controller/Sysu219GuideController.h"
 #include "COM_identification/StateComIdentification.h"
 #include "sysu219_guide_controller/control/ShadowInEKF.hpp"
+#ifdef SYSU219_ENABLE_CONTACT_SHADOW
+#include "sysu219_guide_controller/control/ContactShadowInEKF.hpp"
+#endif
 
 #include <sysu219_guide_controller/gait/WaveGenerator.h>
 #include "sysu219_guide_controller/robot/QuadrupedRobot.h"
@@ -18,7 +21,7 @@ namespace sysu219_guide_controller
 {
     using config_type = controller_interface::interface_configuration_type;
 
-    // 里程计唯一切换开关：false=旧 KF（默认），true=新 InEKF；修改后重新编译生效。
+    // 在役里程计选择：当前 true=红色 InEKF；黄色影子始终不能接管控制。
     constexpr bool kUseInEKFOdometry = true;
 
     controller_interface::InterfaceConfiguration Sysu219GuideController::command_interface_configuration() const
@@ -95,17 +98,39 @@ namespace sysu219_guide_controller
             shadow_inekf_->submit(time, period, ctrl_interfaces_,
                 *ctrl_component_.wave_generator_, *ctrl_component_.estimator_,
                 current_state_ == state_list_.fixedStand || current_state_ == state_list_.freeStand);
-            // 两套滤波状态独立；旧 KF 只保留对照，新系统不向旧系统回退。
+            // 保留旧 KF 内部计算的兼容路径；控制输出只选红色 InEKF，不向旧 KF 回退。
             if constexpr (kUseInEKFOdometry)
                 odometry_ready = shadow_inekf_->selectForControl(time, *ctrl_component_.estimator_);
         }
         if constexpr (kUseInEKFOdometry) {
             if (!odometry_ready && (current_state_ == state_list_.trotting ||
                 current_state_ == state_list_.balanceTest || current_state_ == state_list_.rlWalk)) {
-                RCLCPP_ERROR(get_node()->get_logger(), "[ODOMETRY] InEKF 失效，停止本控制周期；不切换旧 KF。");
-                return controller_interface::return_type::ERROR;
+                // 短暂拒收由估计器内部容忍；只有无法继续提供可信状态才走到这里。
+                // 不能提前返回：本机控制管理器仍会写硬件，必须当周期覆盖行走命令。
+                // 手动失能优先；其余严重里程计故障转入不依赖里程计的关节固定站立。
+                std::shared_ptr<FSMState> stop_state = state_list_.fixedStand;
+                if (ctrl_interfaces_.control_inputs_.command == 1) stop_state = state_list_.passive;
+                stop_state->previous_state_name = current_state_->state_name;
+                current_state_->exit();
+                current_state_ = next_state_ = stop_state;
+                next_state_name_ = current_state_->state_name;
+                mode_ = FSMMode::NORMAL;
+                current_state_->enter(); // 立即清前馈、清目标速度，从实测关节位置开始站立过渡。
+                RCLCPP_ERROR(get_node()->get_logger(),
+                    "[ODOMETRY] 严重里程计故障，已切入%s并覆盖行走命令；不切换旧 KF，须重新激活估计器后才能进入运动状态。",
+                    current_state_->state_name_string.c_str());
             }
         }
+
+        // 只复制传感器和在役状态用于对照。黄色结果不进入 odometry_ready/FSM/命令链。
+#ifdef SYSU219_ENABLE_CONTACT_SHADOW
+        if (contact_shadow_inekf_) {
+            contact_shadow_inekf_->submit(time, period, ctrl_interfaces_,
+                *ctrl_component_.wave_generator_, *ctrl_component_.estimator_,
+                current_state_ == state_list_.fixedStand || current_state_ == state_list_.freeStand,
+                odometry_ready);
+        }
+#endif
 
         // 仅 Gazebo 配置开启；所有 FSM 状态都以约 25 Hz 输出 MPC 的估计质心。
         if (com_estimated_pub_ && ctrl_component_.convex_mpc_) {
@@ -249,7 +274,8 @@ namespace sysu219_guide_controller
             const bool reject_odometry = !odometry_ready && (next_state_ == state_list_.trotting ||
                 next_state_ == state_list_.balanceTest || next_state_ == state_list_.rlWalk);
             if (reject_odometry) {
-                RCLCPP_WARN(get_node()->get_logger(), "[ODOMETRY] InEKF 尚未就绪，保持当前状态，等待站立初始化。");
+                RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *get_node()->get_clock(), 1000,
+                    "[ODOMETRY] InEKF 当前无可用状态，保持当前状态；具体原因见 [SHADOW_INEKF] 日志。");
                 ctrl_interfaces_.control_inputs_.command = 0;
                 next_state_ = current_state_;
                 next_state_name_ = current_state_->state_name;
@@ -316,18 +342,20 @@ namespace sysu219_guide_controller
              time.seconds() - last_estimator_debug_s_ >= 0.02 - 1e-9)) {
             const auto& est = ctrl_component_.estimator_;
             std_msgs::msg::Float64MultiArray msg;
-            msg.data.reserve(28);
+            msg.data.reserve(22);
             msg.data = {time.seconds(), static_cast<double>(current_state_->state_name), period.seconds()};
             const auto append = [&](const auto& values) {
                 for (int i = 0; i < values.size(); ++i) msg.data.push_back(values(i));
             };
             append(est->getPosition()); append(est->getVelocity());
-            append(est->debugVelocityPredicted()); append(est->debugVelocityUnfiltered());
             append(est->debugAcceleration());
             append(ctrl_component_.wave_generator_->contact_);
             append(ctrl_component_.wave_generator_->phase_);
             msg.data.push_back(est->debugDt());
             msg.data.push_back(static_cast<double>(mode_));
+            msg.layout.dim.resize(1);
+            msg.layout.dim[0].label = "t,state,period,p_xyz,v_xyz,acc_G_xyz,planned_FR_FL_RR_RL,phase_FR_FL_RR_RL,estimator_dt,fsm_mode";
+            msg.layout.dim[0].size = msg.layout.dim[0].stride = static_cast<std::uint32_t>(msg.data.size());
             estimator_debug_pub_->publish(msg);
             last_estimator_debug_s_ = time.seconds();
         }
@@ -395,6 +423,21 @@ namespace sysu219_guide_controller
             return controller_interface::CallbackReturn::ERROR;
         }
 
+#ifdef SYSU219_ENABLE_CONTACT_SHADOW
+        // 可选参数也必须隔离：黄色参数类型错误不能使原控制器初始化失败。
+        try {
+            auto_declare<bool>("contact_shadow_inekf_enabled", true);
+            auto_declare<double>("contact_shadow_force_on_N", 25.0);
+            auto_declare<double>("contact_shadow_force_off_N", 12.0);
+            auto_declare<double>("contact_shadow_confirm_on_s", 0.012);
+            auto_declare<double>("contact_shadow_confirm_off_s", 0.020);
+            auto_declare<bool>("contact_shadow_write_csv", true);
+        } catch (const std::exception& e) {
+            RCLCPP_ERROR(get_node()->get_logger(), "[CONTACT_SHADOW] optional parameters invalid; red unchanged: %s", e.what());
+        } catch (...) {
+            RCLCPP_ERROR(get_node()->get_logger(), "[CONTACT_SHADOW] optional parameter failure; red unchanged");
+        }
+#endif
         return CallbackReturn::SUCCESS;
     }
 
@@ -414,6 +457,25 @@ namespace sysu219_guide_controller
                 RCLCPP_ERROR(get_node()->get_logger(), "[SHADOW_INEKF] disabled: %s", e.what());
             }
         }
+        contact_shadow_inekf_.reset();
+#ifdef SYSU219_ENABLE_CONTACT_SHADOW
+        try {
+            if (get_node()->get_parameter("contact_shadow_inekf_enabled").as_bool()) {
+                ContactShadowInEKF::Settings settings;
+                settings.force_on_N = get_node()->get_parameter("contact_shadow_force_on_N").as_double();
+                settings.force_off_N = get_node()->get_parameter("contact_shadow_force_off_N").as_double();
+                settings.confirm_on_s = get_node()->get_parameter("contact_shadow_confirm_on_s").as_double();
+                settings.confirm_off_s = get_node()->get_parameter("contact_shadow_confirm_off_s").as_double();
+                settings.write_csv = get_node()->get_parameter("contact_shadow_write_csv").as_bool();
+                contact_shadow_inekf_ = std::make_shared<ContactShadowInEKF>(
+                    joint_names_, feet_names_, base_name_, imu_name_, settings);
+            }
+        } catch (const std::exception& e) {
+            RCLCPP_ERROR(get_node()->get_logger(), "[CONTACT_SHADOW] disabled; serving loop unchanged: %s", e.what());
+        } catch (...) {
+            RCLCPP_ERROR(get_node()->get_logger(), "[CONTACT_SHADOW] disabled after unknown exception; serving loop unchanged");
+        }
+#endif
         control_input_subscription_ = get_node()->create_subscription<control_input_msgs::msg::Inputs>(
             "/control_input", 10, [this](const control_input_msgs::msg::Inputs::SharedPtr msg)
             {
@@ -438,6 +500,17 @@ namespace sysu219_guide_controller
                         RCLCPP_ERROR(get_node()->get_logger(), "[SHADOW_INEKF] description rejected: %s", e.what());
                     }
                 }
+#ifdef SYSU219_ENABLE_CONTACT_SHADOW
+                if (contact_shadow_inekf_) {
+                    try { contact_shadow_inekf_->setRobotDescription(msg->data); }
+                    catch (const std::exception& e) {
+                        RCLCPP_ERROR(get_node()->get_logger(), "[CONTACT_SHADOW] description rejected; red unchanged: %s", e.what());
+                    } catch (...) {
+                        contact_shadow_inekf_->stopSession();
+                        RCLCPP_ERROR(get_node()->get_logger(), "[CONTACT_SHADOW] description rejected; yellow inactive, red unchanged");
+                    }
+                }
+#endif
             });
 
         // 摆动保持 0.325 s，支撑加倍为 0.650 s；每次对角交接四足支撑 0.1625 s。
@@ -517,6 +590,18 @@ namespace sysu219_guide_controller
                 RCLCPP_ERROR(get_node()->get_logger(), "[SHADOW_INEKF] inactive: %s", e.what());
             }
         }
+#ifdef SYSU219_ENABLE_CONTACT_SHADOW
+        if (contact_shadow_inekf_) {
+            try { contact_shadow_inekf_->startSession(ctrl_interfaces_); }
+            catch (const std::exception& e) {
+                contact_shadow_inekf_->stopSession();
+                RCLCPP_ERROR(get_node()->get_logger(), "[CONTACT_SHADOW] inactive; red unchanged: %s", e.what());
+            } catch (...) {
+                contact_shadow_inekf_->stopSession();
+                RCLCPP_ERROR(get_node()->get_logger(), "[CONTACT_SHADOW] inactive after unknown exception; red unchanged");
+            }
+        }
+#endif
         state_list_.passive = std::make_shared<StatePassive>(ctrl_interfaces_);
         state_list_.fixedProne = std::make_shared<StateFixedProne>(ctrl_interfaces_, prone_pos_, prone_kp_, prone_kd_);
         state_list_.fixedDown = std::make_shared<StateFixedDown>(ctrl_interfaces_, down_pos_, stand_kp_, stand_kd_);
@@ -561,6 +646,9 @@ namespace sysu219_guide_controller
     {
         if (state_list_.trotting) state_list_.trotting->stopOnlineTuning();
         if (shadow_inekf_) shadow_inekf_->stopSession();
+#ifdef SYSU219_ENABLE_CONTACT_SHADOW
+        if (contact_shadow_inekf_) contact_shadow_inekf_->stopSession();
+#endif
         if (current_state_ == state_list_.legIdentification && current_state_) current_state_->exit();
         if (current_state_ == state_list_.comIdentification && current_state_) current_state_->exit();
         state_list_.comIdentification.reset();
@@ -575,6 +663,9 @@ namespace sysu219_guide_controller
     {
         if (state_list_.trotting) state_list_.trotting->stopOnlineTuning();
         if (shadow_inekf_) shadow_inekf_->stopSession();
+#ifdef SYSU219_ENABLE_CONTACT_SHADOW
+        if (contact_shadow_inekf_) contact_shadow_inekf_->stopSession();
+#endif
         return CallbackReturn::SUCCESS;
     }
 
@@ -583,6 +674,9 @@ namespace sysu219_guide_controller
     {
         if (state_list_.trotting) state_list_.trotting->stopOnlineTuning();
         if (shadow_inekf_) shadow_inekf_->stopSession();
+#ifdef SYSU219_ENABLE_CONTACT_SHADOW
+        if (contact_shadow_inekf_) contact_shadow_inekf_->stopSession();
+#endif
         return CallbackReturn::SUCCESS;
     }
 
@@ -591,6 +685,9 @@ namespace sysu219_guide_controller
     {
         if (state_list_.trotting) state_list_.trotting->stopOnlineTuning();
         if (shadow_inekf_) shadow_inekf_->stopSession();
+#ifdef SYSU219_ENABLE_CONTACT_SHADOW
+        if (contact_shadow_inekf_) contact_shadow_inekf_->stopSession();
+#endif
         return CallbackReturn::SUCCESS;
     }
 

@@ -190,7 +190,7 @@ public:
         subscription_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>(
             "/estimator_debug", rclcpp::QoS(10).best_effort(),
             [this](std_msgs::msg::Float64MultiArray::ConstSharedPtr msg) {
-                if (msg->data.size() != 28 || !std::isfinite(msg->data[0]) ||
+                if ((msg->data.size() != 22 && msg->data.size() != 28) || !std::isfinite(msg->data[0]) ||
                     !std::isfinite(msg->data[1])) return;
                 est_s_.store(msg->data[0]);
                 state_.store(static_cast<int>(msg->data[1]));

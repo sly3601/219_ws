@@ -36,10 +36,12 @@ struct ContactForceLimits {
 
 
 struct RelaxationSettings {
-  // Q_WBC统一惩罚18维加速度修正；Q_MPC统一惩罚所有支撑足的力修正。
+  // Q_WBC惩罚机身6维加速度修正；关节12维乘下面的比例，允许独立让步。
+  // Q_MPC统一惩罚所有支撑足的力修正。
   // 权重越大，对应修正越不容易发生；两种量的单位不同，不代表信任百分比。
   double Q_WBC = 1.0;
   double Q_MPC = 0.005;
+  double joint_acceleration_weight_ratio = 1.0; // 正数；1保留原同权行为，越小越允许关节加速度调整。
 
   // 实现所需的数值检查参数，不属于论文中的优化变量。
   double absolute_feasibility_tolerance = 1e-6;

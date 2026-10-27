@@ -1,0 +1,33 @@
+{
+  "format": "sysu219_real_trial_archive_v1",
+  "tool_version": 2,
+  "frozen_at_s": 1793039205.6167548,
+  "selected_end_s": 1793039122.1894042,
+  "input_signature": "c125e0ad5eb96207227855cb21ac6cf41e787631e7a4f1135c983d44028fa6a2",
+  "trial": {
+    "pid": 284296,
+    "trial_number": 5,
+    "start_s": 1793039102.70945,
+    "end_s": 1793039122.1894042,
+    "log_path": "/home/sysu219/.ros/log/ros2_control_node_284296_1793038940153.log",
+    "range_clipped": false
+  },
+  "sources": [
+    {
+      "path": "/tmp/trotting_run_284296_1793039102713358_run5_chunk0.csv",
+      "sha256": "483a1d5838e0a911659759f7946da7e68a9752169d2cc75dea1ed7fe5bb9fba5",
+      "selected_rows": 2500,
+      "malformed_rows": 0,
+      "partial_tail": false
+    },
+    {
+      "path": "/tmp/trotting_run_284296_1793039102713358_run5_chunk1.csv",
+      "sha256": "fdfd7b0f8d2e935dd0b1d85b01c5453f42b287ce7e46adfcf1547efdf3d39d70",
+      "selected_rows": 2368,
+      "malformed_rows": 0,
+      "partial_tail": false
+    }
+  ],
+  "duplicate_rows": 0,
+  "conflicting_duplicates": 0
+}

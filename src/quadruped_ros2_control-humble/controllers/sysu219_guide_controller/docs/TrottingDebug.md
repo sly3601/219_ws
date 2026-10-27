@@ -1,4 +1,6 @@
-统一开关为 `include/sysu219_guide_controller/debug/DebugConfig.h` 中的 `quadruped_debug::Csv_DebugMode`，当前为 `true`；改动后需要重新编译。
+当前连续采样、参数版本留档与自动体检说明见 [RealTrialCheck.md](RealTrialCheck.md)。下文的起步/事件导出流程描述旧版本，用于解释旧 CSV；字段含义继续有效。新记录源码需用户自行更新实际运行程序后生效，代理不得执行编译。
+
+统一开关为 `include/sysu219_guide_controller/debug/DebugConfig.h` 中的 `quadruped_debug::Csv_DebugMode`，当前为 `true`；改动后需要用户自行更新实际运行程序。
 关闭时不创建记录线程/缓冲，不采集 CSV，不计算诊断用正解误差/SVD，不输出详细 MPC 日志；原有保底警告保留。
 开启后 QP/MPC 共用 Trotting 诊断。每次进入 trot 无条件保存起步约 10 秒；之后突变触发保存名义前 2 秒、后 1 秒，退出时也保存最后一段。
 后台线程生成 `/tmp/trotting_debug_<pid>_<timestamp>.csv`，终端输出 `[TROT_DEBUG] capture=startup/event saved=...`。
@@ -15,7 +17,7 @@ CSV 的四腿顺序为 FR、FL、RR、RL；矩阵按列展开，每腿 xyz 或�
 - `kp_cmd/kd_cmd`：本帧控制器输出的电机增益。
 - `tau_p_est = kp_cmd × (q_cmd − q)`；`tau_d_est = kd_cmd × (qd_cmd − qd)`；`tau_mit_est` 为前馈与两项 PD 之和。均为控制器接口处的诊断估算，不代表电机实际总力矩。
 
-这些列沿用控制器采样时刻。反馈可能对应此前发出的命令，也可能在相邻控制帧重复；不能把控制器采样频率当作 CAN 新反馈频率，不能要求反馈与同帧命令完全一致。现有 `v_predicted/v_unfiltered/v/acc_G` 和四腿反推速度字段保留，用于核对竖直速度误判链路。
+这些列沿用控制器采样时刻。反馈可能对应此前发出的命令，也可能在相邻控制帧重复；不能把控制器采样频率当作 CAN 新反馈频率，不能要求反馈与同帧命令完全一致。`p/v` 是实际提供给控制器的估计；`acc_G` 和四腿反推速度继续保留。新日志删除旧 KF 的 `v_predicted/v_unfiltered`，旧归档仍可读取。
 
 `touchdown_*` 是仅观察的落地候选诊断，不参与接触、增益或力分配。`touchdown_fz_proxy` 由 `-(R*J)^(-T)*tau_feedback` 得到，未扣除腿重力、惯性、摩擦或反馈延迟，不能当作实测脚力。缺失反馈、非有限值或病态雅可比记 NaN。
 
@@ -53,10 +55,21 @@ MPC 的 `solver_status` 为 HPIPM 原状态；QP 为 0=目标值和输出有限�
 Gazebo 可视化进程用已有 `/gazebo/body_ground_truth`（25 Hz）与时间最近的估计样本配对，时间差超过 25 ms 则跳过，实际时间差写入 `pair_dt_ms`。
 它保存 `/tmp/estimator_debug_<pid>_<timestamp>.csv`，每秒或 FSM 状态改变时输出 `[EST_DEBUG]`，退出时关闭文件。关闭大量 debug 时不创建估计器发布器，Python 不创建这个 CSV。
 
-新 CSV 的 `truth_p/truth_v` 是 Gazebo 机身真值；`est_p` 是估计位置；`v_predicted` 是状态预测后的速度；`v_raw` 是观测校正后、低通前的速度；`v_filtered` 是最终送给控制器的速度；`acc_G` 是去重力后的世界系 IMU 加速度。后三种速度和加速度也加入原 Trotting CSV（其中低通前速度名为 `v_unfiltered`）。
+新 CSV 的 `truth_p/truth_v` 是 Gazebo 机身真值；`est_p/estimated_v` 是最终送给控制器的估计位置/速度；`acc_G` 是去重力后的世界系 IMU 加速度，不是 InEKF 的独立真值。删除旧 KF 的预测速度和低通前速度。
 `state`：4=FIXEDSTAND，6=TROTTING；`fsm_mode`：0=NORMAL，1=CHANGE。`truth_s/est_s` 都是仿真秒，不用系统时间配对。两次仿真 reset 之间分别分析，不能跨时间回退积分。
 
-`/estimator_debug` 的 28 个元素依次为：仿真秒、FSM 状态、实际控制周期秒、估计位置 xyz、滤波速度 xyz、预测速度 xyz、低通前速度 xyz、去重力加速度 xyz、四腿 contact、四腿 phase、估计器固定步长秒、FSM mode。四腿均按 FR、FL、RR、RL 顺序。
+`/estimator_debug` 的 22 个元素依次为：仿真秒、FSM 状态、实际控制周期秒、在役估计位置 xyz、在役估计速度 xyz、去重力加速度 xyz、四腿计划 contact、四腿 phase、旧估计器内部固定步长秒、FSM mode。四腿均按 FR、FL、RR、RL 顺序。可视化脚本兼容旧的 28 元素消息，但不再导出旧 KF 速度。
+
+接触影子（本轮新增源码）：`ContactShadowInEKF.hpp/.cpp` 独立封装力观测、接触状态机与记录，滤波数学复用另一个 `ShadowInEKF` 实例。红色实例仍是唯一在役状态来源；黄色实例没有控制结果接口，内部也禁止 `selectForControl` 写回。两者的滤波状态、模型、队列、线程和轨迹独立。主线程只复制固定长度快照，有界队列满时丢弃；黄色后台普通调度、nice=19，模型计算、文件写入和 DDS 发布都在后台。共享进程/CPU 仍有开销，实际调度时延必须在用户更新运行程序后验证，不能宣称严格实时隔离。
+
+- 配置阶段读取 `contact_shadow_inekf_enabled`（默认 true）；设 false 完全不创建黄色实例，原红色路径继续使用。源码构建选项 `BUILD_CONTACT_SHADOW_INEKF=OFF` 可排除黄色 cpp 和调用，不改变原控制算法。本次不执行编译或启动。
+- 黄色构造/接口绑定失败只停用黄色；后台模型失败单独重试；后台数值或持续创新异常由该实例自身故障锁存，终端给出原因，重新激活后恢复。不会驱动主 FSM 的里程计故障分支。关闭 CSV 用 `contact_shadow_write_csv=false`，仍保留黄色计算/显示。
+- 现有硬件 `foot_force` 为空值，观测使用 **反馈力矩**，不使用命令力矩替代测量。广义动量残差扣除已有模型中的重力、惯性、摩擦项，再用足端雅可比反算世界竖直力；它仍受模型误差、反馈延迟和速度噪声影响，不是实测足底法向力。思路参考 [Bledt 等 Contact Model Fusion，ICRA 2018](https://dspace.mit.edu/handle/1721.1/120350)，本实现并非完整复现。
+- 状态为 `0=Unknown,1=Air,2=Touchdown,3=Contact,4=Releasing,5=Unloaded`。`Unloaded` 只表示缺少载荷证据，不能当作几何离地或撤脚指令。进入接触需力滞回、持续时间、至少两次数值变化及相位/相对高度/相对速度门控；卸载只改变黄色观测状态，主回路支撑不变。无效力或时间断档不沿用旧的确认。
+- `contact_shadow_force_on_N/off_N` 默认 25/12 N，`contact_shadow_confirm_on_s/off_s` 默认 0.012/0.020 s；仅为待实测标定的旁路起点，不是按体重缩放后已验证的配置。独立残差增益 80 s⁻¹、启动稳定期 0.12 s、最大连续间隔 0.04 s；初始稳定期不输出可信接触。没有设备时间戳/序号，数值变化不能证明传感器新鲜。
+- 每次激活由黄色后台生成 `/tmp/contact_shadow_inekf_<pid>_<session>_<stamp_ns>.csv`，含原计划相位/接触、未补偿力代理、补偿后力估计、有效性、状态/原因/门控、累计确认时间、反馈变化数、雅可比条件、相对足高/速度、两套机身估计、q/qd/反馈力矩/残差及实际阈值。四腿 FR/FL/RR/RL，12 关节按每腿 hip/thigh/calf；力 N、力矩 N·m、位置 m、时间 s。两套估计都不是真机真值，`reference_ready=0` 时在役参考不作有效比较。
+- `reason`：0复位、1候选、2确认、3候选取消、4计划卸载、5意外失载、6摆动抬脚、7无效力；记录最近一次状态转换原因。`gates` 位：1有效力、2近落地意图、4相对高度通过、8未明显上升、16反馈数值变化、32观测器稳定。`estimator_contact` 仅给黄色 InEKF，`support_authorized` 始终 0。
+- 黄色发布 `/contact_shadow_inekf/{pose,twist,diagnostics,contact_diagnostics}`；姿态位置在 world，twist 在 `contact_shadow_inekf_base`，CSV 速度在 world。RViz 沿用 `/shadow_inekf/markers`，id=0 红色、id=1 黄色，旧浅蓝 KF 停止发布；两者只能删除自己的 marker。诊断话题给出队列丢帧/处理年龄/滤波故障，判定接触时应同时检查时间连续性、力源与故障日志。
 
 新增通用一致性字段（Gazebo/实机都可用；均不参与控制）：
 

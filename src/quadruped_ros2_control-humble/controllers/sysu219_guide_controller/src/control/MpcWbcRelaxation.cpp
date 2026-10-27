@@ -43,10 +43,15 @@ double infNorm(const RelaxationVector& vector)
 MpcWbcRelaxation::MpcWbcRelaxation(RelaxationSettings settings)
     : settings_(std::move(settings))
 {
-  // 两个标量权重均为正，使QuadProg++得到严格凸的二次目标。
+  // 机身、关节和足力权重均为正，使QuadProg++得到严格凸的二次目标。
   require(std::isfinite(settings_.Q_WBC) && settings_.Q_WBC > 0.0 &&
               std::isfinite(settings_.Q_MPC) && settings_.Q_MPC > 0.0,
           "松弛优化权重必须有限且大于零");
+  const double joint_weight = settings_.Q_WBC * settings_.joint_acceleration_weight_ratio;
+  require(std::isfinite(settings_.joint_acceleration_weight_ratio) &&
+              settings_.joint_acceleration_weight_ratio > 0.0 &&
+              std::isfinite(joint_weight) && joint_weight > 0.0,
+          "关节加速度修正权重必须有限且大于零");
   require(std::isfinite(settings_.absolute_feasibility_tolerance) &&
               settings_.absolute_feasibility_tolerance > 0.0 &&
               std::isfinite(settings_.relative_feasibility_tolerance) &&
@@ -143,10 +148,12 @@ const RelaxationQp& MpcWbcRelaxation::buildQp(const RelaxationInput& in) const
   }
 
 
-  // 2. 两个标量分别作用于18维加速度修正和当前支撑足的力修正。
+  // 2. 机身6维保留Q_WBC，关节12维使用较小正权重，让关节调整优先于牺牲机身目标。
   // 论文和QuadProg++的标准目标都有半系数，因此G的两个对角块均取两倍权重。
   qp.G.setZero(n_X, n_X);
-  qp.G.topLeftCorner<18, 18>().diagonal().setConstant(2.0 * settings_.Q_WBC);
+  qp.G.topLeftCorner<6, 6>().diagonal().setConstant(2.0 * settings_.Q_WBC);
+  qp.G.block<12, 12>(6, 6).diagonal().setConstant(
+      2.0 * settings_.Q_WBC * settings_.joint_acceleration_weight_ratio);
   qp.G.bottomRightCorner(n_f, n_f).diagonal().setConstant(2.0 * settings_.Q_MPC);
 
 

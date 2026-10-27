@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 #include "sysu219_guide_controller/debug/DebugConfig.h"
 
@@ -91,10 +92,10 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
 
     // 仿真整组试调：配套设置机身任务回正和阻尼；电机MIT增益仍由calcGain管理。
     sysu219::wbc::WbcSettings wbc_settings;
-    wbc_settings.kp_orientation = Vec3(110.0, 180.0, 20.0); // 横滚回正90→110；俯仰/偏航保持不变。
-    wbc_settings.kd_orientation = Vec3(18.0, 24.0, 8.0);   // 俯仰阻尼20→24，与俯仰回正增益配套调整。
-    wbc_settings.kp_body_position = Vec3(27.0, 27.0, 270.0); // 增强水平回位，保留高度回正增益。
-    wbc_settings.kd_body_position = Vec3(12.0, 12.0, 34.0); // 配套增强水平阻尼，保留竖直阻尼。
+    wbc_settings.kp_orientation = Vec3(84.823943662, 104.577464789, 20.0); // 按2026-10-27 02:41快照固化姿态增益。
+    wbc_settings.kd_orientation = Vec3(14.8309859155, 24.0, 8.0); // 姿态阻尼。
+    wbc_settings.kp_body_position = Vec3(10.838028169, 12.5492957746, 270.0); // 机身平动增益。
+    wbc_settings.kd_body_position = Vec3(6.65492957746, 5.70422535211, 24.0); // 机身平动阻尼。
     wbc_settings.kp_swing = Vec3(80.0, 80.0, 100.0); // 加大摆腿任务增益的仿真试验失败，恢复基准
     wbc_settings.kd_swing = Vec3(12.0, 12.0, 16.0);  // 与摆腿位置增益一起恢复
     wbc_settings.swing_hip_posture_weight = 3.30; // 四髋全时刻回零软任务权重，m/rad；0关闭，不是硬限幅。
@@ -104,17 +105,36 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     wbc_settings.svd_relative_tolerance = 1e-6;
     wbc_ = std::make_unique<sysu219::wbc::WbcController>(wbc_settings);
 
-    // 两个标量分别控制全身加速度修正和支撑足力修正。
+    // 分别控制机身加速度、关节加速度和支撑足力修正的代价。
     sysu219::wbc::RelaxationSettings relaxation_settings;
     // Q_WBC越大越保留WBC加速度；Q_MPC越大越保留MPC力。单位不同，同数值不是同等保留。
     // 单轴示例：40.5 kg、两足均分，1 m/s²对应每足20.25 N，同权重代价比约820；不是通用倍率。
-    relaxation_settings.Q_WBC = 1e2; // 统一控制基座6维和关节12维加速度修正。
-    relaxation_settings.Q_MPC = 1e1; // 统一控制各支撑足xyz力修正。
+    relaxation_settings.Q_WBC = 1; // 机身6维加速度修正权重。
+    relaxation_settings.Q_MPC = 10; // 统一控制各支撑足xyz力修正。
+    relaxation_settings.joint_acceleration_weight_ratio = 1; // 关节12维权重为机身的0.1倍，即100。
+    relaxation_settings.enforce_torque_limits = true;
+    // 在QP内满足原前馈力矩门槛；预留1e-3 Nm，避免数值残差触发整帧回退。
+    for (int joint = 0; joint < 12; ++joint)
+    {
+        const double limit = joint % 3 == 0 ? tau_ff_limit_hip :
+            (joint % 3 == 1 ? tau_ff_limit_thigh : tau_ff_limit_calf);
+        const double qp_limit = tau_ff_scale == 0.0 ? std::numeric_limits<double>::infinity() :
+            (limit - 1e-3) / std::abs(tau_ff_scale);
+        relaxation_input_.tau_min_j(joint) = -qp_limit;
+        relaxation_input_.tau_max_j(joint) = qp_limit;
+    }
     relaxation_ = std::make_unique<sysu219::wbc::MpcWbcRelaxation>(relaxation_settings);
 
     if (quadruped_debug::Csv_DebugMode)               // 如果开启了输出CSV数据文件的debug模式
     {
         trotting_debug_ = std::make_unique<TrottingDebug>(dt_);  // 创建一个 TrottingDebug 对象，把 dt_ 传给它的构造函数，并返回管理该对象的智能指针。
+        diagnostic_settings_ = {dt_, wave_generator_->getGaitPeriod(), wave_generator_->get_t_swing(),
+            wave_generator_->get_t_stance(), gait_height_, relaxation_settings.Q_WBC, relaxation_settings.Q_MPC,
+            Kp_motor_stance, Kd_motor_stance, Kp_motor_swing, Kd_motor_swing, wbc_command_blend_,
+            convex_mpc_->frictionCoefficient(), convex_mpc_->normalForceMin(), convex_mpc_->normalForceMax(),
+            tau_ff_scale, tau_ff_limit_hip, tau_ff_limit_thigh, tau_ff_limit_calf, 5.0 * dt_,
+            relaxation_settings.joint_acceleration_weight_ratio};
+        diagnostic_use_sim_time_ = ctrl_interfaces_.node->get_parameter("use_sim_time").as_bool();
     }
     
     // 初始化足底可视化发布器
@@ -143,6 +163,7 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
         initial.values[offset++] = settings.swing_hip_posture_weight;
         initial.values[offset++] = settings.kp_swing_hip_posture;
         initial.values[offset] = settings.kd_swing_hip_posture;
+        tuning_update_ = initial; // 即使窗口不可用，诊断也保留算法实际初值。
         online_tuning_ = std::make_unique<sysu219::tuning::OnlineTuning>(initial);
     } catch (const std::exception& error) {
         RCLCPP_WARN(ctrl_interfaces_.node->get_logger(),
@@ -158,6 +179,7 @@ void StateTrotting::applyOnlineTuning() noexcept {
         online_tuning_->finishUpdate(revision, false);
         return;
     }
+
     Mat13 q;
     Mat12 r, s;
     for (int row = 0; row < 13; ++row)
@@ -183,6 +205,8 @@ void StateTrotting::applyOnlineTuning() noexcept {
     // MPC 权重改变则令该周期同步求解，不继续输出旧权重下缓存的力。
     if (convex_mpc_->updateCostWeights(q, r, s)) mpc_cycle_ = 0;
     wbc_->updateTaskGains(settings);
+    tuning_revision_ = revision;
+    tuning_effective_cycle_ = debug_cycle_;
     online_tuning_->finishUpdate(revision, true);
 }
 
@@ -199,6 +223,10 @@ void StateTrotting::enter()
 {
     if (trotting_debug_) trotting_debug_->reset();
     debug_cycle_ = 0;
+    tuning_effective_cycle_ = 0; // 本轮起步沿用的版本从周期0生效。
+    motor_stance_blend_.setOnes(); // 起步全支撑直接使用原支撑增益，避免误做摆动->支撑过渡。
+    wbc_reference_initialized_ = wbc_reference_applied_last_ = false;
+    wbc_reference_elapsed_s_ = wbc_reference_transition_s_;
     pcd_ = estimator_->getPosition();                   // 机身期望位置初始化，设为当前机身位置
     height_target_ = pcd_(2);                                                   // 保留原来的最终目标高度
     height_ramp_elapsed_ = 0.0;                                                 // 累计高度过渡持续的时间，初始化
@@ -207,9 +235,9 @@ void StateTrotting::enter()
     v_cmd_body_.setZero();                              // 机身期望速度初始化
     const Vec3 initial_rpy = rotMatToRPY(estimator_->getRotation());
     yaw_cmd_ = initial_rpy(2);                          // 机身期望yaw角初始化
-    const double roll_des = initial_rpy(0);             // 与pitch一致，保持进入Trotting时的实测横滚角。
-    const double pitch_des = initial_rpy(1);            // 保持进入Trotting时的实测俯仰角；入口范围由状态机检查。
-    Rd = rotz(yaw_cmd_) * roty(pitch_des) * rotx(roll_des);                     // 机身期望姿态初始化，保持进入时的水平站姿
+    const double roll_des = 0.0;                       // Trotting目标横滚角，rad；0即0度。
+    const double pitch_des = 0.0;                      // Trotting目标俯仰角，rad；0即0度。
+    Rd = rotz(yaw_cmd_) * roty(pitch_des) * rotx(roll_des); // roll/pitch目标为零，yaw保持进入时的朝向。
     
     // 名义关节角与 FixStand 共用 stand_pos；足点只旋转到 yaw 系，不额外平移。
     gait_generator_.setNominalStand(
@@ -330,6 +358,7 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
 
     // 新增：MPC和WBC均已完成，本周期再协调加速度和接触力。
     // calcTau/calcQQd已写好旧输出；只有整条新链路成功，才一起替换位置、速度和力矩。
+    bool wbc_reference_applied = false;
     if (wbc_enabled_ && force_solver_mode_ == ForceSolverMode::MPC && mpc_frame_valid_ &&
         wbc_output_.success && std::isfinite(wbc_command_blend_) && wbc_command_blend_ > 0.0 &&
         wbc_command_blend_ <= 1.0)
@@ -381,6 +410,16 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
             Vec12 q = legacy_q_ + wbc_command_blend_ * (wbc_output_.q_j_d - legacy_q_);
             Vec12 qd = legacy_qd_ + wbc_command_blend_ * (wbc_output_.qdot_j_d - legacy_qd_);
             const Vec12 tau = legacy_tau_ + wbc_command_blend_ * (wbc_tau - legacy_tau_);
+            // 对照排查：完整旁路100ms关节参考平滑，位置和速度不再叠加历史偏置。
+            constexpr bool smooth_joint_reference = false;
+            // 接触集合变化会影响全部关节；从上一帧实际下发的q/qd捕获过渡偏置。
+            const bool begin_transition = wbc_reference_initialized_ &&
+                (!wbc_reference_applied_last_ || wbc_reference_contact_last_ != wave_generator_->contact_);
+            if (begin_transition) wbc_reference_elapsed_s_ = 0.0;
+            const double u = wbc_reference_elapsed_s_ / wbc_reference_transition_s_;
+            const double u2 = u * u, u3 = u2 * u;
+            // 两路参考各自的换相偏置用五次曲线消退，偏置的一、二阶导数在两端为零。
+            const double h = 1.0 - u3 * (10.0 + u * (-15.0 + 6.0 * u));
             for (int joint = 0; joint < 12; ++joint)
             {
                 double lower = robot_model_->joint_lower_(joint);
@@ -399,10 +438,37 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
                     (q(joint) >= upper && qd(joint) > 0.0)) qd(joint) = 0.0;
                 if (quadruped_debug::Csv_DebugMode && (q(joint) != sampled_q || qd(joint) != sampled_qd))
                     debug_frame_.wbc.flags |= TrottingDebug::COMMAND_CLAMPED;
+                // 支撑腿速度直通当前WBC结果，不能沿用摆动末段的历史速度偏置。
+                const bool smooth_velocity = wave_generator_->contact_(joint / 3) == 0;
+                if (begin_transition)
+                {
+                    wbc_reference_q_offset_(joint) = wbc_reference_q_last_(joint) - q(joint);
+                    wbc_reference_qd_offset_(joint) = smooth_velocity ?
+                        wbc_reference_qd_last_(joint) - qd(joint) : 0.0;
+                }
+                if (smooth_joint_reference && wbc_reference_elapsed_s_ < wbc_reference_transition_s_)
+                {
+                    // WBC的q是位置级修正，qd是独立的任务速度解；不将位置偏置求导后
+                    // 加进qd，否则大角度交接会制造高转速指令，被电机Kd放大成新冲击。
+                    const double smooth_q = q(joint) + h * wbc_reference_q_offset_(joint);
+                    const double smooth_qd = qd(joint) +
+                        (smooth_velocity ? h * wbc_reference_qd_offset_(joint) : 0.0);
+                    q(joint) = std::clamp(smooth_q, lower, upper);
+                    qd(joint) = std::clamp(smooth_qd, -velocity, velocity);
+                    if ((q(joint) <= lower && qd(joint) < 0.0) ||
+                        (q(joint) >= upper && qd(joint) > 0.0)) qd(joint) = 0.0;
+                    if (quadruped_debug::Csv_DebugMode && (q(joint) != smooth_q || qd(joint) != smooth_qd))
+                        debug_frame_.wbc.flags |= TrottingDebug::COMMAND_CLAMPED;
+                }
                 ctrl_interfaces_.joint_position_command_interface_[joint].get().set_value(q(joint));
                 ctrl_interfaces_.joint_velocity_command_interface_[joint].get().set_value(qd(joint));
                 ctrl_interfaces_.joint_torque_command_interface_[joint].get().set_value(tau(joint));
             }
+            wbc_reference_q_last_ = q;
+            wbc_reference_qd_last_ = qd;
+            wbc_reference_elapsed_s_ = std::min(wbc_reference_transition_s_,
+                wbc_reference_elapsed_s_ + wave_generator_->getControlDt());
+            wbc_reference_applied = true;
             q_goal_debug = q;
             if (quadruped_debug::Csv_DebugMode)
             {
@@ -424,6 +490,16 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
                 result.success ? "前馈力矩无效或超过关节前馈限值" : result.message.c_str());
         }
     }
+    // 回退帧仍执行原输出；再次接入WBC时从该帧下发值重建交接，不复用过期偏置。
+    if (!wbc_reference_applied)
+    {
+        wbc_reference_q_last_ = legacy_q_;
+        wbc_reference_qd_last_ = legacy_qd_;
+        wbc_reference_elapsed_s_ = wbc_reference_transition_s_;
+    }
+    wbc_reference_contact_last_ = wave_generator_->contact_;
+    wbc_reference_applied_last_ = wbc_reference_applied;
+    wbc_reference_initialized_ = true;
     if (first_run) wave_generator_->status_ = WaveStatus::WAVE_ALL;
     first_run = false;
 
@@ -476,6 +552,11 @@ void StateTrotting::recordDebug(const rclcpp::Time& time, const rclcpp::Duration
     f.meta[TrottingDebug::PHASE_CONTROL_S] = wave_generator_->getPhaseControlTime();
     f.meta[TrottingDebug::PERIOD_S] = period.seconds();
     f.meta[TrottingDebug::MODE] = static_cast<int>(force_solver_mode_);
+    f.meta[TrottingDebug::PARAM_REVISION] = tuning_revision_;
+    f.meta[TrottingDebug::PARAM_EFFECTIVE_CYCLE] = tuning_effective_cycle_;
+    f.meta[TrottingDebug::USE_SIM_TIME] = diagnostic_use_sim_time_ ? 1.0 : 0.0;
+    f.applied_parameters = tuning_update_;
+    f.settings = diagnostic_settings_;
     const auto& solver = convex_mpc_->debugInfo();
     const bool mpc = force_solver_mode_ == ForceSolverMode::MPC;
     f.meta[TrottingDebug::SOLVER_ID] = mpc ? solver.id : balance_ctrl_->debugId();
@@ -497,8 +578,6 @@ void StateTrotting::recordDebug(const rclcpp::Time& time, const rclcpp::Duration
     f.com_p = pos_body_ + B2P_RotMat * convex_mpc_->comOffsetBody();
     f.feet_G = estimator_->getFeetPos();
     f.feet_v_G = estimator_->getFeetVel();
-    f.v_predicted = estimator_->debugVelocityPredicted();
-    f.v_unfiltered = estimator_->debugVelocityUnfiltered();
     f.acc_G = estimator_->debugAcceleration();
     f.goal_G = pos_feet_goal_G; f.vgoal_G = vel_feet_goal_G;
     f.start_G = gait_generator_.getStartFeetPos(); f.end_G = gait_generator_.getEndFeetPos();
@@ -1103,34 +1182,19 @@ void StateTrotting::calcQQd() {
 /**
  * @brief 设置关节MIT kp kd增益
  */
-void StateTrotting::calcGain() const {
-    for (int i(0); i < 4; ++i) 
-    {
-        // 大腿和小腿
-        for (int j = 1; j < 3; j++) 
-        {
-            if (wave_generator_->contact_(i) == 0) {
-                // ================= 摆动相 =================
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(Kp_motor_swing);
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(Kd_motor_swing);  
-            } else {
-                // ================= 支撑相 =================
-                ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(Kp_motor_stance);
-                ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(Kd_motor_stance);  
-            }
-        }
-
-        // 单独设置髋关节
-        int hip_idx = i * 3 + 0;
-        if (wave_generator_->contact_(i) == 0) 
-        {
-            ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(Kp_motor_swing);
-            ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(Kd_motor_swing);
-        } 
-        else 
-        {
-            ctrl_interfaces_.joint_kp_command_interface_[hip_idx].get().set_value(Kp_motor_stance);
-            ctrl_interfaces_.joint_kd_command_interface_[hip_idx].get().set_value(Kd_motor_stance);
+void StateTrotting::calcGain() {
+    const double step = std::clamp(wave_generator_->getControlDt() / contact_transition_s_, 0.0, 1.0);
+    for (int i = 0; i < 4; ++i) {
+        const double target = wave_generator_->contact_(i) == 1 ? 1.0 : 0.0;
+        if (force_solver_mode_ == ForceSolverMode::MPC)
+            motor_stance_blend_(i) += std::clamp(target - motor_stance_blend_(i), -step, step);
+        else
+            motor_stance_blend_(i) = target; // 原QP模式保持原样。
+        const double kp = Kp_motor_swing + motor_stance_blend_(i) * (Kp_motor_stance - Kp_motor_swing);
+        const double kd = Kd_motor_swing + motor_stance_blend_(i) * (Kd_motor_stance - Kd_motor_swing);
+        for (int j = 0; j < 3; ++j) {
+            ctrl_interfaces_.joint_kp_command_interface_[i * 3 + j].get().set_value(kp);
+            ctrl_interfaces_.joint_kd_command_interface_[i * 3 + j].get().set_value(kd);
         }
     }
 }

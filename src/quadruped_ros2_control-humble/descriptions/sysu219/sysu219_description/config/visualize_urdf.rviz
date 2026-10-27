@@ -402,7 +402,7 @@ Visualization Manager:
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
-      Name: 里程计对照（新红／旧浅蓝）
+      Name: 里程计对照（在役红／接触影子黄）
       Namespaces:
         body: true
         legs: true
@@ -410,10 +410,14 @@ Visualization Manager:
         trajectory_60s: false
         shadow_axes: false
         raw_n100_heading: false
-        estimate_difference: false
         position_2sigma: false
         contact_candidates: true
         contact_model_residual: false
+        contact_shadow/shadow_axes: false
+        contact_shadow/raw_n100_heading: false
+        contact_shadow/position_2sigma: false
+        contact_shadow/contact_candidates: true
+        contact_shadow/contact_model_residual: false
       Topic:
         Depth: 1
         Durability Policy: Volatile

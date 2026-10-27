@@ -89,6 +89,11 @@ add_library(${PROJECT_NAME} SHARED
         src/FSM/StateRLWalk.cpp
 
 )
+option(BUILD_CONTACT_SHADOW_INEKF "Build optional diagnostic-only contact InEKF" ON)
+if(BUILD_CONTACT_SHADOW_INEKF)
+    target_sources(${PROJECT_NAME} PRIVATE src/control/ContactShadowInEKF.cpp)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE SYSU219_ENABLE_CONTACT_SHADOW)
+endif()
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"

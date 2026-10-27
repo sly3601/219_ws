@@ -75,7 +75,7 @@ private:
     /**
     * Calculate the PD gain for the joints
     */
-    void calcGain() const;
+    void calcGain();
 
     /**
      * Check whether the robot should take a step or not
@@ -135,6 +135,8 @@ private:
     Vec3 d_wbd_saturation;  // 仅用于 QP 模式的期望角加速度
     Vec3 swing_force_limit;
     double Kp_motor_stance, Kd_motor_stance, Kp_motor_swing, Kd_motor_swing; // 电机增益参数
+    static constexpr double contact_transition_s_ = 0.04; // MIT增益过渡时间，s。
+    Vec4 motor_stance_blend_ = Vec4::Ones(); // 仅在原有两组MIT增益之间过渡。
 
     // debug 参数
     Vec12 q_goal_debug;
@@ -172,7 +174,18 @@ private:
     Vec12 legacy_tau_ = Vec12::Zero();
     bool mpc_frame_valid_ = false; // 本周期calcTau成功才允许WBC覆盖原输出。
 
+    // 只衔接换相/重新接入WBC时的关节参考，不改变任务、加速度或前馈力矩。
+    static constexpr double wbc_reference_transition_s_ = 0.10;
+    Vec12 wbc_reference_q_last_ = Vec12::Zero(), wbc_reference_qd_last_ = Vec12::Zero();
+    Vec12 wbc_reference_q_offset_ = Vec12::Zero(), wbc_reference_qd_offset_ = Vec12::Zero();
+    VecInt4 wbc_reference_contact_last_ = VecInt4::Zero();
+    double wbc_reference_elapsed_s_ = wbc_reference_transition_s_;
+    bool wbc_reference_initialized_ = false, wbc_reference_applied_last_ = false;
+
     sysu219::tuning::Parameters tuning_update_; // 固定长度复用缓存，控制周期不构造/分配。
+    uint64_t tuning_revision_ = 0, tuning_effective_cycle_ = 0; // 仅用于数据与实际生效参数关联。
+    std::array<double, TrottingDebug::kContextSize> diagnostic_settings_{};
+    bool diagnostic_use_sim_time_ = false;
     std::unique_ptr<sysu219::tuning::OnlineTuning> online_tuning_;
 
     TrottingDebug::Frame debug_frame_;
