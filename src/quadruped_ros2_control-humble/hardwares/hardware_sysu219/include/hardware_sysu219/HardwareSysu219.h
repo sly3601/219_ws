@@ -60,6 +60,9 @@ protected:
     std::vector<double> imu_states_;    // IMU 数据存储
     std::vector<double> foot_force_;    // no used
     std::vector<double> high_states_;   // no used
+    // 诊断接口独立于控制状态；固定存储保证export后的double指针不失效。
+    std::array<std::array<double, 9>, 12> joint_debug_states_{};
+    FDILink::ImuDiagnostics imu_debug_states_{};
 
     std::unordered_map<std::string, std::vector<std::string> > joint_interfaces = {
         {"position", {}},

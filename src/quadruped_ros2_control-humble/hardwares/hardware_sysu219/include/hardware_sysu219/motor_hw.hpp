@@ -11,6 +11,9 @@
 #include <cstdint>
 #include <cmath>
 #include <thread>
+#include <atomic>
+#include <mutex>
+#include <limits>
 #include "rclcpp/rclcpp.hpp"
 #define POS_MODE 0x100
 #define SPEED_MODE 0x200
@@ -167,6 +170,8 @@ namespace damiao
         double pos, vel, effort;
         double cmd_pos, cmd_vel, cmd_effort;
         double kp,kd;
+        // 仅诊断：read()在原有电机互斥锁内与pos/vel/effort一起复制。
+        std::array<double, 9> rx_debug{};
 
         // ========== 新增：转向+偏置参数 ==========
         int direction = 1;      // 转向系数：1=正向，-1=反向（默认1）
@@ -183,6 +188,8 @@ namespace damiao
         float state_q=0;
         float state_dq=0;
         float state_tau=0;
+        std::uint64_t rx_sequence_ = 0;
+        double rx_steady_s_ = std::numeric_limits<double>::quiet_NaN();
         Limit_param limit_param{}; // min max等限制参数
         DM_Motor_Type Motor_Type;
 
@@ -209,6 +216,10 @@ namespace damiao
         Motor(DM_Motor_Type Motor_Type, Motor_id Slave_id, Motor_id Master_id);
 
         void receive_data(float q, float dq, float tau);
+        // 调用者持有motor_data_mutex_；不改变原反馈接收决策。
+        void note_received(double steady_s) { ++rx_sequence_; rx_steady_s_ = steady_s; }
+        std::uint64_t Get_RxSequence() const { return rx_sequence_; }
+        double Get_RxSteadySeconds() const { return rx_steady_s_; }
       
         DM_Motor_Type GetMotorType() const { return this->Motor_Type; }
 
@@ -377,6 +388,10 @@ namespace damiao
        // bool stop_thread_ = false;
         std::atomic<bool> stop_thread_ ;
         std::mutex motor_data_mutex_;  // 添加互斥锁
+        std::atomic<bool> rx_thread_running_{false};
+        std::atomic<std::uint64_t> rx_unknown_id_count_{0};
+        std::atomic<std::uint64_t> rx_invalid_frame_count_{0};
+        std::atomic<std::uint64_t> rx_exception_count_{0};
         can_send_frame send_data; //send data frame
         CAN_Receive_Frame receive_data{};//receive data frame
     };

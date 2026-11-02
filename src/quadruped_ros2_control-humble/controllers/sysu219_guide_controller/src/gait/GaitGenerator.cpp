@@ -168,7 +168,9 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel,
                 // ==============================================
                 end_p_.col(i) = start_p_.col(i);
             }
-            else if (trotting_ptr_ && (trotting_ptr_->troting_kalman == 2))
+            // XY落点只在摆动前半段更新；后半段保持end_p_，留出到达终点和减速的时间。
+            else if (trotting_ptr_ && (trotting_ptr_->troting_kalman == 2) &&
+                     motion_phase_(i) < 0.5)
             {
                 Vec3 body_vel_global = estimator_->getVelocity();
                 Vec3 next_step;
@@ -231,7 +233,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel,
                 double target_x = foot_pos(0);
                 double target_y = foot_pos(1);
                 
-                const double step_limit_xy = 0.03; // 步长限幅，防止迈步目标跳太远
+                const double step_limit_xy = 0.04; // 步长限幅，防止迈步目标跳太远
 
                 // 最终 x 落点相对当前摆动起点限幅
                 target_x = saturation(target_x, Vec2(start_p_(0, i) - step_limit_xy,
@@ -279,7 +281,7 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel,
             feet_vel.col(i) -= (1.0 - std::cos(angle)) / wave_generator_->get_t_swing()
                               * swing_start_offset_.col(i);
             if (trotting_ptr_ && trotting_ptr_->troting_kalman == 2) {
-                // 从上一目标位置/速度重规划 XY 三次曲线，终点仍逐帧更新。
+                // 从上一目标位置/速度生成XY三次曲线；后半段沿固定终点继续运动，不重置轨迹状态。
                 // 末端速度为零，避免直接替换摆线终点导致位置跳变和速度漏项。
                 const double remaining = (1.0 - swing_phase_last_(i))
                     * wave_generator_->get_t_swing();

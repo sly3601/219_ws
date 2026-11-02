@@ -11,6 +11,7 @@
 
 #include <cmath>
 #include <unordered_map>
+#include <limits>
 
 
 using hardware_interface::return_type;
@@ -59,6 +60,9 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Hardwa
     imu_states_.assign(10, 0);
     foot_force_.assign(4, 0);
     high_states_.assign(6, 0);
+    for (auto& values : joint_debug_states_)
+        values.fill(std::numeric_limits<double>::quiet_NaN());
+    imu_debug_states_.fill(std::numeric_limits<double>::quiet_NaN());
 
     g_current_raw_pos.clear();
     g_edge_warned.clear();
@@ -185,6 +189,23 @@ std::vector<hardware_interface::StateInterface> HardwareSysu219::export_state_in
         }
     }
 
+
+    // Humble允许额外state接口；不向控制用position/velocity/IMU数组追加字段。
+    const char* joint_debug_names[] = {"raw_position", "raw_velocity", "raw_effort",
+        "rx_sequence", "rx_steady_s", "rx_thread_running", "rx_unknown_id_count",
+        "rx_invalid_frame_count", "rx_exception_count"};
+    const auto& joint_names = joint_interfaces["position"];
+    for (size_t joint = 0; joint < joint_debug_states_.size() && joint < joint_names.size(); ++joint) {
+        for (size_t field = 0; field < joint_debug_states_[joint].size(); ++field)
+            state_interfaces.emplace_back("hw_debug", joint_names[joint] + "." + joint_debug_names[field],
+                &joint_debug_states_[joint][field]);
+    }
+    const char* imu_debug_names[] = {"rx_sequence", "rx_steady_s", "ahrs_sequence", "ahrs_steady_s",
+        "imu_device_time_us", "ahrs_device_time_us", "imu_packet_sn", "ahrs_packet_sn",
+        "crc_error_count", "sn_lost_count", "rx_thread_running", "ahrs_source_valid"};
+    for (size_t field = 0; field < imu_debug_states_.size(); ++field)
+        state_interfaces.emplace_back("hw_debug", std::string("imu.") + imu_debug_names[field],
+            &imu_debug_states_[field]);
 
     return
         state_interfaces;
@@ -363,6 +384,8 @@ return_type HardwareSysu219::read(const rclcpp::Time& /*time*/, const rclcpp::Du
             for (auto& can_entry : port_entry.second) {
                 if (can_entry.second.name == joint_name) {
                     joint_position_[ind] = can_entry.second.pos;
+                    if (static_cast<size_t>(ind) < joint_debug_states_.size())
+                        joint_debug_states_[ind] = can_entry.second.rx_debug;
                     found = true;
                     break;
                 }
@@ -411,8 +434,11 @@ return_type HardwareSysu219::read(const rclcpp::Time& /*time*/, const rclcpp::Du
     }
 
     // ========== imu改动 ==========
-    if (imu_driver_ && imu_driver_->check_newdata()) {
-    auto imu_data = imu_driver_->return_latest_imu_data();
+    bool new_imu_data = false;
+    sensor_msgs::msg::Imu imu_data;
+    if (imu_driver_)
+        imu_data = imu_driver_->return_latest_imu_data(&imu_debug_states_, &new_imu_data);
+    if (imu_driver_ && new_imu_data) {
     
     imu_states_[0] = imu_data.orientation.w;
     imu_states_[1] = imu_data.orientation.x;

@@ -15,6 +15,7 @@
 #include "sysu219_guide_controller/debug/DebugConfig.h"
 
 #include <Eigen/Geometry>
+#include <algorithm>
 #include <cmath>
 
 namespace sysu219_guide_controller
@@ -47,6 +48,9 @@ namespace sysu219_guide_controller
 
     controller_interface::InterfaceConfiguration Sysu219GuideController::state_interface_configuration() const
     {
+        // 诊断接口可选：真机导出hw_debug，Gazebo或旧硬件缺失时也不增加必需接口。
+        // 激活时仍按原来的完整名称及顺序绑定控制所用的关节和IMU接口。
+        if (quadruped_debug::Csv_DebugMode) return {config_type::ALL, {}};
         controller_interface::InterfaceConfiguration conf = {config_type::INDIVIDUAL, {}};
 
         conf.names.reserve(joint_names_.size() * state_interface_types_.size());
@@ -598,23 +602,54 @@ namespace sysu219_guide_controller
             }
         }
 
-        // assign state interfaces
-        for (auto& interface : state_interfaces_)
-        {
-            if (interface.get_prefix_name() == imu_name_)
-            {
-                ctrl_interfaces_.imu_state_interface_.emplace_back(interface);
+        // ALL接口的返回顺序不作为关节顺序；基础控制接口仍严格按原配置绑定。
+        auto bind_state = [&](const std::string& name, auto& destination) {
+            for (auto& interface : state_interfaces_) {
+                if (interface.get_name() == name) {
+                    destination.emplace_back(interface);
+                    return true;
+                }
             }
-            else
-            {
-                state_interface_map_[interface.get_interface_name()]->push_back(interface);
+            RCLCPP_ERROR(get_node()->get_logger(), "缺少必需状态接口：%s", name.c_str());
+            return false;
+        };
+        for (const auto& joint_name : joint_names_) {
+            for (const auto& type : state_interface_types_) {
+                const auto mapping = state_interface_map_.find(type);
+                if (mapping == state_interface_map_.end() || !mapping->second ||
+                    !bind_state(joint_name + "/" + type, *mapping->second))
+                    return CallbackReturn::ERROR;
             }
+        }
+        for (const auto& type : imu_interface_types_)
+            if (!bind_state(imu_name_ + "/" + type, ctrl_interfaces_.imu_state_interface_))
+                return CallbackReturn::ERROR;
+
+        // 附加传感器不混入原控制向量。名称匹配只在激活阶段执行，不占控制周期。
+        for (const auto& interface : state_interfaces_) {
+            if (interface.get_prefix_name() != "hw_debug") continue;
+            const auto name = interface.get_interface_name();
+            for (size_t joint = 0; joint < std::min<size_t>(joint_names_.size(), 12); ++joint)
+                for (size_t field = 0; field < TrottingDebug::motor_debug_fields.size(); ++field)
+                    if (name == joint_names_[joint] + "." + TrottingDebug::motor_debug_fields[field])
+                        ctrl_interfaces_.motor_debug_state_interfaces_[joint][field] = &interface;
+            for (size_t field = 0; field < TrottingDebug::imu_debug_fields.size(); ++field)
+                if (name == std::string("imu.") + TrottingDebug::imu_debug_fields[field])
+                    ctrl_interfaces_.imu_debug_state_interfaces_[field] = &interface;
         }
 
         if (quadruped_debug::Csv_DebugMode) {
             const auto& positions = ctrl_interfaces_.joint_position_state_interface_;
             const auto& velocities = ctrl_interfaces_.joint_velocity_state_interface_;
             const auto& efforts = ctrl_interfaces_.joint_effort_state_interface_;
+            size_t hardware_debug_count = 0;
+            for (const auto& joint : ctrl_interfaces_.motor_debug_state_interfaces_)
+                for (const auto* interface : joint) if (interface) ++hardware_debug_count;
+            for (const auto* interface : ctrl_interfaces_.imu_debug_state_interfaces_)
+                if (interface) ++hardware_debug_count;
+            RCLCPP_INFO(get_node()->get_logger(),
+                "[SOURCE_DEBUG] hardware_interfaces=%zu/120; missing fields recorded as NaN",
+                hardware_debug_count);
             RCLCPP_INFO(get_node()->get_logger(), "[JOINT_DEBUG] position_count=%zu velocity_count=%zu effort_count=%zu",
                 positions.size(), velocities.size(), efforts.size());
             for (size_t i = 0; i < std::min(positions.size(), velocities.size()); ++i) {

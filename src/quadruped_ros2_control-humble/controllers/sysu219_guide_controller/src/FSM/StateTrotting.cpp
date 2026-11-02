@@ -40,13 +40,17 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     troting_kalman = 2;                             //总模式开关【已弃用】
     force_solver_mode_ = ForceSolverMode::MPC;       //总模式开关
 
+    // 可选交接补丁：默认关闭，设为true恢复对应功能。
+    motor_gain_transition_enabled_ = false;        // MPC换相时，电机Kp/Kd采用40 ms过渡。
+    planned_liftoff_unloading_enabled_ = false;    // 计划四足转双足前，最多提前12 ms强制卸载（250 Hz）。
+
     hip_q_range = 16.16;                               // 髋关节限制范围（±0.16 rad，约 ±9.2°）
     hip_qd_range = 10.0;                                // 髋关节速度限制（±1.0 rad/s）
 
     // MPC 支撑腿不叠加位置弹簧，避免足端位置估计误差产生反向收腿力矩。
-    Kp_motor_stance = force_solver_mode_ == ForceSolverMode::MPC ? 1.00352112676 : 300.0;
+    Kp_motor_stance = force_solver_mode_ == ForceSolverMode::MPC ? 4.00 : 300.0;
     Kd_motor_stance = 4.5;     // 支撑相电机速度增益
-    Kp_motor_swing = 9.08450704225;        // 摆动相电机位置增益
+    Kp_motor_swing = 10.0;        // 摆动相电机位置增益
     Kd_motor_swing = 2.82042253521;       // 摆动相电机速度增益
 
     gait_height_ = 0.07;                            // 足底摆动高度
@@ -94,8 +98,8 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
 
     // 仿真整组试调：配套设置机身任务回正和阻尼；电机MIT增益仍由calcGain管理。
     sysu219::wbc::WbcSettings wbc_settings;
-    wbc_settings.kp_orientation = Vec3(32.6465814826, 26.5369213966, 7.60563380282); // 按2026-10-27 02:41快照固化姿态增益。
-    wbc_settings.kd_orientation = Vec3(4.85662566951, 13.9436619718, 0.676056338028); // 姿态阻尼。
+    wbc_settings.kp_orientation = Vec3(32.6465814826, 33.0, 7.60563380282); // 按mpc_wbc_final.json固化姿态增益。
+    wbc_settings.kd_orientation = Vec3(8.15707902942, 13.9436619718, 0.676056338028); // 姿态阻尼。
     wbc_settings.kp_body_position = Vec3(8.84526931974, 8.20303476281, 177.464788732); // 机身平动增益。
     wbc_settings.kd_body_position = Vec3(4.1476145606, 4.4589367189, 25.6056338028); // 机身平动阻尼。
     wbc_settings.kp_swing = Vec3(80.698274152, 87.8873239437, 73.7353699663); // 加大摆腿任务增益的仿真试验失败，恢复基准
@@ -107,24 +111,12 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     wbc_settings.svd_relative_tolerance = 1e-6;
     wbc_ = std::make_unique<sysu219::wbc::WbcController>(wbc_settings);
 
-    // 分别控制机身加速度、关节加速度和支撑足力修正的代价。
+    // 按论文第4.3节，仅优化基座6维加速度修正与支撑足力修正。
     sysu219::wbc::RelaxationSettings relaxation_settings;
     // Q_WBC越大越保留WBC加速度；Q_MPC越大越保留MPC力。单位不同，同数值不是同等保留。
     // 单轴示例：40.5 kg、两足均分，1 m/s²对应每足20.25 N，同权重代价比约820；不是通用倍率。
     relaxation_settings.Q_WBC = 1; // 机身6维加速度修正权重。
     relaxation_settings.Q_MPC = 19.2253521127; // 统一控制各支撑足xyz力修正。
-    relaxation_settings.joint_acceleration_weight_ratio = 0.295774647887; // 关节12维权重为机身的0.1倍，即100。
-    relaxation_settings.enforce_torque_limits = true;
-    // 在QP内满足原前馈力矩门槛；预留1e-3 Nm，避免数值残差触发整帧回退。
-    for (int joint = 0; joint < 12; ++joint)
-    {
-        const double limit = joint % 3 == 0 ? tau_ff_limit_hip :
-            (joint % 3 == 1 ? tau_ff_limit_thigh : tau_ff_limit_calf);
-        const double qp_limit = tau_ff_scale == 0.0 ? std::numeric_limits<double>::infinity() :
-            (limit - 1e-3) / std::abs(tau_ff_scale);
-        relaxation_input_.tau_min_j(joint) = -qp_limit;
-        relaxation_input_.tau_max_j(joint) = qp_limit;
-    }
     relaxation_ = std::make_unique<sysu219::wbc::MpcWbcRelaxation>(relaxation_settings);
 
     if (quadruped_debug::Csv_DebugMode)               // 如果开启了输出CSV数据文件的debug模式
@@ -135,7 +127,8 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
             Kp_motor_stance, Kd_motor_stance, Kp_motor_swing, Kd_motor_swing, wbc_command_blend_,
             convex_mpc_->frictionCoefficient(), convex_mpc_->normalForceMin(), convex_mpc_->normalForceMax(),
             tau_ff_scale, tau_ff_limit_hip, tau_ff_limit_thigh, tau_ff_limit_calf, 5.0 * dt_,
-            relaxation_settings.joint_acceleration_weight_ratio};
+            static_cast<double>(motor_gain_transition_enabled_),
+            static_cast<double>(planned_liftoff_unloading_enabled_)};
         diagnostic_use_sim_time_ = ctrl_interfaces_.node->get_parameter("use_sim_time").as_bool();
     }
     
@@ -168,8 +161,7 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
         offset = sysu219::tuning::Parameters::kRelaxationOffset;
         const auto& relaxation = relaxation_->settings();
         initial.values[offset++] = relaxation.Q_WBC;
-        initial.values[offset++] = relaxation.Q_MPC;
-        initial.values[offset] = relaxation.joint_acceleration_weight_ratio;
+        initial.values[offset] = relaxation.Q_MPC;
         offset = sysu219::tuning::Parameters::kMotorOffset;
         initial.values[offset++] = Kp_motor_stance;
         initial.values[offset++] = Kd_motor_stance;
@@ -219,10 +211,9 @@ void StateTrotting::applyOnlineTuning() noexcept {
     wbc_->updateTaskGains(settings);
     offset = sysu219::tuning::Parameters::kRelaxationOffset;
     relaxation_->updateCostWeights(tuning_update_.values[offset],
-        tuning_update_.values[offset + 1], tuning_update_.values[offset + 2]);
+        tuning_update_.values[offset + 1]);
     diagnostic_settings_[5] = tuning_update_.values[offset];
     diagnostic_settings_[6] = tuning_update_.values[offset + 1];
-    diagnostic_settings_[20] = tuning_update_.values[offset + 2];
     offset = sysu219::tuning::Parameters::kMotorOffset;
     Kp_motor_stance = tuning_update_.values[offset++];
     Kd_motor_stance = tuning_update_.values[offset++];
@@ -637,6 +628,21 @@ void StateTrotting::recordDebug(const rclcpp::Time& time, const rclcpp::Duration
     f.meta[TrottingDebug::USE_SIM_TIME] = diagnostic_use_sim_time_ ? 1.0 : 0.0;
     f.applied_parameters = tuning_update_;
     f.settings = diagnostic_settings_;
+    f.hardware_debug_interface_count = 0;
+    for (size_t joint = 0; joint < 12; ++joint) {
+        for (size_t field = 0; field < TrottingDebug::motor_debug_fields.size(); ++field) {
+            const auto* interface = ctrl_interfaces_.motor_debug_state_interfaces_[joint][field];
+            f.motor_debug(joint, field) = interface ? interface->get_value() : std::nan("");
+            if (interface) ++f.hardware_debug_interface_count;
+        }
+    }
+    for (size_t field = 0; field < TrottingDebug::imu_debug_fields.size(); ++field) {
+        const auto* interface = ctrl_interfaces_.imu_debug_state_interfaces_[field];
+        f.imu_debug(field) = interface ? interface->get_value() : std::nan("");
+        if (interface) ++f.hardware_debug_interface_count;
+    }
+    f.inekf_debug = f.odometry_mode != 0 ? estimator_->debugInEKFControl()
+        : sysu219_guide_controller::ShadowInEKF::ControlDebug{};
     const auto& solver = convex_mpc_->debugInfo();
     const bool mpc = force_solver_mode_ == ForceSolverMode::MPC;
     f.meta[TrottingDebug::SOLVER_ID] = mpc ? solver.id : balance_ctrl_->debugId();
@@ -917,13 +923,14 @@ void StateTrotting::calcTau() {
         Vec4 liftoff_fz_limit = Vec4::Constant(1e19);   // 初始化足底离地前的垂直力限制为一个非常大的值，表示没有限制
         bool liftoff_pending = false;                   // 标记是否有足底即将离地的情况，初始为false
         
-        // 仅全支撑起步时有其他支撑腿接载；双足交替不能提前卸空当前两腿。
+        // 闭环接触沿用协调器接载；计划模式的额外卸载仅在开关启用、当前四足支撑时执行。
         if (contact_control_enabled_) {
             liftoff_fz_limit = contact_coordinator_.load() * convex_mpc_->normalForceMax();
             for (int leg = 0; leg < 4; ++leg)
                 liftoff_pending = liftoff_pending || (control_contact_(leg) && contact_coordinator_.load()(leg) < 1.0);
         }
-        else if (force_solver_mode_ == ForceSolverMode::MPC && control_contact_.sum() == 4)
+        else if (planned_liftoff_unloading_enabled_ &&
+                 force_solver_mode_ == ForceSolverMode::MPC && control_contact_.sum() == 4)
         {
             const auto near_contact = wave_generator_->getMpcContactTable(
                 4, wave_generator_->getControlDt());    // 获取未来4个控制周期内的接触状态表，判断哪些腿即将离地，getControlDt函数是获取dt_的值，250hz就是0.004秒
@@ -1278,10 +1285,10 @@ void StateTrotting::calcGain() {
     for (int i = 0; i < 4; ++i) {
         const double target = contact_control_enabled_ ?
             (control_contact_(i) ? contact_coordinator_.load()(i) : 0.0) : (control_contact_(i) == 1 ? 1.0 : 0.0);
-        if (force_solver_mode_ == ForceSolverMode::MPC)
+        if (force_solver_mode_ == ForceSolverMode::MPC && motor_gain_transition_enabled_)
             motor_stance_blend_(i) += std::clamp(target - motor_stance_blend_(i), -step, step);
         else
-            motor_stance_blend_(i) = target; // 原QP模式保持原样。
+            motor_stance_blend_(i) = target; // 默认直接使用当前相位增益；闭环接载比例和原QP行为保留。
         const double kp = Kp_motor_swing + motor_stance_blend_(i) * (Kp_motor_stance - Kp_motor_swing);
         const double kd = Kd_motor_swing + motor_stance_blend_(i) * (Kd_motor_stance - Kd_motor_swing);
         for (int j = 0; j < 3; ++j) {

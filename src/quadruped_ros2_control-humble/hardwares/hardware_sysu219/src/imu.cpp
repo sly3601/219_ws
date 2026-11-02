@@ -1,4 +1,5 @@
 #include <hardware_sysu219/imu.hpp>
+#include <chrono>
 //#include <Eigen/Eigen>
 
 
@@ -25,6 +26,9 @@ namespace FDILink
     this->declare_parameter<std::string>("imu_frame_id_","imu_link");
     this->get_parameter("imu_frame_id_", imu_frame_id_);  
 
+    latest_imu_diagnostics_.fill(std::numeric_limits<double>::quiet_NaN());
+    latest_imu_diagnostics_[0] = latest_imu_diagnostics_[2] = 0.0;
+    latest_imu_diagnostics_[11] = 0.0;
     //开始接收IMU数据
     init();
 
@@ -54,9 +58,18 @@ namespace FDILink
   // 启动读取数据的线程
   void imu::read_imu_loop()
   {
+    struct RunningGuard {
+      std::atomic<bool>& running;
+      explicit RunningGuard(std::atomic<bool>& value) : running(value) {
+        running.store(true, std::memory_order_relaxed);
+      }
+      ~RunningGuard() { running.store(false, std::memory_order_relaxed); }
+    } running_guard(rx_thread_running_);
     is_running_ = true;
     while (is_running_)
     {
+      bool complete_imu_payload = false;
+      double imu_received_steady_s = std::numeric_limits<double>::quiet_NaN();
       if (is_serial_open())
       {
         //check head start   检查起始 数据帧头
@@ -175,6 +188,7 @@ namespace FDILink
           uint8_t CRC8 = CRC8_Table(imu_frame_.read_buf.frame_header, 4);
           if (CRC8 != imu_frame_.frame.header.header_crc8)
           {
+              crc_error_.fetch_add(1, std::memory_order_relaxed);
               RCLCPP_WARN(this->get_logger(),"header_crc8 error");
               continue;
           }
@@ -197,6 +211,7 @@ namespace FDILink
           uint8_t CRC8 = CRC8_Table(ahrs_frame_.read_buf.frame_header, 4);
           if (CRC8 != ahrs_frame_.frame.header.header_crc8)
           {
+              crc_error_.fetch_add(1, std::memory_order_relaxed);
               RCLCPP_WARN(this->get_logger(),"header_crc8 error");
               continue;
           }
@@ -215,6 +230,9 @@ namespace FDILink
           uint16_t head_crc16_h = imu_frame_.frame.header.header_crc16_h;
           uint16_t head_crc16 = head_crc16_l + (head_crc16_h << 8);
           size_t data_s = serial_.read(imu_frame_.read_buf.read_msg, (IMU_LEN + 1)); //48+1
+          complete_imu_payload = data_s == IMU_LEN + 1;
+          imu_received_steady_s = std::chrono::duration<double>(
+              std::chrono::steady_clock::now().time_since_epoch()).count();
           // if (if_debug_){
           //   for (size_t i = 0; i < (IMU_LEN + 1); i++)
           //   {
@@ -235,6 +253,7 @@ namespace FDILink
           
           if (head_crc16 != CRC16)
           {
+              crc_error_.fetch_add(1, std::memory_order_relaxed);
               RCLCPP_WARN(this->get_logger(),"check crc16 faild(imu).");
               continue;
           }
@@ -250,6 +269,13 @@ namespace FDILink
           uint16_t head_crc16_h = ahrs_frame_.frame.header.header_crc16_h;
           uint16_t head_crc16 = head_crc16_l + (head_crc16_h << 8);
           size_t data_s = serial_.read(ahrs_frame_.read_buf.read_msg, (AHRS_LEN + 1)); //48+1
+          // 原代码即使CRC失败也保留此payload，下一IMU组合会直接使用它。
+          // 只记录真实缓存来源；不改变CRC丢包、短读或四元数选择逻辑。
+          ahrs_source_metadata_[0] += 1.0;
+          ahrs_source_metadata_[1] = std::chrono::duration<double>(
+              std::chrono::steady_clock::now().time_since_epoch()).count();
+          ahrs_source_metadata_[2] = static_cast<double>(ahrs_frame_.frame.data.data_pack.Timestamp);
+          ahrs_source_metadata_[3] = static_cast<double>(ahrs_frame_.frame.header.serial_num);
           // if (if_debug_){
           //   for (size_t i = 0; i < (AHRS_LEN + 1); i++)
           //   {
@@ -258,6 +284,8 @@ namespace FDILink
           //   std::cout << std::dec << std::endl;
           // }
           uint16_t CRC16 = CRC16_Table(ahrs_frame_.frame.data.data_buff, AHRS_LEN);
+          ahrs_source_metadata_[4] = data_s == AHRS_LEN + 1 && head_crc16 == CRC16 &&
+              ahrs_frame_.frame.frame_end == FRAME_END ? 1.0 : 0.0;
           if (if_debug_)
           {          
               std::cout << "CRC16:        " << std::hex << (int)CRC16 << std::dec << std::endl;
@@ -270,6 +298,7 @@ namespace FDILink
           
           if (head_crc16 != CRC16)
           {
+              crc_error_.fetch_add(1, std::memory_order_relaxed);
               RCLCPP_WARN(this->get_logger(),"check crc16 faild(ahrs).");
               continue;
           }
@@ -316,9 +345,20 @@ namespace FDILink
           temp_imu_data.linear_acceleration.x = imu_frame_.frame.data.data_pack.accelerometer_x;
           temp_imu_data.linear_acceleration.y = -imu_frame_.frame.data.data_pack.accelerometer_y;
           temp_imu_data.linear_acceleration.z = -imu_frame_.frame.data.data_pack.accelerometer_z;
+          if (complete_imu_payload) {
+            ++imu_rx_sequence_;
+            imu_rx_steady_s_ = imu_received_steady_s;
+          }
+          const ImuDiagnostics diagnostics{{static_cast<double>(imu_rx_sequence_), imu_rx_steady_s_,
+              ahrs_source_metadata_[0], ahrs_source_metadata_[1],
+              static_cast<double>(imu_frame_.frame.data.data_pack.Timestamp), ahrs_source_metadata_[2],
+              static_cast<double>(imu_frame_.frame.header.serial_num), ahrs_source_metadata_[3],
+              static_cast<double>(crc_error_.load(std::memory_order_relaxed)),
+              static_cast<double>(sn_lost_.load(std::memory_order_relaxed)), 1.0, ahrs_source_metadata_[4]}};
           {
             std::lock_guard<std::mutex> lock(imu_mutex_);
             latest_imu_data_ = temp_imu_data;
+            latest_imu_diagnostics_ = diagnostics;
             has_new_data_ = true;
           }
       
@@ -445,9 +485,17 @@ namespace FDILink
     }
   }
 
-  sensor_msgs::msg::Imu imu::return_latest_imu_data()
+  sensor_msgs::msg::Imu imu::return_latest_imu_data(ImuDiagnostics* diagnostics, bool* had_new_data)
   {
     std::lock_guard<std::mutex> lock(imu_mutex_);
+    if (had_new_data) *had_new_data = has_new_data_;
+    if (diagnostics) {
+      *diagnostics = latest_imu_diagnostics_;
+      // 健康计数/线程状态即使没有新有效IMU组合也继续可观测；前8项和来源valid仍属该组合。
+      (*diagnostics)[8] = static_cast<double>(crc_error_.load(std::memory_order_relaxed));
+      (*diagnostics)[9] = static_cast<double>(sn_lost_.load(std::memory_order_relaxed));
+      (*diagnostics)[10] = rx_thread_running_.load(std::memory_order_relaxed) ? 1.0 : 0.0;
+    }
     has_new_data_ = false;
     return latest_imu_data_;
   }

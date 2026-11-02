@@ -275,8 +275,15 @@ public:
     }
 
     bool selectForControl(const rclcpp::Time& time, Estimator& estimator) noexcept {
+        control_debug_ = ControlDebug{};
+        const auto debugFailure = [this](unsigned reason) noexcept {
+            control_debug_.selection_reason = reason;
+            control_debug_.output_rejections = output_rejections_.load(std::memory_order_relaxed);
+            control_debug_.last_rejection_reason = output_last_reason_.load(std::memory_order_relaxed);
+            return false;
+        };
         // 只有配置阶段明确选中的接触 InEKF 才能接管；普通黄色影子继续只读。
-        if (!control_enabled_) return false;
+        if (!control_enabled_) return debugFailure(256);
         const auto session = session_.load(std::memory_order_acquire);
         if (control_guard_session_ != session) {
             control_guard_session_ = session;
@@ -286,7 +293,7 @@ public:
             output_first_reason_.store(0, std::memory_order_relaxed);
             output_last_reason_.store(0, std::memory_order_relaxed);
         }
-        if (guardFaulted(session)) return false;
+        if (guardFaulted(session)) return debugFailure(512);
         // 先在局部检查候选结果，坏结果绝不能覆盖上一次通过检查的参照。
         ControlResult candidate = control_result_;
         for (std::size_t count = 0; count < kQueueSize; ++count) {
@@ -296,11 +303,11 @@ public:
             result_read_.store((read + 1) % kQueueSize, std::memory_order_release);
         }
         if (!accepting_.load(std::memory_order_acquire) ||
-            !model_ready_.load(std::memory_order_acquire)) return false;
+            !model_ready_.load(std::memory_order_acquire)) return debugFailure(64);
         const auto epoch = control_epoch_.load(std::memory_order_acquire);
         if (have_control_result_ && control_result_.epoch != epoch) {
             latchGuardFault(session, 3); // 已接管后发生内部重置，禁止自动换原点再接回控制。
-            return false;
+            return debugFailure(1024);
         }
         const auto now_ns = time.nanoseconds(), steady_ns = steadyNanoseconds();
         ControlResult output;
@@ -318,11 +325,12 @@ public:
             reason = controlDiscontinuity(control_output_, output, gyro_dt);
         }
         const bool valid = reason == 0;
+        bool new_source_sample = false;
         if (!valid && !have_control_result_) {
             // 首次可信输出之前属于启动等待，可能仍在被动/趴卧状态，没有支撑先验。
             // 50 ms保护只检查已成功供给状态后的失效，不能在初始化前把会话锁死。
             output_bad_since_ns_ = 0;
-            return false;
+            return debugFailure(reason);
         }
         if (!valid) {
             output_rejections_.fetch_add(1, std::memory_order_relaxed);
@@ -333,15 +341,16 @@ public:
             }
             if ((steady_ns - output_bad_since_ns_) * 1e-9 >= tune_.jump_fault_time) {
                 latchGuardFault(session, 2);
-                return false;
+                return debugFailure(reason);
             }
             // 孤立异常只沿用最后可信的新状态预测；不抬高时间戳来伪装数据新鲜度。
-            if (!have_control_result_) return false;
+            if (!have_control_result_) return debugFailure(reason);
             if (!projectControlResult(control_result_, now_ns, steady_ns, output)) {
                 latchGuardFault(session, 2);
-                return false;
+                return debugFailure(2);
             }
         } else {
+            new_source_sample = !have_control_result_ || candidate.stamp_ns > control_result_.stamp_ns;
             if (!have_control_result_ || candidate.stamp_ns > control_result_.stamp_ns)
                 output_bad_since_ns_ = 0;
             control_result_ = candidate;
@@ -351,19 +360,51 @@ public:
         if ((steady_ns - control_result_.steady_ns) * 1e-9 >= tune_.max_gap) {
             output_last_reason_.store(128, std::memory_order_relaxed);
             latchGuardFault(session, 2);
-            return false;
+            return debugFailure(128);
         }
         if (output_bad_since_ns_ != 0 &&
             (steady_ns - output_bad_since_ns_) * 1e-9 >= tune_.jump_fault_time) {
             latchGuardFault(session, 2);
-            return false;
+            return debugFailure(reason != 0 ? reason : 512);
         }
-        if (guardFaulted(session)) return false;
+        if (guardFaulted(session)) return debugFailure(512);
         estimator.useInEKFState(output.position, output.velocity, output.rotation, output.gyro);
         control_output_ = output;
         have_control_output_ = true;
+        control_debug_.valid = true;
+        control_debug_.new_source_sample = new_source_sample;
+        control_debug_.reused_trusted_result = !new_source_sample;
+        control_debug_.source_stamp_s = control_result_.stamp_ns * 1e-9;
+        control_debug_.source_age_s = (steady_ns - control_result_.steady_ns) * 1e-9;
+        control_debug_.projection_dt_s = (now_ns - control_result_.stamp_ns) * 1e-9;
+        control_debug_.source_epoch = control_result_.epoch;
+        control_debug_.source_session = control_result_.session;
+        control_debug_.output_rejections = output_rejections_.load(std::memory_order_relaxed);
+        control_debug_.last_rejection_reason = output_last_reason_.load(std::memory_order_relaxed);
+        control_debug_.selection_reason = reason;
+        control_debug_.source_position = control_result_.position;
+        control_debug_.source_velocity = control_result_.velocity;
+        control_debug_.source_rotation = control_result_.rotation;
+        control_debug_.source_gyro = control_result_.gyro;
+        control_debug_.output_position = output.position;
+        control_debug_.output_velocity = output.velocity;
+        control_debug_.output_rotation = output.rotation;
+        control_debug_.output_gyro = output.gyro;
+        control_debug_.gyro_bias = control_result_.gyro_bias;
+        control_debug_.accel_bias = control_result_.accel_bias;
+        control_debug_.source_imu_unchanged_s = control_result_.imu_unchanged_s;
+        control_debug_.source_imu_stale = control_result_.imu_stale;
+        control_debug_.source_attitude_residual_rad = control_result_.attitude_residual_rad;
+        control_debug_.source_attitude_accepted = control_result_.attitude_accepted;
+        control_debug_.source_attitude_rejected = control_result_.attitude_rejected;
+        control_debug_.source_attitude_update_stamp_s = control_result_.attitude_update_stamp_s;
+        control_debug_.source_attitude_update_attempted = control_result_.attitude_update_attempted;
+        control_debug_.source_attitude_update_accepted = control_result_.attitude_update_accepted;
+        control_debug_.source_attitude_reacquiring = control_result_.attitude_reacquiring;
         return true;
     }
+
+    ControlDebug debugControl() const noexcept { return control_debug_; }
 
     bool controlContact(const rclcpp::Time& time, ContactObservation& observation) const noexcept {
         if (!contact_observer_ || !control_enabled_ || !have_control_result_ ||
@@ -382,6 +423,14 @@ private:
         std::int64_t stamp_ns = 0, steady_ns = 0;
         std::uint64_t session = 0, epoch = 0;
         V3 position = V3::Zero(), velocity = V3::Zero(), gyro = V3::Zero();
+        V3 gyro_bias = V3::Zero(), accel_bias = V3::Zero();
+        double imu_unchanged_s = std::numeric_limits<double>::quiet_NaN();
+        bool imu_stale = false;
+        double attitude_residual_rad = std::numeric_limits<double>::quiet_NaN();
+        std::uint64_t attitude_accepted = 0, attitude_rejected = 0;
+        double attitude_update_stamp_s = std::numeric_limits<double>::quiet_NaN();
+        bool attitude_update_attempted = false, attitude_update_accepted = false;
+        bool attitude_reacquiring = false;
         M3 rotation = M3::Identity();
         ContactObservation observation;
     };
@@ -449,6 +498,16 @@ private:
         result.session = s.session; result.epoch = control_epoch_.load(std::memory_order_relaxed);
         result.position = basePosition(); result.velocity = baseVelocity();
         result.rotation = R_; result.gyro = gyro_ - bg_;
+        result.gyro_bias = bg_; result.accel_bias = ba_;
+        result.imu_unchanged_s = s.stamp_ns * 1e-9 - last_imu_change_;
+        result.imu_stale = imu_stale_;
+        result.attitude_residual_rad = attitude_residual_;
+        result.attitude_accepted = attitude_accepted_;
+        result.attitude_rejected = attitude_rejected_;
+        result.attitude_update_stamp_s = last_attitude_ >= 0.0 ? last_attitude_ : std::numeric_limits<double>::quiet_NaN();
+        result.attitude_update_attempted = attitude_attempted_this_sample_;
+        result.attitude_update_accepted = attitude_accepted_this_sample_;
+        result.attitude_reacquiring = attitude_reacquiring_;
         if (contact_observer_) {
             contact_observer_->readObservation(result.observation);
             result.observation.stamp_ns = s.stamp_ns;
@@ -665,6 +724,7 @@ private:
         correction_bad_since_ = -1.0;
         last_contact_velocity_ = -1.0; contact_velocity_nis_ = 0.0;
         correction_rejected_this_sample_ = correction_accepted_this_sample_ = false;
+        attitude_attempted_this_sample_ = attitude_accepted_this_sample_ = false;
         have_imu_ = false; static_samples_ = 0;
         imu_stale_ = false; attitude_reacquiring_ = false; attitude_residual_ = 0.0;
         static_gyro_.setZero(); static_accel_.setZero();
@@ -797,6 +857,7 @@ private:
         last_stamp_ = now;
         sample_dt_ = dt;
         correction_rejected_this_sample_ = correction_accepted_this_sample_ = false;
+        attitude_attempted_this_sample_ = attitude_accepted_this_sample_ = false;
         const bool imu_changed = !have_imu_ || s.imu != previous_imu_;
         if (imu_changed) last_imu_change_ = now;
         imu_stale_ = now - last_imu_change_ > tune_.imu_stale_time;
@@ -992,6 +1053,7 @@ private:
         // 持续偏差不能只因四元数数值保持不变而永久被拒绝，否则无法恢复融合。
         if (!changed && now - last_attitude_ < 0.10) return;
         attitude_seen_ = observed; last_attitude_ = now;
+        attitude_attempted_this_sample_ = true;
         const V3 residual = logarithm(measured_R_ * R_.transpose());
         attitude_residual_ = residual.norm();
         // 真实转动时，为 AHRS 与陀螺仪的异步延迟保留有限容差。
@@ -1010,7 +1072,10 @@ private:
             attitude_reacquiring_ = true;
         } else attitude_mismatch_since_ = -1.0;
         H3 h = H3::Zero(); h.block<3, 3>(0, kTheta).setIdentity();
-        if (correct(h, residual, covariance)) ++attitude_accepted_;
+        if (correct(h, residual, covariance)) {
+            ++attitude_accepted_;
+            attitude_accepted_this_sample_ = true;
+        }
     }
 
     void resetContact(int leg, bool attach) {
@@ -1388,6 +1453,7 @@ private:
     // 后台生产、控制线程消费；缓存只由控制线程访问，不共享滤波器矩阵。
     std::array<ControlResult, kQueueSize> results_{};
     ControlResult control_result_;
+    ControlDebug control_debug_; // 仅控制线程写入和读取，不与后台共享。
     // 以下输出参照及计时只由控制线程访问，不由后台重置或写入。
     ControlResult control_output_;
     bool have_control_result_ = false, have_control_output_ = false;
@@ -1427,6 +1493,7 @@ private:
     bool initialized_ = false, have_imu_ = false, imu_stale_ = false, attitude_reacquiring_ = false;
     // 以下校正拒绝状态只由后台线程访问；故障按会话锁存，不自动重置原点恢复控制。
     bool ever_initialized_ = false, correction_rejected_this_sample_ = false, correction_accepted_this_sample_ = false;
+    bool attitude_attempted_this_sample_ = false, attitude_accepted_this_sample_ = false;
     double correction_bad_since_ = -1.0;
     std::uint64_t correction_rejections_ = 0;
     double last_stamp_ = -1.0, static_since_ = -1.0, last_publish_ = -1.0;
@@ -1465,8 +1532,11 @@ void ShadowInEKF::submit(const rclcpp::Time& time, const rclcpp::Duration& perio
     impl_->submit(time, period, io, wave, reference, fixed_stance_prior, reference_ready);
 }
 bool ShadowInEKF::selectForControl(const rclcpp::Time& time, Estimator& estimator) noexcept {
-    return impl_->selectForControl(time, estimator);
+    const bool selected = impl_->selectForControl(time, estimator);
+    estimator.setInEKFControlDebug(impl_->debugControl());
+    return selected;
 }
+ShadowInEKF::ControlDebug ShadowInEKF::debugControl() const noexcept { return impl_->debugControl(); }
 bool ShadowInEKF::controlContact(const rclcpp::Time& time, ContactObservation& observation) const noexcept {
     return impl_->controlContact(time, observation);
 }

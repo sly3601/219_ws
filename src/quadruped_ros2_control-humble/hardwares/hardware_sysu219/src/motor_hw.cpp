@@ -1,6 +1,7 @@
 #include "hardware_sysu219/motor_hw.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <signal.h>
 namespace damiao
 {    
@@ -626,6 +627,14 @@ void Motor_Control::write()
 // 函数作用：独立线程持续读取串口的电机反馈数据，解析后更新电机对象缓存，保证主线程不被阻塞
 void Motor_Control::get_motor_data_thread() 
 {      
+    // 独立于stop_thread_记录线程生命期；未知ID原return路径也会清除标记。
+    struct RunningGuard {
+        std::atomic<bool>& running;
+        explicit RunningGuard(std::atomic<bool>& value) : running(value) {
+            running.store(true, std::memory_order_relaxed);
+        }
+        ~RunningGuard() { running.store(false, std::memory_order_relaxed); }
+    } running_guard(rx_thread_running_);
     // 线程主循环：stop_thread_是线程停止标志（bool类型，初始false）
     // 只要stop_thread_为false，线程就持续运行，直到外部设置为true才退出
     while (!stop_thread_)
@@ -636,7 +645,12 @@ void Motor_Control::get_motor_data_thread()
             // 1. 阻塞读取串口数据，填充到receive_data结构体中
             // (uint8_t*)&receive_data：将结构体指针转为字节指针，串口按字节读取数据并填充
             // sizeof(CAN_Receive_Frame)：读取的总字节数=接收帧结构体的大小，保证读取完整帧
-            serial_.read((uint8_t*)&receive_data,sizeof(CAN_Receive_Frame)); 
+            const auto received_bytes = serial_.read((uint8_t*)&receive_data,sizeof(CAN_Receive_Frame));
+            const bool complete_frame = received_bytes == sizeof(CAN_Receive_Frame);
+            const double received_steady_s = std::chrono::duration<double>(
+                std::chrono::steady_clock::now().time_since_epoch()).count();
+            if (!complete_frame || receive_data.CMD != 0x11 || receive_data.frameEnd != 0x55)
+                rx_invalid_frame_count_.fetch_add(1, std::memory_order_relaxed);
             
             // 2. 校验接收帧的有效性：
             // CMD=0x11：协议约定的“电机反馈数据帧”指令码；frameEnd=0x55：帧尾校验位（表示帧完整）
@@ -674,6 +688,7 @@ void Motor_Control::get_motor_data_thread()
                 // motors.find(canId)：返回迭代器；motors.end()：映射表尾后迭代器（表示未找到）
                 if(motors.find(receive_data.canId) == motors.end())
                 {
+                    rx_unknown_id_count_.fetch_add(1, std::memory_order_relaxed);
                     return;  // 未注册的ID：直接退出当前循环，丢弃该帧，防止访问不存在的电机对象崩溃
                 }
                 
@@ -699,18 +714,21 @@ void Motor_Control::get_motor_data_thread()
                     std::lock_guard<std::mutex> lock(motor_data_mutex_);
                     // 15. 更新电机对象的内部缓存数据：将解析后的位置/速度/扭矩存入Motor对象，供主线程read()调用
                     m->receive_data(receive_q, receive_dq, receive_tau);  // 更新电机对象内部缓存，供read()使用
+                    if (complete_frame) m->note_received(received_steady_s);
                 }
             }
         } 
         // 捕获串口相关异常（如串口断开、权限不足）
         catch (const serial::SerialException& e) 
         {
+            rx_exception_count_.fetch_add(1, std::memory_order_relaxed);
             // 打印异常信息，便于调试，线程不退出（继续循环）
             std::cerr << "Serial exception: " << e.what() << std::endl;
         } 
         // 捕获IO异常（如串口读取超时、设备不存在）
         catch (const serial::IOException& e)
         {
+            rx_exception_count_.fetch_add(1, std::memory_order_relaxed);
             // 打印IO异常信息，线程不退出
             std::cerr << "IO exception: " << e.what() << std::endl;
         }
@@ -721,6 +739,10 @@ void Motor_Control::get_motor_data_thread()
 void Motor_Control::read()
 {
     std::lock_guard<std::mutex> lock(motor_data_mutex_);  // 加锁保护数据读取
+    const double running = rx_thread_running_.load(std::memory_order_relaxed) ? 1.0 : 0.0;
+    const double unknown = static_cast<double>(rx_unknown_id_count_.load(std::memory_order_relaxed));
+    const double invalid = static_cast<double>(rx_invalid_frame_count_.load(std::memory_order_relaxed));
+    const double exceptions = static_cast<double>(rx_exception_count_.load(std::memory_order_relaxed));
     for(auto& m : *data_ptr_)
     {
         int motor_id = m.first;//这里指的是can_id
@@ -734,6 +756,9 @@ void Motor_Control::read()
         m.second.pos = it->Get_Position();
         m.second.vel = it->Get_Velocity();
         m.second.effort = it->Get_tau();
+        m.second.rx_debug = {m.second.pos, m.second.vel, m.second.effort,
+            static_cast<double>(it->Get_RxSequence()), it->Get_RxSteadySeconds(),
+            running, unknown, invalid, exceptions};
 
         // 注释掉调试输出或根据需要保留
         // std::cerr<<"MotorType: "<<motor_id<<std::endl;

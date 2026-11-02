@@ -1,0 +1,327 @@
+[INFO] [1793621369.304204012] [controller_manager]: Subscribing to '~/robot_description' topic for robot description file.
+[INFO] [1793621369.304787539] [controller_manager]: update rate is 500 Hz
+[INFO] [1793621369.304802452] [controller_manager]: Spawning controller_manager RT thread with scheduler priority: 50
+[WARN] [1793621369.304877208] [controller_manager]: Could not enable FIFO RT scheduling policy: with error number <1>(Operation not permitted). See [https://control.ros.org/master/doc/ros2_control/controller_manager/doc/userdoc.html] for details on how to enable realtime scheduling.
+[INFO] [1793621369.315191382] [controller_manager]: Received robot description file.
+[INFO] [1793621369.315696989] [resource_manager]: Loading hardware 'Sysu219System' 
+[INFO] [1793621369.317224992] [resource_manager]: Initialize hardware 'Sysu219System' 
+[INFO] [1793621369.318882362] [IMU_Node]: Serial port initialized successfully! Port: /dev/ttyUSB0, Baudrate: 921600, Parity: None, Stopbits: 1, Bytesize: 8, Flow control: None, Timeout: 1000 ms
+[INFO] [1793621369.320123759] [IMU_Node]: SUCCESS: Serial Port Opened
+[INFO] [1793621369.320142143] [IMU_Node]: Serial Port initialized
+[INFO] [1793621369.323566677] [sysu219_hardware]: 添加电机：RL_hip_joint (串口：/dev/ttyACM3, CAN ID：1, Master ID：17)
+[INFO] [1793621369.323584267] [sysu219_hardware]: 添加电机：RL_thigh_joint (串口：/dev/ttyACM3, CAN ID：2, Master ID：18)
+[INFO] [1793621369.323589606] [sysu219_hardware]: 添加电机：RL_calf_joint (串口：/dev/ttyACM3, CAN ID：3, Master ID：19)
+[INFO] [1793621369.323593744] [sysu219_hardware]: 添加电机：FR_hip_joint (串口：/dev/ttyACM1, CAN ID：1, Master ID：17)
+[INFO] [1793621369.323597627] [sysu219_hardware]: 添加电机：FR_thigh_joint (串口：/dev/ttyACM1, CAN ID：2, Master ID：18)
+[INFO] [1793621369.323601723] [sysu219_hardware]: 添加电机：FR_calf_joint (串口：/dev/ttyACM1, CAN ID：3, Master ID：19)
+[INFO] [1793621369.323606402] [sysu219_hardware]: 添加电机：FL_hip_joint (串口：/dev/ttyACM2, CAN ID：1, Master ID：17)
+[INFO] [1793621369.323610182] [sysu219_hardware]: 添加电机：FL_thigh_joint (串口：/dev/ttyACM2, CAN ID：2, Master ID：18)
+[INFO] [1793621369.323613906] [sysu219_hardware]: 添加电机：FL_calf_joint (串口：/dev/ttyACM2, CAN ID：3, Master ID：19)
+[INFO] [1793621369.323617715] [sysu219_hardware]: 添加电机：RR_hip_joint (串口：/dev/ttyACM0, CAN ID：1, Master ID：17)
+[INFO] [1793621369.323621620] [sysu219_hardware]: 添加电机：RR_thigh_joint (串口：/dev/ttyACM0, CAN ID：2, Master ID：18)
+[INFO] [1793621369.323625613] [sysu219_hardware]: 添加电机：RR_calf_joint (串口：/dev/ttyACM0, CAN ID：3, Master ID：19)
+[INFO] [1793621369.323631652] [motor_hw]: Created Motor_Control for port: /dev/ttyACM0, baudrate: 921600
+[INFO] [1793621369.323635663] [motor_hw]: Created motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793621369.323642019] [motor_hw]: Added motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793621369.323643890] [motor_hw]: Created motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793621369.323645458] [motor_hw]: Added motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793621369.323646986] [motor_hw]: Created motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793621369.323648595] [motor_hw]: Added motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793621369.423950100] [motor_hw]: Serial port /dev/ttyACM0 opened successfully with baudrate 921600
+[INFO] [1793621369.724493302] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793621370.025132644] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793621370.325847988] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793621370.626510325] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793621370.927389578] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793621371.228438522] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793621371.587242783] [sysu219_hardware]: 初始化串口：/dev/ttyACM0 (波特率：921600)
+[INFO] [1793621371.587269058] [motor_hw]: Created Motor_Control for port: /dev/ttyACM1, baudrate: 921600
+[INFO] [1793621371.587272155] [motor_hw]: Created motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793621371.587275191] [motor_hw]: Added motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793621371.587276985] [motor_hw]: Created motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793621371.587278536] [motor_hw]: Added motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793621371.587280067] [motor_hw]: Created motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793621371.587281542] [motor_hw]: Added motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793621371.687592395] [motor_hw]: Serial port /dev/ttyACM1 opened successfully with baudrate 921600
+[INFO] [1793621371.988170424] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793621372.289041757] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793621372.589930635] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793621372.890390081] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793621373.191235172] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793621373.491966158] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793621373.851592408] [sysu219_hardware]: 初始化串口：/dev/ttyACM1 (波特率：921600)
+[INFO] [1793621373.851660883] [motor_hw]: Created Motor_Control for port: /dev/ttyACM2, baudrate: 921600
+[INFO] [1793621373.851673313] [motor_hw]: Created motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793621373.851685372] [motor_hw]: Added motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793621373.851695429] [motor_hw]: Created motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793621373.851703597] [motor_hw]: Added motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793621373.851711712] [motor_hw]: Created motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793621373.851718789] [motor_hw]: Added motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793621373.952166279] [motor_hw]: Serial port /dev/ttyACM2 opened successfully with baudrate 921600
+[INFO] [1793621374.253293786] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793621374.554359366] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793621374.855347866] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793621375.156188139] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793621375.457244432] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793621375.758195130] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793621376.111197329] [sysu219_hardware]: 初始化串口：/dev/ttyACM2 (波特率：921600)
+[INFO] [1793621376.111264342] [motor_hw]: Created Motor_Control for port: /dev/ttyACM3, baudrate: 921600
+[INFO] [1793621376.111280827] [motor_hw]: Created motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793621376.111289355] [motor_hw]: Added motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793621376.111295701] [motor_hw]: Created motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793621376.111301216] [motor_hw]: Added motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793621376.111306753] [motor_hw]: Created motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793621376.111312575] [motor_hw]: Added motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793621376.211621250] [motor_hw]: Serial port /dev/ttyACM3 opened successfully with baudrate 921600
+[INFO] [1793621376.512240416] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793621376.812925640] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=1, Master_id=17
+[INFO] [1793621377.113373130] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793621377.414132316] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=2, Master_id=18
+[INFO] [1793621377.714874777] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793621378.015470754] [motor_hw]: Switch mode to MIT_MODE for motor: Type=8, Slave_id=3, Master_id=19
+[INFO] [1793621378.377220381] [sysu219_hardware]: 初始化串口：/dev/ttyACM3 (波特率：921600)
+[INFO] [1793621378.377294027] [resource_manager]: Successful initialization of hardware 'Sysu219System'
+[INFO] [1793621378.377441645] [resource_manager]: 'configure' hardware 'Sysu219System' 
+[INFO] [1793621378.377451466] [resource_manager]: Successful 'configure' of hardware 'Sysu219System'
+[INFO] [1793621378.377469190] [resource_manager]: 'activate' hardware 'Sysu219System' 
+[INFO] [1793621378.377474290] [resource_manager]: Successful 'activate' of hardware 'Sysu219System'
+[INFO] [1793621378.495536180] [controller_manager]: Loading controller 'joint_state_broadcaster'
+[INFO] [1793621378.503071948] [controller_manager]: Configuring controller 'joint_state_broadcaster'
+[INFO] [1793621378.503150371] [joint_state_broadcaster]: 'joints' or 'interfaces' parameter is empty. All available state interfaces will be published
+[INFO] [1793621378.844964283] [controller_manager]: Loading controller 'imu_sensor_broadcaster'
+[INFO] [1793621378.859553772] [controller_manager]: Configuring controller 'imu_sensor_broadcaster'
+[INFO] [1793621379.205553976] [controller_manager]: Loading controller 'sysu219_guide_controller'
+[INFO] [1793621379.224161797] [sysu219_guide_controller]: Controller Manager Update Rate: 250 Hz
+[INFO] [1793621379.234570200] [controller_manager]: Configuring controller 'sysu219_guide_controller'
+[INFO] [1793621379.239322082] [sysu219_guide_controller]: [ODOMETRY_SELECT] source=inekf contact_feedback=0 (重新配置后生效)
+[INFO] [1793621379.242250574] [sysu219_guide_controller]: [JOINT_DEBUG] position_count=12 velocity_count=12 effort_count=12
+[INFO] [1793621379.242267929] [sysu219_guide_controller]: [JOINT_DEBUG] index=0 position=FR_hip_joint/position velocity=FR_hip_joint/velocity effort=FR_hip_joint/effort
+[INFO] [1793621379.242272458] [sysu219_guide_controller]: [JOINT_DEBUG] index=1 position=FR_thigh_joint/position velocity=FR_thigh_joint/velocity effort=FR_thigh_joint/effort
+[INFO] [1793621379.242275494] [sysu219_guide_controller]: [JOINT_DEBUG] index=2 position=FR_calf_joint/position velocity=FR_calf_joint/velocity effort=FR_calf_joint/effort
+[INFO] [1793621379.242291300] [sysu219_guide_controller]: [JOINT_DEBUG] index=3 position=FL_hip_joint/position velocity=FL_hip_joint/velocity effort=FL_hip_joint/effort
+[INFO] [1793621379.242294199] [sysu219_guide_controller]: [JOINT_DEBUG] index=4 position=FL_thigh_joint/position velocity=FL_thigh_joint/velocity effort=FL_thigh_joint/effort
+[INFO] [1793621379.242296908] [sysu219_guide_controller]: [JOINT_DEBUG] index=5 position=FL_calf_joint/position velocity=FL_calf_joint/velocity effort=FL_calf_joint/effort
+[INFO] [1793621379.242299645] [sysu219_guide_controller]: [JOINT_DEBUG] index=6 position=RR_hip_joint/position velocity=RR_hip_joint/velocity effort=RR_hip_joint/effort
+[INFO] [1793621379.242302468] [sysu219_guide_controller]: [JOINT_DEBUG] index=7 position=RR_thigh_joint/position velocity=RR_thigh_joint/velocity effort=RR_thigh_joint/effort
+[INFO] [1793621379.242305123] [sysu219_guide_controller]: [JOINT_DEBUG] index=8 position=RR_calf_joint/position velocity=RR_calf_joint/velocity effort=RR_calf_joint/effort
+[INFO] [1793621379.242307878] [sysu219_guide_controller]: [JOINT_DEBUG] index=9 position=RL_hip_joint/position velocity=RL_hip_joint/velocity effort=RL_hip_joint/effort
+[INFO] [1793621379.242310618] [sysu219_guide_controller]: [JOINT_DEBUG] index=10 position=RL_thigh_joint/position velocity=RL_thigh_joint/velocity effort=RL_thigh_joint/effort
+[INFO] [1793621379.242313203] [sysu219_guide_controller]: [JOINT_DEBUG] index=11 position=RL_calf_joint/position velocity=RL_calf_joint/velocity effort=RL_calf_joint/effort
+[INFO] [1793621379.250491657] [sysu219_guide_controller]: 足底Marker发布器已启动
+[INFO] [1793621379.255360233] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FL_calf_joint velocity_index=11 B=1.6499038712067307e-09 Fc=1.0794450668988391 Ja=0.055704868111569605 (URDF/output-side)
+[INFO] [1793621379.255376504] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FL_hip_joint velocity_index=9 B=9.8339428752278218e-10 Fc=1.0170625680080705 Ja=0 (URDF/output-side)
+[INFO] [1793621379.255380699] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FL_thigh_joint velocity_index=10 B=0.095918411748936047 Fc=1.2980958388469037 Ja=0 (URDF/output-side)
+[INFO] [1793621379.255384136] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FR_calf_joint velocity_index=8 B=1.6499038712067307e-09 Fc=1.0794450668988391 Ja=0.055704868111569605 (URDF/output-side)
+[INFO] [1793621379.255387345] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FR_hip_joint velocity_index=6 B=9.8339428752278218e-10 Fc=1.0170625680080705 Ja=0 (URDF/output-side)
+[INFO] [1793621379.255390214] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FR_thigh_joint velocity_index=7 B=0.095918411748936047 Fc=1.2980958388469037 Ja=0 (URDF/output-side)
+[INFO] [1793621379.255393234] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RL_calf_joint velocity_index=17 B=1.6499038712067307e-09 Fc=1.0794450668988391 Ja=0.055704868111569605 (URDF/output-side)
+[INFO] [1793621379.255396167] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RL_hip_joint velocity_index=15 B=9.8339428752278218e-10 Fc=1.0170625680080705 Ja=0 (URDF/output-side)
+[INFO] [1793621379.255398918] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RL_thigh_joint velocity_index=16 B=0.095918411748936047 Fc=1.2980958388469037 Ja=0 (URDF/output-side)
+[INFO] [1793621379.255401687] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RR_calf_joint velocity_index=14 B=1.6499038712067307e-09 Fc=1.0794450668988391 Ja=0.055704868111569605 (URDF/output-side)
+[INFO] [1793621379.255404419] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RR_hip_joint velocity_index=12 B=9.8339428752278218e-10 Fc=1.0170625680080705 Ja=0 (URDF/output-side)
+[INFO] [1793621379.255407139] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RR_thigh_joint velocity_index=13 B=0.095918411748936047 Fc=1.2980958388469037 Ja=0 (URDF/output-side)
+[INFO] [1793621379.257447009] [sysu219_shadow_inekf]: InEKF ready: independent KDL, IMU lever [-0.01592 -0.06659 -0.00617] m; /shadow_inekf/markers: red=original, yellow=contact-aware; this instance=red / original.
+[INFO] [1793621379.260393410] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FL_calf_joint velocity_index=11 B=1.6499038712067307e-09 Fc=1.0794450668988391 Ja=0.055704868111569605 (URDF/output-side)
+[INFO] [1793621379.260408503] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FL_hip_joint velocity_index=9 B=9.8339428752278218e-10 Fc=1.0170625680080705 Ja=0 (URDF/output-side)
+[INFO] [1793621379.260412823] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FL_thigh_joint velocity_index=10 B=0.095918411748936047 Fc=1.2980958388469037 Ja=0 (URDF/output-side)
+[INFO] [1793621379.260417190] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FR_calf_joint velocity_index=8 B=1.6499038712067307e-09 Fc=1.0794450668988391 Ja=0.055704868111569605 (URDF/output-side)
+[INFO] [1793621379.260420688] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FR_hip_joint velocity_index=6 B=9.8339428752278218e-10 Fc=1.0170625680080705 Ja=0 (URDF/output-side)
+[INFO] [1793621379.260423799] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=FR_thigh_joint velocity_index=7 B=0.095918411748936047 Fc=1.2980958388469037 Ja=0 (URDF/output-side)
+[INFO] [1793621379.260426758] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RL_calf_joint velocity_index=17 B=1.6499038712067307e-09 Fc=1.0794450668988391 Ja=0.055704868111569605 (URDF/output-side)
+[INFO] [1793621379.260429879] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RL_hip_joint velocity_index=15 B=9.8339428752278218e-10 Fc=1.0170625680080705 Ja=0 (URDF/output-side)
+[INFO] [1793621379.260432990] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RL_thigh_joint velocity_index=16 B=0.095918411748936047 Fc=1.2980958388469037 Ja=0 (URDF/output-side)
+[INFO] [1793621379.260435985] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RR_calf_joint velocity_index=14 B=1.6499038712067307e-09 Fc=1.0794450668988391 Ja=0.055704868111569605 (URDF/output-side)
+[INFO] [1793621379.260439123] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RR_hip_joint velocity_index=12 B=9.8339428752278218e-10 Fc=1.0170625680080705 Ja=0 (URDF/output-side)
+[INFO] [1793621379.260442182] [sysu219_identified_dynamics]: [IDENTIFIED_DYNAMICS] joint=RR_thigh_joint velocity_index=13 B=0.095918411748936047 Fc=1.2980958388469037 Ja=0 (URDF/output-side)
+[INFO] [1793621379.260593910] [sysu219_contact_shadow_inekf]: InEKF ready: independent KDL, IMU lever [-0.01592 -0.06659 -0.00617] m; /shadow_inekf/markers: red=original, yellow=contact-aware; this instance=yellow / shadow.
+[INFO] [1793621379.264924915] [sysu219_shadow_inekf]: [SHADOW_INEKF] WAITING / NO PLANNED SUPPORT
+[INFO] [1793621379.265099163] [sysu219_contact_observer]: [CONTACT_SHADOW] yellow contact InEKF, selected=0; force estimates (not force sensors), CSV=/tmp/contact_shadow_inekf_46200_1_1793621379264563852.csv
+[INFO] [1793621379.265239831] [sysu219_contact_shadow_inekf]: [SHADOW_INEKF] WAITING / NO PLANNED SUPPORT
+[INFO] [1793621382.044103668] [sysu219_guide_controller]: Switched from passive to fixed prone
+[INFO] [1793621384.495052778] [sysu219_guide_controller]: Switched from fixed prone to fixed down
+[INFO] [1793621386.503044200] [sysu219_guide_controller]: Switched from fixed down to fixed stand
+[INFO] [1793621386.527297805] [sysu219_contact_shadow_inekf]: [SHADOW_INEKF] INITIALIZING / WAITING FOR QUIET SUPPORT
+[INFO] [1793621386.527988429] [sysu219_shadow_inekf]: [SHADOW_INEKF] INITIALIZING / WAITING FOR QUIET SUPPORT
+[INFO] [1793621390.275701951] [sysu219_contact_shadow_inekf]: InEKF initialized: RUNNING / STATIC BIAS BOOTSTRAP; instance=yellow / shadow; no display translation.
+[INFO] [1793621390.276107845] [sysu219_shadow_inekf]: InEKF initialized: RUNNING / STATIC BIAS BOOTSTRAP; instance=red / original; no display translation.
+[INFO] [1793621390.339690457] [sysu219_contact_shadow_inekf]: [INEKF_VELOCITY] 支撑足水平速度融合：成功1，拒绝0，NIS 0.00；机身速度估计[-0.001 0.000]，运动学观测[-0.003 0.001] m/s
+[INFO] [1793621392.727105550] [sysu219_guide_controller]: Switched from fixed stand to trotting
+[INFO] [1793621392.731151669] [ConvexMpcSolver]: [MPC_STATE] first_pending=1 pz=0.3870 vz=0.0009 pz_ref=0.3870 vz_ref=-0.0000 rp_now=[-0.0156 0.0544] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621392.735846703] [ConvexMpcSolver]: [MPC_RES] status=0 iter=29 res[stat,eq,ineq,comp]=[1.375e-12 4.441e-16 2.842e-14 6.239e-13]
+[INFO] [1793621392.735866503] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=4.186 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=29
+[INFO] [1793621392.735879788] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=405.287 expected_weight=407.115 contact=[1 1 1 1]
+[INFO] [1793621392.736767214] [sysu219_guide_controller]: [MPC_WBC] 本帧采用WBC，混合比例=1.00，最大力修正=7.085e-01 N，基座残差=7.02e-14，支撑足加速度残差=0.00 m/s²
+[ERROR] [1793621392.966077577] [ConvexMpcSolver]: [MPC_FAIL] id=31 status=1(MAX_ITER) iter=50/50 warm_start=0 solve_ms=2.992 N=15 prediction_ms=20.000 res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 2.842e-14 4.408e-01] tol[stat,eq,ineq,comp]=[1.000e-06 1.000e-06 1.000e-06 1.000e-06] action=cached reason=hold_last_success cached=1 same_contact=1 cache_age_ms=5.808 cache_limit_ms=none current_contact_changed=0 horizon_changed=0 prev_seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 pz=0.3839 vz=0.0049 pitch=0.0478 pitch_ref=-0.0000 omega_pitch=0.0026
+[INFO] [1793621393.295059625] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 0 0 1] contact=[1 1 1 1] previous_ground_fz=[232.597 0.000 0.000 195.144]
+[INFO] [1793621393.732203571] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.001 solves=131 fresh=130 failed=1 cached_used=1 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 2.842e-14 4.408e-01]
+[INFO] [1793621393.732224630] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.171 avg_ms=1.339 max_ms=4.753 nominal_step_ms=4.000 over_budget=1/131
+[INFO] [1793621393.739071651] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.3849 vz=0.0849 pz_ref=0.3869 vz_ref=0.0000 rp_now=[-0.0205 0.0351] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621393.740360725] [ConvexMpcSolver]: [MPC_RES] status=0 iter=21 res[stat,eq,ineq,comp]=[2.438e-11 4.441e-16 2.842e-14 5.466e-08]
+[INFO] [1793621393.740367313] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=1.251 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=21
+[INFO] [1793621393.740372701] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=435.060 expected_weight=407.115 contact=[0 1 1 0]
+[INFO] [1793621393.783069786] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[0 1 1 0] contact=[1 1 1 1] previous_ground_fz=[0.000 227.642 133.571 0.000]
+[ERROR] [1793621393.942207241] [ConvexMpcSolver]: [MPC_FAIL] id=159 status=1(MAX_ITER) iter=50/50 warm_start=0 solve_ms=3.034 N=15 prediction_ms=20.000 res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 2.842e-14 3.948e-01] tol[stat,eq,ineq,comp]=[1.000e-06 1.000e-06 1.000e-06 1.000e-06] action=cached reason=hold_last_success cached=1 same_contact=1 cache_age_ms=6.014 cache_limit_ms=none current_contact_changed=0 horizon_changed=0 prev_seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 pz=0.3757 vz=0.0153 pitch=0.0212 pitch_ref=-0.0000 omega_pitch=0.0796
+[INFO] [1793621394.271066082] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 0 0 1] contact=[1 1 1 1] previous_ground_fz=[179.271 0.000 0.000 204.637]
+[INFO] [1793621394.732288526] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.000 solves=131 fresh=127 failed=4 cached_used=4 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 5.684e-14 1.999e+00]
+[INFO] [1793621394.732308550] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.221 avg_ms=1.581 max_ms=6.940 nominal_step_ms=4.000 over_budget=1/131
+[INFO] [1793621394.739120841] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.3668 vz=0.1054 pz_ref=0.3869 vz_ref=0.0000 rp_now=[-0.0384 0.0209] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621394.748353064] [ConvexMpcSolver]: [MPC_RES] status=0 iter=21 res[stat,eq,ineq,comp]=[1.122e-11 4.441e-16 2.842e-14 3.222e-07]
+[INFO] [1793621394.748371377] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=1.171 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=21
+[INFO] [1793621394.748376458] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=365.930 expected_weight=407.115 contact=[0 1 1 0]
+[INFO] [1793621394.759144701] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[0 1 1 0] contact=[1 1 1 1] previous_ground_fz=[0.000 169.121 178.600 0.000]
+[INFO] [1793621395.247090094] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 0 0 1] contact=[1 1 1 1] previous_ground_fz=[110.959 0.000 0.000 184.456]
+[INFO] [1793621395.347334669] [sysu219_shadow_inekf]: [INEKF_VELOCITY] 支撑足水平速度融合：成功225，拒绝0，NIS 0.15；机身速度估计[-0.026 0.121]，运动学观测[-0.141 0.007] m/s
+[ERROR] [1793621395.405998330] [ConvexMpcSolver]: [MPC_FAIL] id=351 status=1(MAX_ITER) iter=50/50 warm_start=0 solve_ms=2.910 N=15 prediction_ms=20.000 res[stat,eq,ineq,comp]=[9.095e-13 4.441e-16 2.842e-14 4.628e-01] tol[stat,eq,ineq,comp]=[1.000e-06 1.000e-06 1.000e-06 1.000e-06] action=cached reason=hold_last_success cached=1 same_contact=1 cache_age_ms=5.604 cache_limit_ms=none current_contact_changed=0 horizon_changed=0 prev_seq=1111>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110 seq=1111>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110 pz=0.3575 vz=0.0575 pitch=0.0162 pitch_ref=-0.0000 omega_pitch=-0.1000
+[INFO] [1793621395.732375472] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.000 solves=131 fresh=130 failed=1 cached_used=1 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[9.095e-13 4.441e-16 2.842e-14 4.628e-01]
+[INFO] [1793621395.732397313] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.250 avg_ms=1.290 max_ms=2.971 nominal_step_ms=4.000 over_budget=0/131
+[INFO] [1793621395.747146821] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.3605 vz=0.1698 pz_ref=0.3869 vz_ref=0.0000 rp_now=[-0.0160 0.0212] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621395.749733971] [ConvexMpcSolver]: [MPC_RES] status=0 iter=22 res[stat,eq,ineq,comp]=[4.718e-12 4.441e-16 2.842e-14 4.541e-08]
+[INFO] [1793621395.749753637] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=2.484 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=22
+[INFO] [1793621395.749762805] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=310.978 expected_weight=407.115 contact=[1 1 1 1]
+[INFO] [1793621395.895101176] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 1 1 1] contact=[1 0 0 1] previous_ground_fz=[275.433 1.000 0.000 216.954]
+[ERROR] [1793621396.383028897] [ConvexMpcSolver]: [MPC_FAIL] id=477 status=1(MAX_ITER) iter=50/50 warm_start=0 solve_ms=3.801 N=15 prediction_ms=20.000 res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 2.842e-14 5.163e-01] tol[stat,eq,ineq,comp]=[1.000e-06 1.000e-06 1.000e-06 1.000e-06] action=cached reason=hold_last_success cached=1 same_contact=1 cache_age_ms=6.624 cache_limit_ms=none current_contact_changed=0 horizon_changed=0 prev_seq=1111>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110 seq=1111>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110 pz=0.3376 vz=0.0348 pitch=0.0156 pitch_ref=-0.0000 omega_pitch=-0.1001
+[INFO] [1793621396.385125858] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 1 1 1] contact=[0 1 1 0] previous_ground_fz=[1.000 240.462 204.297 0.253]
+[INFO] [1793621396.740323826] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.008 solves=130 fresh=129 failed=1 cached_used=1 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 2.842e-14 5.163e-01]
+[INFO] [1793621396.740346893] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.247 avg_ms=1.555 max_ms=3.884 nominal_step_ms=4.000 over_budget=0/130
+[INFO] [1793621396.747202222] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.3405 vz=0.0029 pz_ref=0.3869 vz_ref=0.0000 rp_now=[-0.0097 0.0303] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621396.756802525] [ConvexMpcSolver]: [MPC_RES] status=0 iter=27 res[stat,eq,ineq,comp]=[2.541e-12 4.441e-16 2.842e-14 2.605e-09]
+[INFO] [1793621396.756819957] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=1.678 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=27
+[INFO] [1793621396.756825007] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=290.231 expected_weight=407.115 contact=[1 1 1 1]
+[INFO] [1793621396.871066768] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 1 1 1] contact=[1 0 0 1] previous_ground_fz=[275.692 1.000 0.000 219.266]
+[ERROR] [1793621397.357949487] [ConvexMpcSolver]: [MPC_FAIL] id=603 status=1(MAX_ITER) iter=50/50 warm_start=0 solve_ms=2.861 N=15 prediction_ms=20.000 res[stat,eq,ineq,comp]=[9.095e-13 4.441e-16 2.842e-14 6.462e-01] tol[stat,eq,ineq,comp]=[1.000e-06 1.000e-06 1.000e-06 1.000e-06] action=cached reason=hold_last_success cached=1 same_contact=1 cache_age_ms=5.360 cache_limit_ms=none current_contact_changed=0 horizon_changed=0 prev_seq=1111>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110 seq=1111>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110 pz=0.3310 vz=0.0995 pitch=0.0108 pitch_ref=-0.0000 omega_pitch=-0.0974
+[INFO] [1793621397.359552346] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 1 1 1] contact=[0 1 1 0] previous_ground_fz=[1.000 237.143 230.711 0.332]
+[INFO] [1793621397.748476654] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.008 solves=130 fresh=127 failed=3 cached_used=3 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[2.769e-09 4.441e-16 2.842e-14 3.761e+00]
+[INFO] [1793621397.748517620] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.423 avg_ms=1.293 max_ms=2.966 nominal_step_ms=4.000 over_budget=0/130
+[INFO] [1793621397.755076510] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.3355 vz=-0.0324 pz_ref=0.3869 vz_ref=0.0000 rp_now=[0.0135 0.0394] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621397.764422888] [ConvexMpcSolver]: [MPC_RES] status=0 iter=23 res[stat,eq,ineq,comp]=[2.734e-12 4.441e-16 2.842e-14 6.893e-08]
+[INFO] [1793621397.764438910] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=1.292 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=23
+[INFO] [1793621397.764444418] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=454.646 expected_weight=407.115 contact=[1 1 1 1]
+[INFO] [1793621397.847110182] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 1 1 1] contact=[1 0 0 1] previous_ground_fz=[297.263 1.000 0.000 151.147]
+[INFO] [1793621398.756314752] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.008 solves=130 fresh=130 failed=0 cached_used=0 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[0.000e+00 0.000e+00 0.000e+00 0.000e+00]
+[INFO] [1793621398.756340635] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.276 avg_ms=1.299 max_ms=2.431 nominal_step_ms=4.000 over_budget=0/130
+[INFO] [1793621398.763074037] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.3416 vz=-0.0940 pz_ref=0.3869 vz_ref=0.0000 rp_now=[0.0292 0.0146] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621398.772454286] [ConvexMpcSolver]: [MPC_RES] status=0 iter=19 res[stat,eq,ineq,comp]=[2.559e-11 4.441e-16 2.842e-14 1.853e-08]
+[INFO] [1793621398.772474531] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=1.280 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=19
+[INFO] [1793621398.772480187] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=514.536 expected_weight=407.115 contact=[1 1 1 1]
+[INFO] [1793621399.631142934] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[0 1 1 0] contact=[1 1 1 1] previous_ground_fz=[0.000 184.656 167.730 0.000]
+[INFO] [1793621399.756388603] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.000 solves=130 fresh=130 failed=0 cached_used=0 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[0.000e+00 0.000e+00 0.000e+00 0.000e+00]
+[INFO] [1793621399.756408777] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.341 avg_ms=1.287 max_ms=3.022 nominal_step_ms=4.000 over_budget=0/130
+[INFO] [1793621399.771075468] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.3494 vz=0.0036 pz_ref=0.3869 vz_ref=0.0000 rp_now=[0.0210 0.0107] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621399.780137048] [ConvexMpcSolver]: [MPC_RES] status=0 iter=19 res[stat,eq,ineq,comp]=[9.205e-13 4.441e-16 2.842e-14 2.020e-10]
+[INFO] [1793621399.780149885] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=1.047 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=19
+[INFO] [1793621399.780154194] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=510.324 expected_weight=407.115 contact=[1 1 1 1]
+[ERROR] [1793621399.786035231] [ConvexMpcSolver]: [MPC_FAIL] id=917 status=1(MAX_ITER) iter=50/50 warm_start=0 solve_ms=2.928 N=15 prediction_ms=20.000 res[stat,eq,ineq,comp]=[2.274e-13 2.220e-16 2.842e-14 1.395e+00] tol[stat,eq,ineq,comp]=[1.000e-06 1.000e-06 1.000e-06 1.000e-06] action=cached reason=hold_last_success cached=1 same_contact=1 cache_age_ms=5.895 cache_limit_ms=none current_contact_changed=0 horizon_changed=0 prev_seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 pz=0.3499 vz=0.0359 pitch=0.0128 pitch_ref=-0.0000 omega_pitch=-0.2294
+[INFO] [1793621400.120448313] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 0 0 1] contact=[1 1 1 1] previous_ground_fz=[230.945 0.000 0.000 141.546]
+[INFO] [1793621400.351653089] [sysu219_shadow_inekf]: [INEKF_VELOCITY] 支撑足水平速度融合：成功451，拒绝0，NIS 0.11；机身速度估计[0.048 0.004]，运动学观测[0.079 -0.106] m/s
+[INFO] [1793621400.607059508] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[0 1 1 0] contact=[1 1 1 1] previous_ground_fz=[0.000 182.070 189.019 0.000]
+[INFO] [1793621400.760222157] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.004 solves=132 fresh=129 failed=3 cached_used=3 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 2.842e-14 1.395e+00]
+[INFO] [1793621400.760244054] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.165 avg_ms=1.460 max_ms=4.217 nominal_step_ms=4.000 over_budget=1/132
+[INFO] [1793621400.772453999] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.3342 vz=0.0312 pz_ref=0.3869 vz_ref=0.0000 rp_now=[0.0249 0.0066] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621400.782186205] [ConvexMpcSolver]: [MPC_RES] status=0 iter=21 res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 5.684e-14 2.583e-12]
+[INFO] [1793621400.782210022] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=3.003 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=21
+[INFO] [1793621400.782218578] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=503.525 expected_weight=407.115 contact=[1 0 0 1]
+[INFO] [1793621401.095069492] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 0 0 1] contact=[1 1 1 1] previous_ground_fz=[182.361 0.000 0.000 125.716]
+[ERROR] [1793621401.251049518] [ConvexMpcSolver]: [MPC_FAIL] id=1109 status=1(MAX_ITER) iter=50/50 warm_start=0 solve_ms=3.185 N=15 prediction_ms=20.000 res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 2.842e-14 2.097e+00] tol[stat,eq,ineq,comp]=[1.000e-06 1.000e-06 1.000e-06 1.000e-06] action=cached reason=hold_last_success cached=1 same_contact=1 cache_age_ms=5.379 cache_limit_ms=none current_contact_changed=0 horizon_changed=0 prev_seq=1111>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110 seq=1111>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110 pz=0.3337 vz=0.0253 pitch=-0.0082 pitch_ref=-0.0000 omega_pitch=-0.0956
+[INFO] [1793621401.583184482] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[0 1 1 0] contact=[1 1 1 1] previous_ground_fz=[0.000 235.944 153.850 0.000]
+[INFO] [1793621401.764223922] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.004 solves=133 fresh=130 failed=3 cached_used=3 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 2.842e-14 2.190e+00]
+[INFO] [1793621401.764246835] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.180 avg_ms=1.596 max_ms=3.552 nominal_step_ms=4.000 over_budget=0/133
+[INFO] [1793621401.779084522] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.3491 vz=0.0820 pz_ref=0.3869 vz_ref=0.0000 rp_now=[-0.0156 -0.0086] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621401.788313510] [ConvexMpcSolver]: [MPC_RES] status=0 iter=19 res[stat,eq,ineq,comp]=[3.036e-12 4.441e-16 2.842e-14 1.701e-08]
+[INFO] [1793621401.788333609] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=1.171 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=19
+[INFO] [1793621401.788338983] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=385.599 expected_weight=407.115 contact=[1 0 0 1]
+[INFO] [1793621402.071073931] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 0 0 1] contact=[1 1 1 1] previous_ground_fz=[204.514 0.000 0.000 150.968]
+[ERROR] [1793621402.222496453] [ConvexMpcSolver]: [MPC_FAIL] id=1236 status=1(MAX_ITER) iter=50/50 warm_start=0 solve_ms=3.182 N=15 prediction_ms=20.000 res[stat,eq,ineq,comp]=[2.274e-13 1.804e-16 2.842e-14 1.539e+00] tol[stat,eq,ineq,comp]=[1.000e-06 1.000e-06 1.000e-06 1.000e-06] action=cached reason=hold_last_success cached=1 same_contact=1 cache_age_ms=10.192 cache_limit_ms=none current_contact_changed=0 horizon_changed=0 prev_seq=1111>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110 seq=1111>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110 pz=0.3601 vz=0.0094 pitch=-0.0095 pitch_ref=-0.0000 omega_pitch=0.1173
+[INFO] [1793621402.559058217] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[0 1 1 0] contact=[1 1 1 1] previous_ground_fz=[0.000 165.819 105.997 0.000]
+[INFO] [1793621402.736559864] [TrottingDebug]: [TROT_DEBUG] saved=/tmp/trotting_run_46200_1793621392731005_run1_chunk0.csv run=1 frames=2500
+[INFO] [1793621402.740673897] [sysu219_guide_controller]: [MPC_WBC] 本帧采用WBC，混合比例=1.00，最大力修正=4.855e-01 N，基座残差=5.81e-14，支撑足加速度残差=0.00 m/s²
+[INFO] [1793621402.764674575] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.000 solves=131 fresh=128 failed=3 cached_used=3 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 2.842e-14 1.539e+00]
+[INFO] [1793621402.764696465] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.633 avg_ms=1.352 max_ms=3.309 nominal_step_ms=4.000 over_budget=0/131
+[INFO] [1793621402.787092483] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.3536 vz=0.1335 pz_ref=0.3869 vz_ref=0.0000 rp_now=[-0.0095 -0.0091] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621402.788431850] [ConvexMpcSolver]: [MPC_RES] status=0 iter=21 res[stat,eq,ineq,comp]=[3.494e-11 4.441e-16 5.684e-14 7.427e-07]
+[INFO] [1793621402.788441954] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=1.267 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=21
+[INFO] [1793621402.788447029] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=289.583 expected_weight=407.115 contact=[1 0 0 1]
+[INFO] [1793621403.047059442] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 0 0 1] contact=[1 1 1 1] previous_ground_fz=[184.962 0.000 0.000 158.298]
+[ERROR] [1793621403.207028502] [ConvexMpcSolver]: [MPC_FAIL] id=1366 status=1(MAX_ITER) iter=50/50 warm_start=0 solve_ms=3.034 N=15 prediction_ms=20.000 res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 2.842e-14 4.531e-01] tol[stat,eq,ineq,comp]=[1.000e-06 1.000e-06 1.000e-06 1.000e-06] action=cached reason=hold_last_success cached=1 same_contact=1 cache_age_ms=4.575 cache_limit_ms=none current_contact_changed=0 horizon_changed=0 prev_seq=1111>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110 seq=1111>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110>0110 pz=0.3493 vz=0.0492 pitch=-0.0077 pitch_ref=-0.0000 omega_pitch=-0.0788
+[INFO] [1793621403.695558091] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 1 1 1] contact=[1 0 0 1] previous_ground_fz=[243.340 1.000 0.299 215.725]
+[INFO] [1793621403.772455526] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.008 solves=131 fresh=129 failed=2 cached_used=2 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 2.842e-14 5.477e-01]
+[INFO] [1793621403.772477041] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.412 avg_ms=1.363 max_ms=3.375 nominal_step_ms=4.000 over_budget=0/131
+[INFO] [1793621403.795214532] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.3544 vz=0.0381 pz_ref=0.3869 vz_ref=0.0000 rp_now=[-0.0232 -0.0144] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621403.798561698] [ConvexMpcSolver]: [MPC_RES] status=0 iter=22 res[stat,eq,ineq,comp]=[6.775e-12 4.441e-16 2.842e-14 3.312e-08]
+[INFO] [1793621403.798580552] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=3.262 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=22
+[INFO] [1793621403.798589838] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=347.531 expected_weight=407.115 contact=[1 0 0 1]
+[INFO] [1793621404.183071481] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 1 1 1] contact=[0 1 1 0] previous_ground_fz=[1.000 318.161 144.935 0.000]
+[ERROR] [1793621404.667598647] [ConvexMpcSolver]: [MPC_FAIL] id=1554 status=1(MAX_ITER) iter=50/50 warm_start=0 solve_ms=4.479 N=15 prediction_ms=20.000 res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 1.421e-14 3.780e-01] tol[stat,eq,ineq,comp]=[1.000e-06 1.000e-06 1.000e-06 1.000e-06] action=cached reason=hold_last_success cached=1 same_contact=1 cache_age_ms=7.316 cache_limit_ms=none current_contact_changed=0 horizon_changed=0 prev_seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 pz=0.3467 vz=0.0213 pitch=-0.0223 pitch_ref=-0.0000 omega_pitch=-0.1633
+[INFO] [1793621404.673994437] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 1 1 1] contact=[1 0 0 1] previous_ground_fz=[229.857 1.000 0.000 209.536]
+[INFO] [1793621404.780253946] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.008 solves=130 fresh=129 failed=1 cached_used=1 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 1.421e-14 3.780e-01]
+[INFO] [1793621404.780274371] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.186 avg_ms=1.408 max_ms=4.553 nominal_step_ms=4.000 over_budget=1/130
+[INFO] [1793621404.803086402] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.3485 vz=-0.1257 pz_ref=0.3869 vz_ref=0.0000 rp_now=[-0.0426 -0.0299] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621404.804333040] [ConvexMpcSolver]: [MPC_RES] status=0 iter=20 res[stat,eq,ineq,comp]=[1.800e-10 4.441e-16 5.684e-14 8.113e-07]
+[INFO] [1793621404.804345078] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=1.188 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=20
+[INFO] [1793621404.804351762] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=501.127 expected_weight=407.115 contact=[1 0 0 1]
+[INFO] [1793621405.159077907] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 1 1 1] contact=[0 1 1 0] previous_ground_fz=[1.000 214.694 167.385 0.000]
+[INFO] [1793621405.351768472] [sysu219_shadow_inekf]: [INEKF_VELOCITY] 支撑足水平速度融合：成功676，拒绝0，NIS 0.01；机身速度估计[-0.053 0.049]，运动学观测[-0.034 0.038] m/s
+[ERROR] [1793621405.642183871] [ConvexMpcSolver]: [MPC_FAIL] id=1680 status=1(MAX_ITER) iter=50/50 warm_start=0 solve_ms=2.975 N=15 prediction_ms=20.000 res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 1.421e-14 2.891e-01] tol[stat,eq,ineq,comp]=[1.000e-06 1.000e-06 1.000e-06 1.000e-06] action=cached reason=hold_last_success cached=1 same_contact=1 cache_age_ms=5.935 cache_limit_ms=none current_contact_changed=0 horizon_changed=0 prev_seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 pz=0.3603 vz=-0.0020 pitch=-0.0038 pitch_ref=-0.0000 omega_pitch=-0.2080
+[INFO] [1793621405.647932058] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 1 1 1] contact=[1 0 0 1] previous_ground_fz=[215.154 1.000 0.000 199.492]
+[INFO] [1793621405.780313454] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.000 solves=129 fresh=128 failed=1 cached_used=1 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 1.421e-14 2.891e-01]
+[INFO] [1793621405.780336287] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.245 avg_ms=1.360 max_ms=3.245 nominal_step_ms=4.000 over_budget=0/129
+[INFO] [1793621405.811094750] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.3619 vz=-0.0895 pz_ref=0.3869 vz_ref=0.0000 rp_now=[-0.0397 -0.0139] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621405.812572367] [ConvexMpcSolver]: [MPC_RES] status=0 iter=22 res[stat,eq,ineq,comp]=[1.178e-11 4.441e-16 5.684e-14 7.207e-07]
+[INFO] [1793621405.812581106] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=1.421 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=22
+[INFO] [1793621405.812585785] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=456.215 expected_weight=407.115 contact=[1 0 0 1]
+[ERROR] [1793621406.610268309] [ConvexMpcSolver]: [MPC_FAIL] id=1805 status=1(MAX_ITER) iter=50/50 warm_start=0 solve_ms=3.152 N=15 prediction_ms=20.000 res[stat,eq,ineq,comp]=[9.095e-13 4.441e-16 2.842e-14 2.878e-01] tol[stat,eq,ineq,comp]=[1.000e-06 1.000e-06 1.000e-06 1.000e-06] action=cached reason=hold_last_success cached=1 same_contact=1 cache_age_ms=6.100 cache_limit_ms=none current_contact_changed=0 horizon_changed=0 prev_seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 pz=0.3623 vz=0.0311 pitch=-0.0014 pitch_ref=-0.0000 omega_pitch=0.0400
+[INFO] [1793621406.788152801] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.008 solves=130 fresh=127 failed=3 cached_used=3 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[9.095e-13 4.441e-16 2.842e-14 4.390e-01]
+[INFO] [1793621406.788173235] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.107 avg_ms=1.420 max_ms=3.234 nominal_step_ms=4.000 over_budget=0/130
+[INFO] [1793621406.819063291] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.3644 vz=-0.0946 pz_ref=0.3869 vz_ref=0.0000 rp_now=[-0.0293 -0.0004] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621406.820121385] [ConvexMpcSolver]: [MPC_RES] status=0 iter=18 res[stat,eq,ineq,comp]=[1.256e-10 4.441e-16 5.684e-14 8.289e-07]
+[INFO] [1793621406.820129961] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=1.012 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=18
+[INFO] [1793621406.820135383] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=492.091 expected_weight=407.115 contact=[1 0 0 1]
+[INFO] [1793621407.431095937] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[0 1 1 0] contact=[1 1 1 1] previous_ground_fz=[0.000 242.515 173.704 0.000]
+[ERROR] [1793621407.590328342] [ConvexMpcSolver]: [MPC_FAIL] id=1933 status=1(MAX_ITER) iter=50/50 warm_start=0 solve_ms=3.179 N=15 prediction_ms=20.000 res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 2.842e-14 5.331e-01] tol[stat,eq,ineq,comp]=[1.000e-06 1.000e-06 1.000e-06 1.000e-06] action=cached reason=hold_last_success cached=1 same_contact=1 cache_age_ms=5.975 cache_limit_ms=none current_contact_changed=0 horizon_changed=0 prev_seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 pz=0.3636 vz=0.0100 pitch=-0.0119 pitch_ref=-0.0000 omega_pitch=-0.0781
+[INFO] [1793621407.788451019] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.000 solves=130 fresh=128 failed=2 cached_used=2 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[1.211e-11 4.441e-16 5.684e-14 5.331e-01]
+[INFO] [1793621407.788473090] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.390 avg_ms=1.286 max_ms=3.253 nominal_step_ms=4.000 over_budget=0/130
+[INFO] [1793621407.821029330] [ConvexMpcSolver]: [MPC_RES] status=0 iter=26 res[stat,eq,ineq,comp]=[4.346e-12 4.441e-16 5.684e-14 3.710e-07]
+[INFO] [1793621407.821080602] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=1.904 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=26
+[INFO] [1793621407.821090669] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=486.784 expected_weight=407.115 contact=[1 0 0 1]
+[INFO] [1793621407.827130570] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.3648 vz=-0.0047 pz_ref=0.3869 vz_ref=0.0000 rp_now=[-0.0416 0.0031] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621407.919105175] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 0 0 1] contact=[1 1 1 1] previous_ground_fz=[108.495 0.000 0.000 122.791]
+[INFO] [1793621408.407094055] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[0 1 1 0] contact=[1 1 1 1] previous_ground_fz=[0.000 210.399 199.003 0.000]
+[ERROR] [1793621408.562042232] [ConvexMpcSolver]: [MPC_FAIL] id=2060 status=1(MAX_ITER) iter=50/50 warm_start=0 solve_ms=2.961 N=15 prediction_ms=20.000 res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 2.842e-14 3.588e-01] tol[stat,eq,ineq,comp]=[1.000e-06 1.000e-06 1.000e-06 1.000e-06] action=cached reason=hold_last_success cached=1 same_contact=1 cache_age_ms=5.781 cache_limit_ms=none current_contact_changed=0 horizon_changed=0 prev_seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 pz=0.3482 vz=0.0079 pitch=0.0174 pitch_ref=-0.0000 omega_pitch=-0.2443
+[INFO] [1793621408.788574440] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.000 solves=131 fresh=128 failed=3 cached_used=3 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 5.684e-14 4.977e-01]
+[INFO] [1793621408.788596684] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.510 avg_ms=1.332 max_ms=3.187 nominal_step_ms=4.000 over_budget=0/131
+[INFO] [1793621408.828331017] [ConvexMpcSolver]: [MPC_RES] status=0 iter=22 res[stat,eq,ineq,comp]=[2.478e-11 4.441e-16 2.842e-14 4.304e-08]
+[INFO] [1793621408.828349909] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=1.248 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=22
+[INFO] [1793621408.828354726] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=480.136 expected_weight=407.115 contact=[1 0 0 1]
+[INFO] [1793621408.835066105] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.3489 vz=0.1034 pz_ref=0.3869 vz_ref=0.0000 rp_now=[-0.0536 0.0301] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621408.895103927] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 0 0 1] contact=[1 1 1 1] previous_ground_fz=[191.684 0.000 0.000 219.177]
+[INFO] [1793621409.383066208] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[0 1 1 0] contact=[1 1 1 1] previous_ground_fz=[0.000 257.922 169.932 0.000]
+[INFO] [1793621409.796391041] [ConvexMpcSolver]: [MPC_HEALTH] window_s=1.008 solves=132 fresh=130 failed=2 cached_used=2 gravity_returned=0 max_failed_res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 5.684e-14 3.740e-01]
+[INFO] [1793621409.796414619] [sysu219_guide_controller]: [MPC_TOTAL] last_ms=1.348 avg_ms=1.367 max_ms=3.096 nominal_step_ms=4.000 over_budget=0/132
+[INFO] [1793621409.836282561] [ConvexMpcSolver]: [MPC_RES] status=0 iter=20 res[stat,eq,ineq,comp]=[3.118e-12 4.441e-16 2.842e-14 4.823e-11]
+[INFO] [1793621409.836302575] [ConvexMpcSolver]: [MPC_TIMING] solve_ms=1.158 nominal_step_ms=20.000 N=15 horizon_ms=300.000 status=0 iter=20
+[INFO] [1793621409.836307299] [ConvexMpcSolver]: [MPC_FORCE] fresh_solution=1 sum_fz=270.599 expected_weight=407.115 contact=[1 0 0 1]
+[INFO] [1793621409.843146667] [ConvexMpcSolver]: [MPC_STATE] first_pending=0 pz=0.3558 vz=0.2416 pz_ref=0.3869 vz_ref=0.0000 rp_now=[-0.0659 0.0152] rp_ref=[0.0000 -0.0000]
+[INFO] [1793621409.871134887] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[1 0 0 1] contact=[1 1 1 1] previous_ground_fz=[54.436 0.000 0.000 94.586]
+[INFO] [1793621410.359061984] [sysu219_guide_controller]: [MPC_CONTACT_UPDATE] cycle=1 sync_solve=1 prev_contact=[0 1 1 0] contact=[1 1 1 1] previous_ground_fz=[0.000 292.988 152.199 0.000]
+[INFO] [1793621410.364131327] [sysu219_shadow_inekf]: [INEKF_VELOCITY] 支撑足水平速度融合：成功901，拒绝0，NIS 0.42；机身速度估计[0.159 0.067]，运动学观测[0.045 0.183] m/s
+[ERROR] [1793621410.514237696] [ConvexMpcSolver]: [MPC_FAIL] id=2316 status=1(MAX_ITER) iter=50/50 warm_start=0 solve_ms=3.085 N=15 prediction_ms=20.000 res[stat,eq,ineq,comp]=[4.547e-13 4.441e-16 1.421e-14 3.307e-01] tol[stat,eq,ineq,comp]=[1.000e-06 1.000e-06 1.000e-06 1.000e-06] action=cached reason=hold_last_success cached=1 same_contact=1 cache_age_ms=5.910 cache_limit_ms=none current_contact_changed=0 horizon_changed=0 prev_seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 seq=1111>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001>1001 pz=0.3452 vz=0.0408 pitch=-0.0025 pitch_ref=-0.0000 omega_pitch=-0.0951
+[INFO] [1793621410.539045592] [sysu219_guide_controller]: Switched from trotting to fixed stand
+[INFO] [1793621410.539558158] [TrottingDebug]: [TROT_DEBUG] saved=/tmp/trotting_run_46200_1793621392731005_run1_chunk1.csv run=1 frames=1951
+[INFO] [1793621412.715065725] [sysu219_guide_controller]: Switched from fixed stand to fixed down
+[INFO] [1793621415.371388085] [sysu219_shadow_inekf]: [INEKF_VELOCITY] 支撑足水平速度融合：成功1123，拒绝0，NIS 0.02；机身速度估计[-0.009 0.008]，运动学观测[0.013 0.004] m/s
+[INFO] [1793621417.251132154] [sysu219_guide_controller]: Switched from fixed down to fixed prone
+[INFO] [1793621420.375351369] [sysu219_contact_shadow_inekf]: [INEKF_VELOCITY] 支撑足水平速度融合：成功1347，拒绝0，NIS 0.00；机身速度估计[-0.001 -0.001]，运动学观测[-0.001 -0.000] m/s
+[INFO] [1793621421.403254932] [sysu219_guide_controller]: Switched from fixed prone to passive
+[INFO] [1793621424.492558758] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [1793621424.492606243] [controller_manager]: Shutdown request received....
+[INFO] [1793621424.492655092] [controller_manager]: Shutting down all controllers in the controller manager.
+[INFO] [1793621424.492681631] [controller_manager]: Deactivating controller 'joint_state_broadcaster'
+[INFO] [1793621424.492722343] [controller_manager]: Shutting down controller 'joint_state_broadcaster'
+[INFO] [1793621424.492758069] [controller_manager]: Deactivating controller 'imu_sensor_broadcaster'
+[INFO] [1793621424.492810760] [controller_manager]: Shutting down controller 'imu_sensor_broadcaster'
+[INFO] [1793621424.492851130] [controller_manager]: Deactivating controller 'sysu219_guide_controller'
+[INFO] [1793621424.496213993] [controller_manager]: Shutting down controller 'sysu219_guide_controller'
+[INFO] [1793621424.496269989] [resource_manager]: 'deactivate' hardware 'Sysu219System' 
+[INFO] [1793621424.496279092] [resource_manager]: Successful 'deactivate' of hardware 'Sysu219System'
+[INFO] [1793621424.496283594] [resource_manager]: 'shutdown' hardware 'Sysu219System' 
+[INFO] [1793621424.496289274] [resource_manager]: Successful 'shutdown' of hardware 'Sysu219System'
+[INFO] [1793621424.496293532] [controller_manager]: Shutting down the controller manager.

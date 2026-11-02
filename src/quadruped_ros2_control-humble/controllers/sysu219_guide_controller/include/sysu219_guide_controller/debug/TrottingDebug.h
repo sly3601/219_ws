@@ -4,6 +4,7 @@
 #include <sysu219_guide_controller/common/mathTools.h>
 #include <sysu219_guide_controller/control/OnlineTuning.h>
 #include <sysu219_guide_controller/control/ContactCoordinator.hpp>
+#include <sysu219_guide_controller/control/ShadowInEKF.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <atomic>
 #include <algorithm>
@@ -29,7 +30,15 @@ public:
                 WALL_DT_MS, UPDATE_MS, MODE, WAVE, FLAGS, EVENT,
                 SOLVER_ID, SOLVER_STATUS, SOLVER_ITER, SOLVER_RESULT, MPC_TOTAL_MS,
                 RUN_ID, PARAM_REVISION, PARAM_EFFECTIVE_CYCLE, DIAGNOSTIC_DROPPED, USE_SIM_TIME, META_COUNT };
-    static constexpr size_t kContextSize = 21;
+    static constexpr size_t kContextSize = 22;
+    // 与硬件hw_debug接口同名；原始电机值未做关节方向/零偏映射。
+    inline static constexpr std::array<const char*, 9> motor_debug_fields{{
+        "raw_position", "raw_velocity", "raw_effort", "rx_sequence", "rx_steady_s",
+        "rx_thread_running", "rx_unknown_id_count", "rx_invalid_frame_count", "rx_exception_count"}};
+    inline static constexpr std::array<const char*, 12> imu_debug_fields{{
+        "rx_sequence", "rx_steady_s", "ahrs_sequence", "ahrs_steady_s",
+        "imu_device_time_us", "ahrs_device_time_us", "imu_packet_sn", "ahrs_packet_sn",
+        "crc_error_count", "sn_lost_count", "rx_thread_running", "ahrs_source_valid"}};
     // wbc_flags为位标志，可同时成立；只按成功位读取对应数据，未执行项记NaN。
     enum WbcFlags { WBC_ATTEMPT = 1, WBC_OK = 2, RELAX_ATTEMPT = 4, RELAX_OK = 8,
                     WBC_APPLIED = 16, TORQUE_REJECTED = 32, COMMAND_CLAMPED = 64,
@@ -62,7 +71,7 @@ public:
     // event 位：1时间、2估计、4足端目标、8关节目标、16运动学、32姿态、64非法值/异常、128相位、256退出、512起步、1024接触切换。
     struct Frame {
         std::array<double, META_COUNT> meta{};
-        // 只复制实际生效值，后台按版本写JSON，不逐帧扩展485个CSV列。
+        // 只复制实际生效值，后台按版本写JSON，不逐帧展开全部参数为CSV列。
         sysu219::tuning::Parameters applied_parameters;
         std::array<double, kContextSize> settings{};
         bool end_of_run = false;
@@ -106,6 +115,11 @@ public:
         double contact_observation_age_s = -1.0;
         Vec4 contact_preload_N = Vec4::Zero(), contact_blocked_s = Vec4::Zero();
         int contact_fault_leg = -1;
+        // 追加诊断不参与控制。每列是一种字段，12关节顺序沿用原q列；缺接口记NaN。
+        Eigen::Matrix<double, 12, 9> motor_debug = Eigen::Matrix<double, 12, 9>::Constant(std::nan(""));
+        Eigen::Matrix<double, 12, 1> imu_debug = Eigen::Matrix<double, 12, 1>::Constant(std::nan(""));
+        int hardware_debug_interface_count = 0;
+        sysu219_guide_controller::ShadowInEKF::ControlDebug inekf_debug;
     };
 
     explicit TrottingDebug(double dt)
@@ -333,7 +347,42 @@ private:
         field("legacy_q", w.legacy_q); field("legacy_qd", w.legacy_qd);
         field("legacy_tau", w.legacy_tau); field("wbc_candidate_tau_delta", w.candidate_tau_delta);
         field("wbc_omega_d_O", w.omega_d);
-        out << std::setprecision(17) << '\n';
+        // 时间/序号保持double精度，字段只追加，不改变旧CSV列的含义和顺序。
+        out << std::setprecision(17);
+        scalar("hardware_debug_interface_count", f.hardware_debug_interface_count);
+        for (size_t i = 0; i < motor_debug_fields.size(); ++i) {
+            const std::string name = std::string("motor_") + motor_debug_fields[i];
+            field(name.c_str(), f.motor_debug.col(i));
+        }
+        for (size_t i = 0; i < imu_debug_fields.size(); ++i) {
+            const std::string name = std::string("imu_") + imu_debug_fields[i];
+            scalar(name.c_str(), f.imu_debug(i));
+        }
+        const auto& d = f.inekf_debug;
+        scalar("inekf_debug_valid", d.valid);
+        scalar("inekf_source_stamp_s", d.source_stamp_s);
+        scalar("inekf_source_age_s", d.source_age_s);
+        scalar("inekf_projection_dt_s", d.projection_dt_s);
+        scalar("inekf_source_epoch", d.source_epoch);
+        scalar("inekf_source_session", d.source_session);
+        scalar("inekf_output_rejections", d.output_rejections);
+        scalar("inekf_last_rejection_reason", d.last_rejection_reason);
+        scalar("inekf_selection_reason", d.selection_reason);
+        scalar("inekf_new_source_sample", d.new_source_sample);
+        scalar("inekf_reused_trusted_result", d.reused_trusted_result);
+        scalar("inekf_source_imu_unchanged_s", d.source_imu_unchanged_s);
+        scalar("inekf_source_imu_stale", d.source_imu_stale);
+        scalar("inekf_source_attitude_residual_rad", d.source_attitude_residual_rad);
+        scalar("inekf_source_attitude_accepted", d.source_attitude_accepted);
+        scalar("inekf_source_attitude_rejected", d.source_attitude_rejected);
+        scalar("inekf_source_attitude_update_stamp_s", d.source_attitude_update_stamp_s);
+        scalar("inekf_source_attitude_update_attempted", d.source_attitude_update_attempted);
+        scalar("inekf_source_attitude_update_accepted", d.source_attitude_update_accepted);
+        scalar("inekf_source_attitude_reacquiring", d.source_attitude_reacquiring);
+        field("inekf_source_p", d.source_position); field("inekf_source_v", d.source_velocity);
+        field("inekf_source_R", d.source_rotation); field("inekf_source_gyro", d.source_gyro);
+        field("inekf_gyro_bias", d.gyro_bias); field("inekf_accel_bias", d.accel_bias);
+        out << '\n';
     }
     static void writeParameters(const std::string& path, const Frame& f) {
         const auto& values = f.applied_parameters.values;
@@ -349,7 +398,15 @@ private:
             << ",\n\"first_observed_cycle\":" << f.meta[CYCLE]
             << ",\n\"ros_s\":" << f.meta[ROS_S]
             << ",\n\"system_s\":" << f.meta[SYSTEM_S]
-            << ",\n\"use_sim_time\":" << f.meta[USE_SIM_TIME];
+            << ",\n\"use_sim_time\":" << f.meta[USE_SIM_TIME]
+            << ",\n\"diagnostic_schema_version\":2"
+            << ",\n\"hardware_debug_interface_count\":" << f.hardware_debug_interface_count
+            << ",\n\"q_raw_kind\":\"unclamped_ik_target_not_hardware_encoder\""
+            << ",\n\"hardware_debug_clock\":\"host_steady_clock_seconds; device_time_us_is_separate\""
+            << ",\n\"imu_ahrs_sequence_kind\":\"payload_cache_write_attempts_including_rejected\""
+            << ",\n\"imu_ahrs_source_valid_kind\":\"combined_AHRS_payload_transport_validation_only\""
+            << ",\n\"imu_sn_lost_kind\":\"existing_parser_all_packet_types_counter\""
+            << ",\n\"relaxation_acceleration_dofs\":6";
         size_t offset = 0;
         for (const auto& matrix : {std::make_pair("Q", 13), std::make_pair("R", 12), std::make_pair("S", 12)}) {
             out << ",\n\"" << matrix.first << "\":[";
@@ -380,7 +437,7 @@ private:
             out << ",\"" << name << "\":" << values[offset++];
         out << "},\n\"Relaxation\":{";
         bool first_relaxation = true;
-        for (const char* name : {"Q_WBC", "Q_MPC", "joint_acceleration_weight_ratio"}) {
+        for (const char* name : {"Q_WBC", "Q_MPC"}) {
             if (!first_relaxation) out << ',';
             first_relaxation = false;
             out << '"' << name << "\":" << values[offset++];
@@ -396,7 +453,7 @@ private:
             "gait_height_m", "Q_WBC", "Q_MPC", "motor_kp_stance", "motor_kd_stance",
             "motor_kp_swing", "motor_kd_swing", "wbc_blend", "mu", "fz_min_N", "fz_max_N",
             "tau_ff_scale", "tau_ff_limit_hip", "tau_ff_limit_thigh", "tau_ff_limit_calf", "prediction_dt_s",
-            "joint_acceleration_weight_ratio"};
+            "motor_gain_transition_enabled", "planned_liftoff_unloading_enabled"};
         out << "},\n\"settings\":{";
         for (size_t i = 0; i < f.settings.size(); ++i) {
             if (i) out << ',';

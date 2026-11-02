@@ -6,6 +6,7 @@
 #define INTERFACE_H
 
 #include <vector>
+#include <array>
 #include <hardware_interface/loaned_command_interface.hpp>
 #include <hardware_interface/loaned_state_interface.hpp>
 #include <control_input_msgs/msg/inputs.hpp>
@@ -38,6 +39,11 @@ struct CtrlInterfaces
 
     std::vector<std::reference_wrapper<hardware_interface::LoanedStateInterface>>
     imu_state_interface_;
+
+    // 可选硬件诊断；仅在激活时按名称绑定，控制循环只读，缺失接口保持nullptr。
+    std::array<std::array<const hardware_interface::LoanedStateInterface*, 9>, 12>
+        motor_debug_state_interfaces_{};
+    std::array<const hardware_interface::LoanedStateInterface*, 12> imu_debug_state_interfaces_{};
 
     std::vector<std::reference_wrapper<hardware_interface::LoanedStateInterface>>
     foot_force_state_interface_;
@@ -75,6 +81,8 @@ struct CtrlInterfaces
 
         imu_state_interface_.clear();
         imu_state_interface_.clear();
+        for (auto& joint : motor_debug_state_interfaces_) joint.fill(nullptr);
+        imu_debug_state_interfaces_.fill(nullptr);
         foot_force_state_interface_.clear();
 
         // 控制器重启（deactivate -> activate）时，FSM 的中间标志不能带到下一次运行

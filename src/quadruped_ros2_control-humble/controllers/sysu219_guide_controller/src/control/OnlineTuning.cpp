@@ -48,11 +48,11 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-COUNT = 485
+COUNT = 484
 WBC_OFFSET = 457
 RELAXATION_OFFSET = 478
-RELAXATION_NAMES = ('Q_WBC', 'Q_MPC', 'joint_acceleration_weight_ratio')
-MOTOR_OFFSET = 481
+RELAXATION_NAMES = ('Q_WBC', 'Q_MPC')
+MOTOR_OFFSET = 480
 MOTOR_NAMES = ('kp_stance', 'kd_stance', 'kp_swing', 'kd_swing')
 Q_AXES = ('roll', 'pitch', 'yaw', 'px', 'py', 'pz',
           'wx', 'wy', 'wz', 'vx', 'vy', 'vz', 'g')
@@ -87,7 +87,8 @@ def snapshot(values, revision):
               'created_at': datetime.datetime.now().astimezone().isoformat(),
               'applied_revision': revision,
               'note': '仅记录已应用参数，不会自动加载；矩阵按行，FR/FL/RR/RL。',
-              'Q_state_order': list(Q_AXES), 'force_order': list(FORCE_AXES)}
+              'Q_state_order': list(Q_AXES), 'force_order': list(FORCE_AXES),
+              'relaxation_acceleration_dofs': 6}
     for name, offset, size in (('Q', 0, 13), ('R', 169, 12), ('S', 313, 12)):
         result[name] = [values[offset + row * size:offset + (row + 1) * size]
                         for row in range(size)]
@@ -393,10 +394,8 @@ bool validate(const Parameters& p, std::string& reason) {
     }
   }
   const auto relaxation = Parameters::kRelaxationOffset;
-  const double joint_weight = p.values[relaxation] * p.values[relaxation + 2];
-  if (p.values[relaxation] <= 0.0 || p.values[relaxation + 1] <= 0.0 ||
-      p.values[relaxation + 2] <= 0.0 || !std::isfinite(joint_weight) || joint_weight <= 0.0) {
-    reason = "Relaxation weights and Q_WBC * joint_acceleration_weight_ratio must be positive and finite.";
+  if (p.values[relaxation] <= 0.0 || p.values[relaxation + 1] <= 0.0) {
+    reason = "Relaxation Q_WBC and Q_MPC must be positive and finite.";
     return false;
   }
   for (std::size_t i = Parameters::kMotorOffset; i < Parameters::kCount; ++i) {

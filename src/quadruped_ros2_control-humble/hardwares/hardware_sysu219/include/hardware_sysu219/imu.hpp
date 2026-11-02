@@ -22,6 +22,11 @@
 #include <Eigen/Geometry>
 #include <Eigen/Core>
 #include <thread>
+#include <array>
+#include <cstdint>
+#include <atomic>
+#include <mutex>
+#include <limits>
 
 using namespace std;
 using namespace Eigen;
@@ -145,6 +150,9 @@ union ahrs_frame_read{
 
 
 
+// 顺序与hw_debug/imu.*接口一致；设备时间保留原始微秒值。
+using ImuDiagnostics = std::array<double, 12>;
+
 class imu : public rclcpp::Node
 {
 public:
@@ -161,7 +169,8 @@ public:
   //检查配置的波特率和串口能否成功打开,用于在接口类中调用，调试用
   void print_serial_info();
 
-  sensor_msgs::msg::Imu return_latest_imu_data();
+  sensor_msgs::msg::Imu return_latest_imu_data(
+      ImuDiagnostics* diagnostics = nullptr, bool* had_new_data = nullptr);
 
   bool check_newdata();
   
@@ -181,8 +190,8 @@ public:
 private:
   bool if_debug_;
   //sum info
-  int sn_lost_ = 0;
-  int crc_error_ = 0;
+  std::atomic<int> sn_lost_{0};
+  std::atomic<std::uint64_t> crc_error_{0};
   uint8_t read_sn_ = 0;
   bool first_sn_ = false;
   std::string imu_frame_id_;
@@ -200,6 +209,14 @@ private:
   std::thread read_thread_;
   std::mutex imu_mutex_;       // 数据缓存互斥锁
   sensor_msgs::msg::Imu latest_imu_data_; // 最新IMU数据缓存
+  ImuDiagnostics latest_imu_diagnostics_{}; // 与上面组合在同一mutex下发布/读取。
+  std::uint64_t imu_rx_sequence_ = 0;
+  double imu_rx_steady_s_ = std::numeric_limits<double>::quiet_NaN();
+  // 实际AHRS payload缓存的写入尝试：含CRC失败/短读，不能冒充最后成功的AHRS。
+  std::array<double, 5> ahrs_source_metadata_{{0.0,
+      std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+      std::numeric_limits<double>::quiet_NaN(), 0.0}};
+  std::atomic<bool> rx_thread_running_{false};
   bool has_new_data_ = false;          // 是否有新数据标记
   std::atomic<bool> is_running_ = false; // 线程运行标记（原子类型）
   

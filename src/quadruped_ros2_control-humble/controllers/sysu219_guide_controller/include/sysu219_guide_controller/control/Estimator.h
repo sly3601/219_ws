@@ -9,6 +9,7 @@
 #include <sysu219_guide_controller/common/mathTypes.h>
 #include <sysu219_guide_controller/robot/QuadrupedRobot.h>
 #include "LowPassFilter.h"
+#include "ShadowInEKF.hpp"
 
 struct CtrlInterfaces;
 class WaveGenerator;
@@ -112,7 +113,17 @@ public:
     void update();
 
     // 由 odometry_source 配置在激活时选定；新系统未就绪时不自动改用旧 KF。
-    void selectInEKF(bool enabled) { use_inekf_ = enabled; }
+    void selectInEKF(bool enabled) {
+        use_inekf_ = enabled;
+        if (!enabled) inekf_control_debug_ = sysu219_guide_controller::ShadowInEKF::ControlDebug{};
+    }
+    // 与本拍实际供给控制的InEKF结果同步；只用于CSV诊断，不参与控制决策。
+    const sysu219_guide_controller::ShadowInEKF::ControlDebug& debugInEKFControl() const noexcept {
+        return inekf_control_debug_;
+    }
+    void setInEKFControlDebug(const sysu219_guide_controller::ShadowInEKF::ControlDebug& debug) noexcept {
+        inekf_control_debug_ = debug;
+    }
     // 只供对照发布读取旧 KF，避免显示链误把选定的新输出当作旧估计。
     void legacyState(Vec3& position, Vec3& velocity, RotMat& rotation) const {
         position = x_hat_.segment<3>(0); velocity = x_hat_.segment<3>(3); rotation = rotation_;
@@ -132,6 +143,7 @@ public:
 
 private:
     bool use_inekf_ = false;
+    sysu219_guide_controller::ShadowInEKF::ControlDebug inekf_control_debug_;
     Vec3 inekf_position_ = Vec3::Zero(), inekf_velocity_ = Vec3::Zero(), inekf_gyro_ = Vec3::Zero();
     RotMat inekf_rotation_ = RotMat::Identity();
     Vec3 debug_v_predicted_ = Vec3::Zero(), debug_v_unfiltered_ = Vec3::Zero();

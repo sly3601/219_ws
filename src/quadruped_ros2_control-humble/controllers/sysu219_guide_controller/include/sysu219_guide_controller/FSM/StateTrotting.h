@@ -144,6 +144,8 @@ private:
     Vec3 d_wbd_saturation;  // 仅用于 QP 模式的期望角加速度
     Vec3 swing_force_limit;
     double Kp_motor_stance, Kd_motor_stance, Kp_motor_swing, Kd_motor_swing; // 电机增益参数
+    bool motor_gain_transition_enabled_; // 构造函数中配置，默认关闭40 ms增益过渡。
+    bool planned_liftoff_unloading_enabled_; // 默认关闭计划抬腿前12 ms强制卸载，不影响闭环接触协调器。
     static constexpr double contact_transition_s_ = 0.04; // MIT增益过渡时间，s。
     Vec4 motor_stance_blend_ = Vec4::Ones(); // 仅在原有两组MIT增益之间过渡。
 
