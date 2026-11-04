@@ -281,6 +281,22 @@ namespace sysu219_guide_controller
                 next_state_ = current_state_;
                 next_state_name_ = current_state_->state_name;
             }
+            // IMU 无数据时禁止进入任何非 PASSIVE 状态（防无姿态反馈下运动）。
+            const double iw = ctrl_interfaces_.imu_state_interface_[0].get().get_value();
+            const double ix = ctrl_interfaces_.imu_state_interface_[1].get().get_value();
+            const double iy = ctrl_interfaces_.imu_state_interface_[2].get().get_value();
+            const double iz = ctrl_interfaces_.imu_state_interface_[3].get().get_value();
+            const bool imu_valid = std::isfinite(iw) && std::isfinite(ix) &&
+                std::isfinite(iy) && std::isfinite(iz) &&
+                std::abs(iw * iw + ix * ix + iy * iy + iz * iz - 1.0) < 0.1;
+            const bool reject_imu = !imu_valid && next_state_ != state_list_.passive;
+            if (reject_imu) {
+                RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *get_node()->get_clock(), 1000,
+                    "[IMU] 尚未收到有效 IMU 数据，拒绝切换状态；请检查 IMU 串口/朝向。");
+                ctrl_interfaces_.control_inputs_.command = 0;
+                next_state_ = current_state_;
+                next_state_name_ = current_state_->state_name;
+            }
             bool reject_trotting = false;
             if (next_state_ == state_list_.trotting)
             {
@@ -308,7 +324,7 @@ namespace sysu219_guide_controller
             const bool reject_com_return = current_state_ == state_list_.comIdentification &&
                 next_state_ == state_list_.fixedStand &&
                 state_list_.comIdentification->checkChange() != FSMStateName::FIXEDSTAND;
-            if (reject_odometry || reject_trotting || reject_com_return)
+            if (reject_odometry || reject_imu || reject_trotting || reject_com_return)
             {
                 current_state_->run(time, period);
             }

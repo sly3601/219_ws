@@ -7,8 +7,6 @@
 #include <rclcpp/logger.hpp>
 #include <rclcpp/logging.hpp>
 
-#include "crc32.h"
-
 #include <cmath>
 #include <unordered_map>
 #include <limits>
@@ -89,18 +87,36 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Hardwa
         joint_type_limits_["thigh"] = {-0.623, 1.65, -19.95, 19.95, -100.0, 100.0};
         joint_type_limits_["calf"] = {-2.322, -0.672, -20.06, 20.06, -100.0, 100.0};
 
-    // ========== imu改动 ==========
-    // 获取参数
-    imu_serial_port_ = info_.hardware_parameters.at("imu_serial_port");
-    imu_serial_baud_ = std::stoi(info_.hardware_parameters.at("imu_serial_baud"));
-    if_debug_ = info_.hardware_parameters.at("debug") == "true";
-    // ========== imu改动 ==========
+    // ========== IMU 配置：和电机一样从 YAML 参数文件读取 ==========
+    // 1. 读取 YAML 文件路径（电机与 IMU 共用同一份）
+    std::string yaml_file_path = "";
+    if (info_.hardware_parameters.find("yaml_file_path") != info_.hardware_parameters.end()) {
+        yaml_file_path = info_.hardware_parameters.at("yaml_file_path");
+    } else {
+        RCLCPP_FATAL(rclcpp::get_logger("sysu219_hardware"), "未配置YAML文件路径（yaml_file_path）！");
+        return CallbackReturn::ERROR;
+    }
+
+    // 2. 从 YAML 读 IMU 串口/波特率/frame_id/debug
+    std::string imu_serial_port = "/dev/sysu219/ttyACM4";
+    int imu_serial_baud = 921600;
+    std::string imu_frame_id = "imu_link";
+    bool imu_debug = false;
+    try {
+        YAML::Node config = YAML::LoadFile(yaml_file_path);
+        if (config["imu"]) {
+            if (config["imu"]["serial_port"]) imu_serial_port = config["imu"]["serial_port"].as<std::string>();
+            if (config["imu"]["baudrate"]) imu_serial_baud = config["imu"]["baudrate"].as<int>();
+            if (config["imu"]["frame_id"]) imu_frame_id = config["imu"]["frame_id"].as<std::string>();
+            if (config["imu"]["debug"]) imu_debug = config["imu"]["debug"].as<bool>();
+        }
+    } catch (const YAML::Exception& e) {
+        RCLCPP_WARN(rclcpp::get_logger("sysu219_hardware"), "解析 IMU 配置失败，使用默认值：%s", e.what());
+    }
+    // 3. 初始化 IMU 驱动（串口等参数来自上方 YAML 配置）
     try {
         // 初始化 IMU 驱动
-        imu_driver_ = std::make_unique<FDILink::imu>(); // FDILink是自定义命名空间，imu是自定义类
-        
-        // 设置参数（可以通过参数服务器传递）
-        // 注意：您可能需要修改您的 imu 类以支持参数设置
+        imu_driver_ = std::make_unique<FDILink::imu>(imu_serial_port, imu_serial_baud, imu_frame_id, imu_debug);
         
     } catch (const std::exception & e) {
         RCLCPP_ERROR(rclcpp::get_logger("imu_driver"), "Failed to configure IMU driver: %s", e.what());
@@ -115,17 +131,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Hardwa
 
 
 
-        // ========== 核心改动2：新增达妙电机串口初始化逻辑 ==========
-    // 1. 从hardware_parameters中读取达妙电机YAML配置文件路径
-    std::string yaml_file_path = "";
-    if (info_.hardware_parameters.find("yaml_file_path") != info_.hardware_parameters.end()) {
-        yaml_file_path = info_.hardware_parameters.at("yaml_file_path");
-    } else {
-        RCLCPP_FATAL(rclcpp::get_logger("sysu219_hardware"), "未配置达妙电机YAML文件路径（yaml_file_path）！");
-        return CallbackReturn::ERROR;
-    }
-
-    // 2. 解析达妙电机配置（串口、CAN ID、电机类型等）
+    // ========== 解析达妙电机配置（串口、CAN ID、电机类型等） ==========
     if (!parseDmActData(yaml_file_path)) {
         RCLCPP_ERROR(rclcpp::get_logger("sysu219_hardware"), 
             "解析达妙电机配置失败：%s", yaml_file_path.c_str());
@@ -200,9 +206,9 @@ std::vector<hardware_interface::StateInterface> HardwareSysu219::export_state_in
             state_interfaces.emplace_back("hw_debug", joint_names[joint] + "." + joint_debug_names[field],
                 &joint_debug_states_[joint][field]);
     }
-    const char* imu_debug_names[] = {"rx_sequence", "rx_steady_s", "ahrs_sequence", "ahrs_steady_s",
-        "imu_device_time_us", "ahrs_device_time_us", "imu_packet_sn", "ahrs_packet_sn",
-        "crc_error_count", "sn_lost_count", "rx_thread_running", "ahrs_source_valid"};
+    const char* imu_debug_names[] = {"rx_sequence", "rx_steady_s", "hi83_frame_count", "hi91_frame_count",
+        "device_time_us", "frame_tag", "gyr_valid", "acc_valid",
+        "crc_error_count", "reserved", "rx_thread_running", "source_valid"};
     for (size_t field = 0; field < imu_debug_states_.size(); ++field)
         state_interfaces.emplace_back("hw_debug", std::string("imu.") + imu_debug_names[field],
             &imu_debug_states_[field]);

@@ -47,20 +47,21 @@ The hardware plugin is declared in
 <hardware>
     <plugin>hardware_sysu219/HardwareSysu219</plugin>
     <param name="yaml_file_path">$(find sysu219_description)/config/hardware_config.yaml</param>
-    <param name="imu_serial_port">/dev/ttyUSB0</param>
-    <param name="imu_serial_baud">921600</param>
-    <param name="debug">false</param>
-    <param name="imu_frame_id">imu_link</param>
 </hardware>
 ```
 
-* `yaml_file_path`: DM motor configuration, resolved by `HardwareSysu219` via `parseDmActData`.
-  See [hardware_config.yaml](../../descriptions/sysu219/sysu219_description/config/hardware_config.yaml),
-  which holds the per-leg serial ports (baudrate) and, for every motor, its `can_id` / `master_id` /
-  `type` / `direction` / `offset`.
-* `imu_serial_port` / `imu_serial_baud`: serial device and baudrate of the IMU.
-* `debug`: verbose logging switch of the hardware interface.
-* `imu_frame_id`: frame id of the IMU.
+* `yaml_file_path`: configuration file for both the DM motors and the IMU, resolved by
+  `HardwareSysu219`. See
+  [hardware_config.yaml](../../descriptions/sysu219/sysu219_description/config/hardware_config.yaml),
+  which holds:
+  - `motor_ports` / `motors`: per-leg serial ports (baudrate) and, for every motor, its
+    `can_id` / `master_id` / `type` / `direction` / `offset`.
+  - `imu`: `serial_port` / `baudrate` / `frame_id` / `debug` of the IMU.
+
+Fixed names `/dev/sysu219/ttyACM0..4` correspond to RR, FR, FL, RL and IMU.
+Install [99-sysu219-serial.rules](99-sysu219-serial.rules) in `/etc/udev/rules.d/`
+and reload the udev rules. Motor names follow the current USB sockets (keep these
+connections unchanged); the IMU name follows its unique USB serial number.
 
 After modifying the config, you can try to visualize the real robot info with the following command
 (the IMU and DM motors must be connected, otherwise `on_init` fails):

@@ -4,10 +4,11 @@
 
 ## 当前包含
 
-两个 RQt 窗口工具：
+三个 RQt 窗口工具：
 
 - `joint_tuner`（插件名 `JointTuner`）：12 关节滑条调姿 + 左右腿批次同步 + 状态姿态切换 + 一键保存。
 - `joint_state_viewer`（插件名 `JointStateViewer`）：**只读**双列显示 12 关节的实际位置与目标位置。
+- `imu_transform_tuner`（插件名 `ImuTransformTuner`）：用「轴映射」（机身 X/Y/Z 各对应 IMU 传感器的哪个轴）实时发布 TF `base -> imu_measured`，在 RViz 里对齐机身参考系，确认 IMU 安装朝向。
 
 以及 JointTuner 可视化链路依赖的辅助节点：
 
@@ -85,9 +86,28 @@ ros2 launch tools joint_state_viewer.launch.py
 
 「保存当前 12 关节实测位置到 YAML」写到 `~/219_ws/src/tools/config/joint_states/joint_snapshot_YYYYMMDD_HHMMSS.yaml`。
 
+### IMU Transform Tuner —— 自带 RViz，调 IMU 安装朝向
+
+```bash
+ros2 launch tools imu_transform_tuner.launch.py
+# 可选参数：
+#   serial_port=/dev/sysu219/ttyACM4（IMU 串口）
+#   baud_rate=921600（IMU 波特率）
+#   imu_topic=/imu/data_raw（IMU 原始数据话题）
+#   parent_frame=base（TF 父坐标系）
+#   child_frame=imu_measured（RViz 里显示的 IMU 坐标轴）
+#   base_height=0.35（RViz 里把 base 抬离地面）
+```
+
+这条 launch 是**自包含**的，一次拉起：`imu_reader`（独立读 hipnuc 串口、与电机解耦，发 `/imu/data_raw`）+ `robot_state_publisher` 展开四足模型 + `static_transform_publisher` 补 `world -> base` + `rviz2` 自动加载描述文件 + `rqt --standalone ImuTransformTuner` 弹出调参窗口。
+
+窗口里用「上一个 / 下一个」按钮遍历全部 24 种右手系轴映射，插件读取 IMU 原始朝向 `q_raw`，按当前轴映射矩阵 M 计算 `q_body = q_raw ⊗ conj(q_M)` 后发布 TF `base -> imu_measured`。RViz 的 TF display 会同时显示四足模型和 `imu_measured` 坐标轴，对齐机身参考系即可目测确认 IMU 安装朝向，并在窗口里读出轴映射矩阵和等效四元数写回 `imu.cpp`。
+
+无 IMU 数据时用单位四元数预览，工具仍可离线调整方向。
+
 ### 手动起 rqt 主壳
 
-两个插件都注册在 `plugin.xml` 里，也可以自己起主壳：
+三个插件都注册在 `plugin.xml` 里，也可以自己起主壳：
 
 ```bash
 ros2 run rqt_gui_py rqt_gui_py

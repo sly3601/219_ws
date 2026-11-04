@@ -46,10 +46,6 @@
     <hardware>
       <plugin>hardware_sysu219/HardwareSysu219</plugin>
       <param name="yaml_file_path">/home/yzz/219_ws/install/sysu219_description/share/sysu219_description/config/hardware_config.yaml</param>
-      <param name="imu_serial_port">/dev/ttyUSB0</param>
-      <param name="imu_serial_baud">921600</param>
-      <param name="debug">false</param>
-      <param name="imu_frame_id">imu_link</param>
     </hardware>
     <joint name="FR_hip_joint">
       <command_interface name="position"/>

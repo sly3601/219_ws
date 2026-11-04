@@ -87,12 +87,8 @@ private:
     void correctMotorCommand(damiao::DmActData& dm_data);
 
     
-    // IMU 实例
+    // IMU 实例（串口/波特率等参数由 on_init 从 YAML 读入后传入构造）
     std::unique_ptr<FDILink::imu> imu_driver_;
-    // 参数
-    std::string imu_serial_port_;
-    int imu_serial_baud_;
-    bool if_debug_;
 
     // useless possible
     int domain_ = 1;

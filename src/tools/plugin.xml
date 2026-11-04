@@ -26,4 +26,17 @@
       <icon type="theme">utilities-system-monitor</icon>
     </qtgui>
   </class>
+  <class name="ImuTransformTuner" type="tools.imu_transform_tuner.imu_transform_tuner_plugin.ImuTransformTunerPlugin" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      IMU 安装朝向调试窗口。订阅 IMU orientation，拖动 roll/pitch/yaw 实时发布
+      TF base -> imu_measured，在 RViz 里对齐机身参考系，确认 IMU 安装朝向并读出修正四元数。
+    </description>
+    <qtgui>
+      <group>
+        <label>Tools</label>
+      </group>
+      <label>IMU Transform Tuner</label>
+      <icon type="theme">applications-system</icon>
+    </qtgui>
+  </class>
 </library>

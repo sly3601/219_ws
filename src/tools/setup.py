@@ -13,6 +13,7 @@ setup(
         ('share/' + package_name + '/launch', [
             'launch/joint_tuner.launch.py',
             'launch/joint_state_viewer.launch.py',
+            'launch/imu_transform_tuner.launch.py',
         ]),
     ],
     install_requires=['setuptools'],
@@ -25,10 +26,12 @@ setup(
     entry_points={
         'console_scripts': [
             'joint_state_relay_node = tools.joint_state_relay.joint_state_relay:main',
+            'imu_reader_node = tools.imu_transform_tuner.hipnuc_reader:main',
         ],
         'rqt_gui_py.Plugin': [
             'joint_tuner = tools.joint_tuner.joint_tuner_plugin:JointTunerPlugin',
             'joint_state_viewer = tools.joint_state_viewer.joint_state_viewer_plugin:JointStateViewerPlugin',
+            'imu_transform_tuner = tools.imu_transform_tuner.imu_transform_tuner_plugin:ImuTransformTunerPlugin',
         ],
     },
 )

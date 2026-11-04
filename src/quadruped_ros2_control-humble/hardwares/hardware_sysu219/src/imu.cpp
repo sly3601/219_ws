@@ -1,60 +1,48 @@
 #include <hardware_sysu219/imu.hpp>
 #include <chrono>
-//#include <Eigen/Eigen>
-
-
+#include <cstring>
 
 namespace FDILink
 {
-    // 构造函数
-  imu::imu(): rclcpp::Node ("IMU_Node")
+  // 构造函数：串口/波特率/frame_id/debug 均由硬件接口从 YAML 参数文件读入后传入
+  imu::imu(const std::string& serial_port, int serial_baud,
+           const std::string& frame_id, bool debug)
+    : rclcpp::Node("IMU_Node")
   {
-    
-    this->declare_parameter("if_debug_",false);
-    this->get_parameter("if_debug_", if_debug_);
+    if_debug_ = debug;
+    serial_port_ = serial_port;
+    serial_baud_ = serial_baud;
+    serial_timeout_ = 1000;
+    imu_frame_id_ = frame_id;
 
-    this->declare_parameter<std::string>("serial_port_","/dev/ttyUSB0");
-    this->get_parameter("serial_port_", serial_port_);
-
-    this->declare_parameter<std::int64_t>("serial_baud_",921600);
-    this->get_parameter("serial_baud_", serial_baud_);  
-
-    this->declare_parameter<std::int64_t>("serial_timeout_",1000);
-    this->get_parameter("serial_timeout_", serial_timeout_);  
-    
-    
-    this->declare_parameter<std::string>("imu_frame_id_","imu_link");
-    this->get_parameter("imu_frame_id_", imu_frame_id_);  
+    memset(&raw_, 0, sizeof(raw_));
 
     latest_imu_diagnostics_.fill(std::numeric_limits<double>::quiet_NaN());
     latest_imu_diagnostics_[0] = latest_imu_diagnostics_[2] = 0.0;
+    latest_imu_diagnostics_[3] = 0.0;
     latest_imu_diagnostics_[11] = 0.0;
+
     //开始接收IMU数据
     init();
-
   }
+
   // 析构函数
   imu::~imu()
   {
-
     is_running_ = false;
     if (read_thread_.joinable()) {
         read_thread_.join();
     }
     deactivate_port();
-
   }
+
   // 初始化函数，初始化串口，开启数据接收线程
   void imu::init()
   {
-    //初始化串口
     activate_port();
-    //开启读取数据线程
     read_thread_ = std::thread(&imu::read_imu_loop, this);
-
   }
-  
-  
+
   // 启动读取数据的线程
   void imu::read_imu_loop()
   {
@@ -65,319 +53,135 @@ namespace FDILink
       }
       ~RunningGuard() { running.store(false, std::memory_order_relaxed); }
     } running_guard(rx_thread_running_);
+
     is_running_ = true;
     while (is_running_)
     {
-      bool complete_imu_payload = false;
-      double imu_received_steady_s = std::numeric_limits<double>::quiet_NaN();
-      if (is_serial_open())
-      {
-        //check head start   检查起始 数据帧头
-      uint8_t check_head[1] = {0xff};  
-      size_t head_s = serial_.read(check_head, 1);
-      if (if_debug_){
-          if (head_s != 1)
-          {
-              RCLCPP_ERROR(this->get_logger(),"Read serial port time out! can't read pack head.");
-          }
-          std::cout << std::endl;
-          std::cout << "check_head: " << std::hex << (int)check_head[0] << std::dec << std::endl;
-      }
-      if (check_head[0] != FRAME_HEAD)
-      {
-         continue;
-      }
-      
-      //check head type   检查数据类型
-      uint8_t head_type[1] = {0xff};
-      size_t type_s = serial_.read(head_type, 1);
-      if (if_debug_){
-          std::cout << "head_type:  " << std::hex << (int)head_type[0] << std::dec << std::endl;
-      }
-      if (head_type[0] != TYPE_IMU && head_type[0] != TYPE_AHRS && head_type[0] != TYPE_INSGPS && 
-          head_type[0] != TYPE_GEODETIC_POS && head_type[0] != 0x50 && head_type[0] != TYPE_GROUND&& 
-          head_type[0] != 0xff)
-      {
-          RCLCPP_WARN(this->get_logger(),"head_type error: %02X",head_type[0]);
-          continue;
-      }
-      
-      //check head length    检查对应数据类型的长度是否符合
-      uint8_t check_len[1] = {0xff};
-      size_t len_s = serial_.read(check_len, 1);
-      if (if_debug_){
-          std::cout << "check_len: "<< std::dec << (int)check_len[0]  << std::endl;
-      }
-      if (head_type[0] == TYPE_IMU && check_len[0] != IMU_LEN)
-      {
-          RCLCPP_WARN(this->get_logger(),"head_len error (imu)");
-          continue;
-      }
-      else if (head_type[0] == TYPE_AHRS && check_len[0] != AHRS_LEN)
-      {
-          RCLCPP_WARN(this->get_logger(),"head_len error (ahrs)");
-          continue;
-      }
-      else if (head_type[0] == TYPE_INSGPS && check_len[0] != INSGPS_LEN)
-      {
-          RCLCPP_WARN(this->get_logger(),"head_len error (insgps)");
-          continue;
-      }
-      else if (head_type[0] == TYPE_GEODETIC_POS && check_len[0] != GEODETIC_POS_LEN)
-      {
-          RCLCPP_WARN(this->get_logger(),"head_len error (GEODETIC_POS)");
-          continue;
-      }
-      else if (head_type[0] == TYPE_GROUND || head_type[0] == 0x50) // 未知数据，防止记录失败
-      {
-          uint8_t ground_sn[1];
-          size_t ground_sn_s = serial_.read(ground_sn, 1);
-          if (++read_sn_ != ground_sn[0])
-          {
-              if ( ground_sn[0] < read_sn_)
-              {
-                  if(if_debug_){
-                      RCLCPP_WARN(this->get_logger(),"detected sn lost.");
-                  }
-                  sn_lost_ += 256 - (int)(read_sn_ - ground_sn[0]);
-                  read_sn_ = ground_sn[0];
-                  // continue;
-              }
-              else
-              {
-                  if(if_debug_){
-                      RCLCPP_WARN(this->get_logger(),"detected sn lost.");
-                  }
-                  sn_lost_ += (int)(ground_sn[0] - read_sn_);
-                  read_sn_ = ground_sn[0];
-                  // continue;
-              }
-          }
-          uint8_t ground_ignore[500];
-          size_t ground_ignore_s = serial_.read(ground_ignore, (check_len[0]+4));
-          continue;
-      }
-      
-      //read head sn 
-      uint8_t check_sn[1] = {0xff};
-      size_t sn_s = serial_.read(check_sn, 1);
-      uint8_t head_crc8[1] = {0xff};
-      size_t crc8_s = serial_.read(head_crc8, 1);
-      uint8_t head_crc16_H[1] = {0xff};
-      uint8_t head_crc16_L[1] = {0xff};
-      size_t crc16_H_s = serial_.read(head_crc16_H, 1);
-      size_t crc16_L_s = serial_.read(head_crc16_L, 1);
-      if (if_debug_){
-          std::cout << "check_sn: "     << std::hex << (int)check_sn[0]     << std::dec << std::endl;
-          std::cout << "head_crc8: "    << std::hex << (int)head_crc8[0]    << std::dec << std::endl;
-          std::cout << "head_crc16_H: " << std::hex << (int)head_crc16_H[0] << std::dec << std::endl;
-          std::cout << "head_crc16_L: " << std::hex << (int)head_crc16_L[0] << std::dec << std::endl;
-      }
-      
-      // put header & check crc8 & count sn lost
-      // check crc8 进行crc8数据校验
-      if (head_type[0] == TYPE_IMU)
-      {
-          imu_frame_.frame.header.header_start   = check_head[0];
-          imu_frame_.frame.header.data_type      = head_type[0];
-          imu_frame_.frame.header.data_size      = check_len[0];
-          imu_frame_.frame.header.serial_num     = check_sn[0];
-          imu_frame_.frame.header.header_crc8    = head_crc8[0];
-          imu_frame_.frame.header.header_crc16_h = head_crc16_H[0];
-          imu_frame_.frame.header.header_crc16_l = head_crc16_L[0];
-          uint8_t CRC8 = CRC8_Table(imu_frame_.read_buf.frame_header, 4);
-          if (CRC8 != imu_frame_.frame.header.header_crc8)
-          {
-              crc_error_.fetch_add(1, std::memory_order_relaxed);
-              RCLCPP_WARN(this->get_logger(),"header_crc8 error");
-              continue;
-          }
-          if(!first_sn_){
-              read_sn_  = imu_frame_.frame.header.serial_num - 1;
-              first_sn_ = true;
-          }
-          //check sn 
-          imu::checkSN(TYPE_IMU);
-      }
-      else if (head_type[0] == TYPE_AHRS)
-      {
-          ahrs_frame_.frame.header.header_start   = check_head[0];
-          ahrs_frame_.frame.header.data_type      = head_type[0];
-          ahrs_frame_.frame.header.data_size      = check_len[0];
-          ahrs_frame_.frame.header.serial_num     = check_sn[0];
-          ahrs_frame_.frame.header.header_crc8    = head_crc8[0];
-          ahrs_frame_.frame.header.header_crc16_h = head_crc16_H[0];
-          ahrs_frame_.frame.header.header_crc16_l = head_crc16_L[0];
-          uint8_t CRC8 = CRC8_Table(ahrs_frame_.read_buf.frame_header, 4);
-          if (CRC8 != ahrs_frame_.frame.header.header_crc8)
-          {
-              crc_error_.fetch_add(1, std::memory_order_relaxed);
-              RCLCPP_WARN(this->get_logger(),"header_crc8 error");
-              continue;
-          }
-          if(!first_sn_){
-              read_sn_  = ahrs_frame_.frame.header.serial_num - 1;
-              first_sn_ = true;
-          }
-          //check sn 
-          imu::checkSN(TYPE_AHRS);
-      }
-      
-      // check crc16 进行crc16数据校验
-      if (head_type[0] == TYPE_IMU)
-      {
-          uint16_t head_crc16_l = imu_frame_.frame.header.header_crc16_l;
-          uint16_t head_crc16_h = imu_frame_.frame.header.header_crc16_h;
-          uint16_t head_crc16 = head_crc16_l + (head_crc16_h << 8);
-          size_t data_s = serial_.read(imu_frame_.read_buf.read_msg, (IMU_LEN + 1)); //48+1
-          complete_imu_payload = data_s == IMU_LEN + 1;
-          imu_received_steady_s = std::chrono::duration<double>(
-              std::chrono::steady_clock::now().time_since_epoch()).count();
-          // if (if_debug_){
-          //   for (size_t i = 0; i < (IMU_LEN + 1); i++)
-          //   {
-          //     std::cout << std::hex << (int)imu_frame_.read_buf.read_msg[i] << " ";
-          //   }
-          //   std::cout << std::dec << std::endl;
-          // }
-          uint16_t CRC16 = CRC16_Table(imu_frame_.frame.data.data_buff, IMU_LEN);
-          if (if_debug_)
-          {          
-              std::cout << "CRC16:        " << std::hex << (int)CRC16 << std::dec << std::endl;
-              std::cout << "head_crc16:   " << std::hex << (int)head_crc16 << std::dec << std::endl;
-              std::cout << "head_crc16_h: " << std::hex << (int)head_crc16_h << std::dec << std::endl;
-              std::cout << "head_crc16_l: " << std::hex << (int)head_crc16_l << std::dec << std::endl;
-              bool if_right = ((int)head_crc16 == (int)CRC16);
-              std::cout << "if_right: " << if_right << std::endl;
-          }
-          
-          if (head_crc16 != CRC16)
-          {
-              crc_error_.fetch_add(1, std::memory_order_relaxed);
-              RCLCPP_WARN(this->get_logger(),"check crc16 faild(imu).");
-              continue;
-          }
-          else if(imu_frame_.frame.frame_end != FRAME_END)
-          {
-              RCLCPP_WARN(this->get_logger(),"check frame end.");
-              continue;
-          }
-      }
-      else if (head_type[0] == TYPE_AHRS)
-      {
-          uint16_t head_crc16_l = ahrs_frame_.frame.header.header_crc16_l;
-          uint16_t head_crc16_h = ahrs_frame_.frame.header.header_crc16_h;
-          uint16_t head_crc16 = head_crc16_l + (head_crc16_h << 8);
-          size_t data_s = serial_.read(ahrs_frame_.read_buf.read_msg, (AHRS_LEN + 1)); //48+1
-          // 原代码即使CRC失败也保留此payload，下一IMU组合会直接使用它。
-          // 只记录真实缓存来源；不改变CRC丢包、短读或四元数选择逻辑。
-          ahrs_source_metadata_[0] += 1.0;
-          ahrs_source_metadata_[1] = std::chrono::duration<double>(
-              std::chrono::steady_clock::now().time_since_epoch()).count();
-          ahrs_source_metadata_[2] = static_cast<double>(ahrs_frame_.frame.data.data_pack.Timestamp);
-          ahrs_source_metadata_[3] = static_cast<double>(ahrs_frame_.frame.header.serial_num);
-          // if (if_debug_){
-          //   for (size_t i = 0; i < (AHRS_LEN + 1); i++)
-          //   {
-          //     std::cout << std::hex << (int)ahrs_frame_.read_buf.read_msg[i] << " ";
-          //   }
-          //   std::cout << std::dec << std::endl;
-          // }
-          uint16_t CRC16 = CRC16_Table(ahrs_frame_.frame.data.data_buff, AHRS_LEN);
-          ahrs_source_metadata_[4] = data_s == AHRS_LEN + 1 && head_crc16 == CRC16 &&
-              ahrs_frame_.frame.frame_end == FRAME_END ? 1.0 : 0.0;
-          if (if_debug_)
-          {          
-              std::cout << "CRC16:        " << std::hex << (int)CRC16 << std::dec << std::endl;
-              std::cout << "head_crc16:   " << std::hex << (int)head_crc16 << std::dec << std::endl;
-              std::cout << "head_crc16_h: " << std::hex << (int)head_crc16_h << std::dec << std::endl;
-              std::cout << "head_crc16_l: " << std::hex << (int)head_crc16_l << std::dec << std::endl;
-              bool if_right = ((int)head_crc16 == (int)CRC16);
-              std::cout << "if_right: " << if_right << std::endl;
-          }
-          
-          if (head_crc16 != CRC16)
-          {
-              crc_error_.fetch_add(1, std::memory_order_relaxed);
-              RCLCPP_WARN(this->get_logger(),"check crc16 faild(ahrs).");
-              continue;
-          }
-          else if(ahrs_frame_.frame.frame_end != FRAME_END)
-          {
-              RCLCPP_WARN(this->get_logger(),"check frame end.");
-              continue;
-          }
-      }
-      
-      // publish magyaw topic
-      //读取IMU数据进行解析
-      if (head_type[0] == TYPE_IMU)
-      {
-          sensor_msgs::msg::Imu temp_imu_data;
-          temp_imu_data.header.stamp = this->now();
-          temp_imu_data.header.frame_id = imu_frame_id_.c_str();
-          Eigen::Quaterniond q_ahrs(ahrs_frame_.frame.data.data_pack.Qw,
-                                    ahrs_frame_.frame.data.data_pack.Qx,
-                                    ahrs_frame_.frame.data.data_pack.Qy,
-                                    ahrs_frame_.frame.data.data_pack.Qz);
-          //用于转换imu姿态
-          Eigen::Quaterniond q_r =                          
-              Eigen::AngleAxisd( PI, Eigen::Vector3d::UnitZ()) * 
-              Eigen::AngleAxisd( PI, Eigen::Vector3d::UnitY()) * 
-              Eigen::AngleAxisd( 0.00000, Eigen::Vector3d::UnitX());
-          Eigen::Quaterniond q_rr =                          
-              Eigen::AngleAxisd( 0.00000, Eigen::Vector3d::UnitZ()) * 
-              Eigen::AngleAxisd( 0.00000, Eigen::Vector3d::UnitY()) * 
-              Eigen::AngleAxisd( PI, Eigen::Vector3d::UnitX());
-          Eigen::Quaterniond q_xiao_rr =
-              Eigen::AngleAxisd( PI/2, Eigen::Vector3d::UnitZ()) * 
-              Eigen::AngleAxisd( 0.00000, Eigen::Vector3d::UnitY()) * 
-              Eigen::AngleAxisd( PI, Eigen::Vector3d::UnitX()); 
-          //根据不同的需求，选择不同的坐标变换方式，到时再更改
-          Eigen::Quaterniond q_out =  q_r * q_ahrs * q_rr;
-          temp_imu_data.orientation.w = q_out.w();
-          temp_imu_data.orientation.x = q_out.x();
-          temp_imu_data.orientation.y = q_out.y();
-          temp_imu_data.orientation.z = q_out.z();
-          temp_imu_data.angular_velocity.x =  imu_frame_.frame.data.data_pack.gyroscope_x;
-          temp_imu_data.angular_velocity.y = -imu_frame_.frame.data.data_pack.gyroscope_y;
-          temp_imu_data.angular_velocity.z = -imu_frame_.frame.data.data_pack.gyroscope_z;
-          temp_imu_data.linear_acceleration.x = imu_frame_.frame.data.data_pack.accelerometer_x;
-          temp_imu_data.linear_acceleration.y = -imu_frame_.frame.data.data_pack.accelerometer_y;
-          temp_imu_data.linear_acceleration.z = -imu_frame_.frame.data.data_pack.accelerometer_z;
-          if (complete_imu_payload) {
-            ++imu_rx_sequence_;
-            imu_rx_steady_s_ = imu_received_steady_s;
-          }
-          const ImuDiagnostics diagnostics{{static_cast<double>(imu_rx_sequence_), imu_rx_steady_s_,
-              ahrs_source_metadata_[0], ahrs_source_metadata_[1],
-              static_cast<double>(imu_frame_.frame.data.data_pack.Timestamp), ahrs_source_metadata_[2],
-              static_cast<double>(imu_frame_.frame.header.serial_num), ahrs_source_metadata_[3],
-              static_cast<double>(crc_error_.load(std::memory_order_relaxed)),
-              static_cast<double>(sn_lost_.load(std::memory_order_relaxed)), 1.0, ahrs_source_metadata_[4]}};
-          {
-            std::lock_guard<std::mutex> lock(imu_mutex_);
-            latest_imu_data_ = temp_imu_data;
-            latest_imu_diagnostics_ = diagnostics;
-            has_new_data_ = true;
-          }
-      
-      }
-        
-      }
-      else
+      if (!is_serial_open())
       {
         RCLCPP_WARN(this->get_logger(),"serial port is not open!");
         std::this_thread::sleep_for(std::chrono::milliseconds(1000)); //等待1秒后重试
+        continue;
+      }
+
+      // 逐字节读入并喂给 hipnuc 解码器
+      uint8_t byte = 0;
+      size_t n = serial_.read(&byte, 1);
+      if (n != 1)
+      {
+        continue;
+      }
+
+      int rev = hipnuc_input(&raw_, byte);
+      if (rev < 0)
+      {
+        crc_error_.fetch_add(1, std::memory_order_relaxed);
+        continue;
+      }
+      if (rev == 0)
+      {
+        continue; // 同步中或数据不足，继续读下一字节
+      }
+
+      // rev > 0：完整解码出一帧
+      double received_steady_s = std::chrono::duration<double>(
+          std::chrono::steady_clock::now().time_since_epoch()).count();
+
+      bool has_quat = false, has_gyr = false, has_acc = false;
+      double qw = 0, qx = 0, qy = 0, qz = 0;
+      double gx = 0, gy = 0, gz = 0;
+      double ax = 0, ay = 0, az = 0;
+      double device_time_us = std::numeric_limits<double>::quiet_NaN();
+      double frame_tag = std::numeric_limits<double>::quiet_NaN();
+
+      if (raw_.hi83.tag == 0x83)
+      {
+        ++hi83_count_;
+        frame_tag = 0x83;
+        const uint32_t bm = raw_.hi83.data_bitmap;
+        has_quat = bm & HI83_BMAP_QUAT;
+        has_gyr  = bm & HI83_BMAP_GYR_B;
+        has_acc  = bm & HI83_BMAP_ACC_B;
+        if (has_quat) { qw = raw_.hi83.quat[0]; qx = raw_.hi83.quat[1]; qy = raw_.hi83.quat[2]; qz = raw_.hi83.quat[3]; }
+        if (has_gyr)  { gx = raw_.hi83.gyr_b[0]; gy = raw_.hi83.gyr_b[1]; gz = raw_.hi83.gyr_b[2]; } // 单位：rad/s
+        if (has_acc)  { ax = raw_.hi83.acc_b[0]; ay = raw_.hi83.acc_b[1]; az = raw_.hi83.acc_b[2]; } // 单位：m/s^2
+        if (bm & HI83_BMAP_SYSTEM_TIME) device_time_us = static_cast<double>(raw_.hi83.system_time_us);
+      }
+      else if (raw_.hi91.tag == 0x91)
+      {
+        ++hi91_count_;
+        frame_tag = 0x91;
+        has_quat = true;
+        has_gyr  = true;
+        has_acc  = true;
+        qw = raw_.hi91.quat[0]; qx = raw_.hi91.quat[1]; qy = raw_.hi91.quat[2]; qz = raw_.hi91.quat[3];
+        gx = raw_.hi91.gyr[0] * DEG_TO_RAD; // deg/s -> rad/s
+        gy = raw_.hi91.gyr[1] * DEG_TO_RAD;
+        gz = raw_.hi91.gyr[2] * DEG_TO_RAD;
+        ax = raw_.hi91.acc[0] * GRA_ACC;    // g -> m/s^2
+        ay = raw_.hi91.acc[1] * GRA_ACC;
+        az = raw_.hi91.acc[2] * GRA_ACC;
+        device_time_us = static_cast<double>(raw_.hi91.system_time) * 1000.0; // ms -> us
+      }
+      else
+      {
+        continue; // 未知帧类型，忽略
+      }
+
+      // 只有当四元数、角速度、加速度都齐全时才组装成有效 IMU 组合。
+      if (has_quat && has_gyr && has_acc)
+      {
+        sensor_msgs::msg::Imu temp_imu_data;
+        temp_imu_data.header.stamp = this->now();
+        temp_imu_data.header.frame_id = imu_frame_id_.c_str();
+
+        // hipnuc 四元数顺序为 (w, x, y, z)。
+        Eigen::Quaterniond q_ahrs(qw, qx, qy, qz);
+
+        // N300 原始轴：X 向机身左、Y 向机身后、Z 向上。
+        // 机身 = M * IMU，M = [[0,-1,0],[1,0,0],[0,0,1]]；在此统一变换一次。
+        const double sq2 = 0.7071067811865476;  // sqrt(2)/2
+        Eigen::Quaterniond conj_q_m(sq2, 0.0, 0.0, -sq2);  // conj(q_M)，(w,x,y,z)
+        Eigen::Quaterniond q_out = q_ahrs * conj_q_m;
+
+        temp_imu_data.orientation.w = q_out.w();
+        temp_imu_data.orientation.x = q_out.x();
+        temp_imu_data.orientation.y = q_out.y();
+        temp_imu_data.orientation.z = q_out.z();
+
+        temp_imu_data.angular_velocity.x = -gy;
+        temp_imu_data.angular_velocity.y =  gx;
+        temp_imu_data.angular_velocity.z =  gz;
+        temp_imu_data.linear_acceleration.x = -ay;
+        temp_imu_data.linear_acceleration.y =  ax;
+        temp_imu_data.linear_acceleration.z =  az;
+
+        ++rx_sequence_;
+        rx_steady_s_ = received_steady_s;
+
+        ImuDiagnostics diagnostics{{
+            static_cast<double>(rx_sequence_), rx_steady_s_,
+            static_cast<double>(hi83_count_), static_cast<double>(hi91_count_),
+            device_time_us, frame_tag,
+            has_gyr ? 1.0 : 0.0, has_acc ? 1.0 : 0.0,
+            static_cast<double>(crc_error_.load(std::memory_order_relaxed)), 0.0,
+            1.0, 1.0}};
+        {
+          std::lock_guard<std::mutex> lock(imu_mutex_);
+          latest_imu_data_ = temp_imu_data;
+          latest_imu_diagnostics_ = diagnostics;
+          has_new_data_ = true;
+        }
       }
     }
   }
+
   //激活串口
   void imu::activate_port()
   {
-      try
-      {
-        RCLCPP_INFO(
+    try
+    {
+      RCLCPP_INFO(
         this->get_logger(),
         "Serial port initialized successfully! "
         "Port: %s, Baudrate: %d, "
@@ -386,103 +190,52 @@ namespace FDILink
         serial_port_.c_str(),   // 串口号（std::string转C字符串）
         serial_baud_,           // 波特率（整数）
         serial_timeout_         // 超时时间（毫秒）
-        );
-        serial_.setPort(serial_port_);
-        serial_.setBaudrate(serial_baud_);
-        serial_.setFlowcontrol(serial::flowcontrol_none);
-        serial_.setParity(serial::parity_none); //default is parity_none
-        serial_.setStopbits(serial::stopbits_one);
-        serial_.setBytesize(serial::eightbits);
-        serial::Timeout time_out = serial::Timeout::simpleTimeout(serial_timeout_);
-        serial_.setTimeout(time_out);
-        serial_.open();
-        RCLCPP_INFO(this->get_logger(),"SUCCESS: Serial Port Opened");
-      }
-      catch (serial::IOException &e)  // 抓取异常
-      {
-        RCLCPP_ERROR(this->get_logger(),"Unable to open port ");
-        exit(0);
-      }
-      if (serial_.isOpen())
-      {
-        RCLCPP_INFO(this->get_logger(),"Serial Port initialized");
-      }
-      else
-      {
-        RCLCPP_ERROR(this->get_logger(),"Unable to initial Serial port ");
-        exit(0);
-      }
-    
+      );
+      serial_.setPort(serial_port_);
+      serial_.setBaudrate(serial_baud_);
+      serial_.setFlowcontrol(serial::flowcontrol_none);
+      serial_.setParity(serial::parity_none); //default is parity_none
+      serial_.setStopbits(serial::stopbits_one);
+      serial_.setBytesize(serial::eightbits);
+      serial::Timeout time_out = serial::Timeout::simpleTimeout(serial_timeout_);
+      serial_.setTimeout(time_out);
+      serial_.open();
+      RCLCPP_INFO(this->get_logger(),"SUCCESS: Serial Port Opened");
+    }
+    catch (serial::IOException &e)  // 抓取异常
+    {
+      RCLCPP_ERROR(this->get_logger(),"Unable to open port ");
+      exit(0);
+    }
+    if (serial_.isOpen())
+    {
+      RCLCPP_INFO(this->get_logger(),"Serial Port initialized");
+    }
+    else
+    {
+      RCLCPP_ERROR(this->get_logger(),"Unable to initial Serial port ");
+      exit(0);
+    }
   }
-    //判断串口是否打开，在每次读取数据前调用，用来检查串口状态
+
+  //判断串口是否打开，在每次读取数据前调用，用来检查串口状态
   bool imu::is_serial_open()
   {
     return serial_.isOpen();
   }
+
   //关闭串口，析构函数调用
   void imu::deactivate_port()
   {
     if (serial_.isOpen())
      {serial_.close();}
-      RCLCPP_INFO(this->get_logger(),"Serial Port Closed，IMU Stop get data");
+    RCLCPP_INFO(this->get_logger(),"Serial Port Closed，IMU Stop get data");
   }
-  
+
   //检查配置的波特率和串口能否成功打开,用于在接口类中调用，调试用
   void imu::print_serial_info()
   {
     RCLCPP_INFO(this->get_logger(), "SUCCESS: Serial Port: %s, Baud Rate: %d, Timeout: %d", serial_port_.c_str(), serial_baud_, serial_timeout_);
-
-  }
-  //检查序列号函数
-  void imu::checkSN(int type)
-  {
-    switch (type)
-    {
-    case TYPE_IMU:
-      if (++read_sn_ != imu_frame_.frame.header.serial_num)
-      {
-        if ( imu_frame_.frame.header.serial_num < read_sn_)
-        {
-          sn_lost_ += 256 - (int)(read_sn_ - imu_frame_.frame.header.serial_num);
-          if(if_debug_){
-            RCLCPP_WARN(this->get_logger(),"detected sn lost.");
-          }
-        }
-        else
-        {
-          sn_lost_ += (int)(imu_frame_.frame.header.serial_num - read_sn_);
-          if(if_debug_){
-            RCLCPP_WARN(this->get_logger(),"detected sn lost.");
-          }
-        }
-      }
-      read_sn_ = imu_frame_.frame.header.serial_num;
-      break;
-
-    case TYPE_AHRS:
-      if (++read_sn_ != ahrs_frame_.frame.header.serial_num)
-      {
-        if ( ahrs_frame_.frame.header.serial_num < read_sn_)
-        {
-          sn_lost_ += 256 - (int)(read_sn_ - ahrs_frame_.frame.header.serial_num);
-          if(if_debug_){
-            RCLCPP_WARN(this->get_logger(),"detected sn lost.");
-          }
-        }
-        else
-        {
-          sn_lost_ += (int)(ahrs_frame_.frame.header.serial_num - read_sn_);
-          if(if_debug_){
-            RCLCPP_WARN(this->get_logger(),"detected sn lost.");
-          }
-        }
-      }
-      read_sn_ = ahrs_frame_.frame.header.serial_num;
-      break;
-
-    default:
-      break;
-    }
   }
 
   sensor_msgs::msg::Imu imu::return_latest_imu_data(ImuDiagnostics* diagnostics, bool* had_new_data)
@@ -491,22 +244,19 @@ namespace FDILink
     if (had_new_data) *had_new_data = has_new_data_;
     if (diagnostics) {
       *diagnostics = latest_imu_diagnostics_;
-      // 健康计数/线程状态即使没有新有效IMU组合也继续可观测；前8项和来源valid仍属该组合。
+      // 健康计数即使没有新有效IMU组合也继续可观测。
       (*diagnostics)[8] = static_cast<double>(crc_error_.load(std::memory_order_relaxed));
-      (*diagnostics)[9] = static_cast<double>(sn_lost_.load(std::memory_order_relaxed));
+      (*diagnostics)[9] = 0.0;
       (*diagnostics)[10] = rx_thread_running_.load(std::memory_order_relaxed) ? 1.0 : 0.0;
     }
     has_new_data_ = false;
     return latest_imu_data_;
   }
+
   bool imu::check_newdata()
   {
     std::lock_guard<std::mutex> lock(imu_mutex_);
     return has_new_data_;
   }
-
-
-  
-
 
 } // namespace FDILink
