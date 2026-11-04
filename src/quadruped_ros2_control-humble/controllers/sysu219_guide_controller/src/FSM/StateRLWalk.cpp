@@ -2,277 +2,282 @@
 
 #include <algorithm>
 #include <cmath>
-#include <iostream>
+#include <filesystem>
 #include <stdexcept>
 
-StateRLWalk::StateRLWalk(CtrlInterfaces &ctrl_interfaces, CtrlComponent &ctrl_component)
-    : FSMState(FSMStateName::RLWALK, "rlwalk", ctrl_interfaces),
-      ctrl_component_(ctrl_component) {
-    q_target_ctrl_.fill(0.0);
-    last_action_isaac_.fill(0.0);
-    current_action_isaac_.fill(0.0);
+#include <ament_index_cpp/get_package_share_directory.hpp>
+#include <Eigen/Geometry>
+
+namespace {
+namespace cfg = sysu219_trot;
+constexpr double kPi = 3.14159265358979323846;
+
+template <typename Interfaces>
+std::size_t findInterface(const Interfaces& interfaces, const std::string& joint, const std::string& type) {
+    const std::string suffix = joint + "/" + type;
+    std::size_t result = interfaces.size();
+    for (std::size_t i = 0; i < interfaces.size(); ++i) {
+        const std::string name = interfaces[i].get().get_name();
+        const bool match = name == suffix ||
+            (name.size() > suffix.size() && name.compare(name.size() - suffix.size(), suffix.size(), suffix) == 0 &&
+             name[name.size() - suffix.size() - 1] == '/');
+        if (!match) continue;
+        if (result != interfaces.size()) throw std::runtime_error("Duplicate interface: " + suffix);
+        result = i;
+    }
+    if (result == interfaces.size()) throw std::runtime_error("Missing interface: " + suffix);
+    return result;
+}
+
+double preprocess(double value, double lower, double upper, double scale) {
+    if (!std::isfinite(value)) throw std::runtime_error("Nonfinite IMU/joint observation");
+    return std::clamp(value, lower, upper) * scale;  // Isaac Lab: clip, then scale
+}
+}  // namespace
+
+StateRLWalk::StateRLWalk(CtrlInterfaces& interfaces, CtrlComponent& /*ctrl_component*/)
+    : FSMState(FSMStateName::RLWALK, "rlwalk", interfaces) {
+    observation_.resize(cfg::kObservationDim);
+    kp_target_ = cfg::kKp;
+    kd_target_ = cfg::kKd;
+    // on_activate constructs states before the real-time update loop starts.
+    // Resolve/load here, not inside enter() on a running controller thread.
+    try {
+        if (!ctrl_interfaces_.node) throw std::runtime_error("Missing controller node");
+        transition_s_ = ctrl_interfaces_.node->get_parameter("rl_pose_transition_s").as_double();
+        entry_timeout_s_ = ctrl_interfaces_.node->get_parameter("rl_entry_timeout_s").as_double();
+        entry_tolerance_rad_ = ctrl_interfaces_.node->get_parameter("rl_entry_tolerance_rad").as_double();
+        entry_velocity_rad_s_ = ctrl_interfaces_.node->get_parameter("rl_entry_velocity_rad_s").as_double();
+        max_period_s_ = ctrl_interfaces_.node->get_parameter("rl_max_control_period_s").as_double();
+        if (!std::isfinite(transition_s_) || transition_s_ <= 0 ||
+            transition_s_ > cfg::kSettle ||
+            !std::isfinite(entry_timeout_s_) || entry_timeout_s_ < transition_s_ ||
+            !std::isfinite(entry_tolerance_rad_) || entry_tolerance_rad_ <= 0 ||
+            !std::isfinite(entry_velocity_rad_s_) || entry_velocity_rad_s_ <= 0 ||
+            !std::isfinite(max_period_s_) || max_period_s_ < cfg::kPolicyDt)
+            throw std::runtime_error("Invalid RL entry/timing parameters");
+        resolveInterfaces();
+        mapped_ = true;
+        const auto names = ctrl_interfaces_.node->get_parameter("joints").as_string_array();
+        const auto stand = ctrl_interfaces_.node->get_parameter("stand_pos").as_double_array();
+        if (names.size() != cfg::kActionDim || stand.size() != cfg::kActionDim)
+            throw std::runtime_error("ROS joints/stand_pos must contain 12 entries");
+        for (std::size_t i = 0; i < cfg::kActionDim; ++i) {
+            if (names[i] != cfg::kJointNames[i] || !std::isfinite(stand[i]))
+                throw std::runtime_error("Invalid ROS stand_pos or joint order");
+            if (std::abs(stand[i] - cfg::kDefaultPosition[i]) > 1e-9)
+                throw std::runtime_error("Policy default pose differs from ROS stand_pos at " + names[i] +
+                    "; retrain with ROS stand_pos and export the model and TrotPolicyConfig.h together");
+            default_position_[i] = stand[i];
+        }
+        q_target_ = default_position_;
+        std::filesystem::path path(ctrl_interfaces_.node->get_parameter("rl_model_path").as_string());
+        if (path.empty()) throw std::runtime_error("Empty rl_model_path");
+        if (path.is_relative())
+            path = std::filesystem::path(ament_index_cpp::get_package_share_directory("sysu219_guide_controller")) / "model" / path;
+        model_path_ = path.string();
+        if (!policy_.load(model_path_)) throw std::runtime_error("Policy model load/contract validation failed");
+        configured_ = true;
+    } catch (const std::exception& error) {
+        configuration_error_ = error.what();
+        if (ctrl_interfaces_.node)
+            RCLCPP_ERROR(ctrl_interfaces_.node->get_logger(), "[RLWALK] unavailable: %s", configuration_error_.c_str());
+    }
+}
+
+void StateRLWalk::resolveInterfaces() {
+    for (std::size_t i = 0; i < cfg::kActionDim; ++i) {
+        const std::string joint = cfg::kJointNames[i];
+        q_index_[i] = findInterface(ctrl_interfaces_.joint_position_state_interface_, joint, "position");
+        dq_index_[i] = findInterface(ctrl_interfaces_.joint_velocity_state_interface_, joint, "velocity");
+        q_cmd_index_[i] = findInterface(ctrl_interfaces_.joint_position_command_interface_, joint, "position");
+        dq_cmd_index_[i] = findInterface(ctrl_interfaces_.joint_velocity_command_interface_, joint, "velocity");
+        torque_index_[i] = findInterface(ctrl_interfaces_.joint_torque_command_interface_, joint, "effort");
+        kp_index_[i] = findInterface(ctrl_interfaces_.joint_kp_command_interface_, joint, "kp");
+        kd_index_[i] = findInterface(ctrl_interfaces_.joint_kd_command_interface_, joint, "kd");
+    }
+    const std::string imu = ctrl_interfaces_.node->get_parameter("imu_name").as_string();
+    const std::array<const char*, 7> fields = {
+        "orientation.w", "orientation.x", "orientation.y", "orientation.z",
+        "angular_velocity.x", "angular_velocity.y", "angular_velocity.z"};
+    for (std::size_t i = 0; i < fields.size(); ++i)
+        imu_index_[i] = findInterface(ctrl_interfaces_.imu_state_interface_, imu, fields[i]);
 }
 
 void StateRLWalk::enter() {
-    std::cout << "[StateRLWalk] enter" << std::endl;
-
-    // 进入 RLWALK 时，从当前 Gazebo / ROS2 controller 关节角开始
-    for (int ctrl_i = 0; ctrl_i < 12; ++ctrl_i) {
-        const double q = ctrl_interfaces_.joint_position_state_interface_[ctrl_i].get().get_value();
-        q_target_ctrl_[ctrl_i] = q;
-    }
-
-    last_action_isaac_.fill(0.0);
-    current_action_isaac_.fill(0.0);
-
-    cmd_vx_ = 0.0;
-    cmd_vy_ = 0.0;
-    cmd_wz_ = 0.0;
-
-    policy_counter_ = 0;
-    print_counter_ = 0;
-
-    const std::string model_path =
-        "/home/yzz/219_ws/src/quadruped_ros2_control-humble/controllers/"
-        "sysu219_guide_controller/model/policy.onnx";
-
-    policy_loaded_ = policy_.load(model_path);
-
-    if (!policy_loaded_) {
-        std::cerr << "[StateRLWalk] failed to load policy.onnx" << std::endl;
-    } else {
-        std::cout << "[StateRLWalk] policy loaded successfully" << std::endl;
-    }
-
-    std::cout << "[StateRLWalk] Isaac action order -> Controller order mapping:" << std::endl;
-    std::cout << "  Isaac 0  FL_hip   -> Ctrl " << isaac_to_ctrl_[0] << std::endl;
-    std::cout << "  Isaac 1  FR_hip   -> Ctrl " << isaac_to_ctrl_[1] << std::endl;
-    std::cout << "  Isaac 2  RL_hip   -> Ctrl " << isaac_to_ctrl_[2] << std::endl;
-    std::cout << "  Isaac 3  RR_hip   -> Ctrl " << isaac_to_ctrl_[3] << std::endl;
-    std::cout << "  Isaac 4  FL_thigh -> Ctrl " << isaac_to_ctrl_[4] << std::endl;
-    std::cout << "  Isaac 5  FR_thigh -> Ctrl " << isaac_to_ctrl_[5] << std::endl;
-    std::cout << "  Isaac 6  RL_thigh -> Ctrl " << isaac_to_ctrl_[6] << std::endl;
-    std::cout << "  Isaac 7  RR_thigh -> Ctrl " << isaac_to_ctrl_[7] << std::endl;
-    std::cout << "  Isaac 8  FL_calf  -> Ctrl " << isaac_to_ctrl_[8] << std::endl;
-    std::cout << "  Isaac 9  FR_calf  -> Ctrl " << isaac_to_ctrl_[9] << std::endl;
-    std::cout << "  Isaac 10 RL_calf  -> Ctrl " << isaac_to_ctrl_[10] << std::endl;
-    std::cout << "  Isaac 11 RR_calf  -> Ctrl " << isaac_to_ctrl_[11] << std::endl;
-
-    sendJointCommand();
-}
-
-void StateRLWalk::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*period*/) {
-    updateCommand();
-
-    if (policy_loaded_) {
-        if (policy_counter_ <= 0) {
-            runPolicy();
-            applyActionToTarget();
-            policy_counter_ = policy_decimation_;
-        }
-        policy_counter_--;
-    }
-
-    sendJointCommand();
-}
-
-void StateRLWalk::exit() {
-    std::cout << "[StateRLWalk] exit" << std::endl;
-    sendJointCommand();
-}
-
-FSMStateName StateRLWalk::checkChange() {
-    switch (ctrl_interfaces_.control_inputs_.command) {
-        case 1:
-            return FSMStateName::PASSIVE;
-        case 2:
-            return FSMStateName::FIXEDSTAND;
-        default:
-            return FSMStateName::RLWALK;
-    }
-}
-
-void StateRLWalk::updateCommand() {
-    const double deadzone = 0.05;
-
-    double ly = ctrl_interfaces_.control_inputs_.ly;  // 前后
-    double lx = ctrl_interfaces_.control_inputs_.lx;  // 左右
-    double rx = ctrl_interfaces_.control_inputs_.rx;  // 转向
-
-    if (std::abs(ly) < deadzone) {
-        ly = 0.0;
-    }
-    if (std::abs(lx) < deadzone) {
-        lx = 0.0;
-    }
-    if (std::abs(rx) < deadzone) {
-        rx = 0.0;
-    }
-
-    ly = std::clamp(ly, -1.0, 1.0);
-    lx = std::clamp(lx, -1.0, 1.0);
-    rx = std::clamp(rx, -1.0, 1.0);
-
-    // IsaacLab 训练范围：
-    // lin_vel_x = (-0.5, 0.5)
-    // lin_vel_y = (-0.05, 0.05)
-    // ang_vel_z = (-0.5, 0.5)
-    cmd_vx_ = 0.5 * ly;
-    cmd_vy_ = 0.05 * lx;
-    cmd_wz_ = 0.5 * rx;
-}
-
-void StateRLWalk::buildObservation(std::vector<float> &obs) {
-    obs.clear();
-    obs.reserve(48);
-
-    // IsaacLab PolicyCfg observation order:
-    // 0-2    base_lin_vel
-    // 3-5    base_ang_vel
-    // 6-8    projected_gravity
-    // 9-11   velocity_commands
-    // 12-23  joint_pos_rel      Isaac joint order
-    // 24-35  joint_vel_rel      Isaac joint order
-    // 36-47  last_action        Isaac action order
-
-    // 0-2: base linear velocity in body frame
-    Vec3 base_lin_vel_b = ctrl_component_.estimator_->getVelocity();
-
-    obs.push_back(static_cast<float>(base_lin_vel_b(0)));
-    obs.push_back(static_cast<float>(base_lin_vel_b(1)));
-    obs.push_back(static_cast<float>(base_lin_vel_b(2)));
-
-    // 3-5: base angular velocity in body frame
-    Vec3 gyro_b = ctrl_component_.estimator_->getGyro();
-
-    obs.push_back(static_cast<float>(gyro_b(0)));
-    obs.push_back(static_cast<float>(gyro_b(1)));
-    obs.push_back(static_cast<float>(gyro_b(2)));
-
-    // 6-8: projected gravity in body frame
-    RotMat R_wb = ctrl_component_.estimator_->getRotation();
-    Vec3 gravity_w(0.0, 0.0, -1.0);
-    Vec3 gravity_b = R_wb.transpose() * gravity_w;
-
-    obs.push_back(static_cast<float>(gravity_b(0)));
-    obs.push_back(static_cast<float>(gravity_b(1)));
-    obs.push_back(static_cast<float>(gravity_b(2)));
-
-    // 9-11: command vx, vy, wz
-    obs.push_back(static_cast<float>(cmd_vx_));
-    obs.push_back(static_cast<float>(cmd_vy_));
-    obs.push_back(static_cast<float>(cmd_wz_));
-
-    // 12-23: joint position relative to default pose, 必须按 IsaacLab joint order
-    for (int isaac_i = 0; isaac_i < 12; ++isaac_i) {
-        const int ctrl_i = isaac_to_ctrl_[isaac_i];
-        const double q = ctrl_interfaces_.joint_position_state_interface_[ctrl_i].get().get_value();
-        obs.push_back(static_cast<float>(q - q_default_isaac_[isaac_i]));
-    }
-
-    // 24-35: joint velocity, 必须按 IsaacLab joint order
-    for (int isaac_i = 0; isaac_i < 12; ++isaac_i) {
-        const int ctrl_i = isaac_to_ctrl_[isaac_i];
-        const double qd = ctrl_interfaces_.joint_velocity_state_interface_[ctrl_i].get().get_value();
-        obs.push_back(static_cast<float>(qd));
-    }
-
-    // 36-47: last action, 本来就是 IsaacLab action order
-    for (int isaac_i = 0; isaac_i < 12; ++isaac_i) {
-        obs.push_back(static_cast<float>(last_action_isaac_[isaac_i]));
-    }
-
-    if (obs.size() != 48) {
-        std::cerr << "[StateRLWalk] obs size error: " << obs.size() << std::endl;
-    }
-}
-
-void StateRLWalk::runPolicy() {
-    std::vector<float> obs;
-    buildObservation(obs);
-
-    if (obs.size() != 48) {
-        current_action_isaac_.fill(0.0);
+    ctrl_interfaces_.control_inputs_.command = 0;  // require a fresh command after any failure
+    fault_ = false;
+    policy_started_ = false;
+    entry_elapsed_s_ = policy_elapsed_s_ = since_policy_s_ = 0.0;
+    last_action_.fill(0.0);
+    if (!configured_) {
+        fail(configuration_error_);
         return;
     }
+    for (std::size_t i = 0; i < cfg::kActionDim; ++i) {
+        const double measured = ctrl_interfaces_.joint_position_state_interface_[q_index_[i]].get().get_value();
+        const double commanded = ctrl_interfaces_.joint_position_command_interface_[q_cmd_index_[i]].get().get_value();
+        if (!std::isfinite(measured) || !std::isfinite(commanded)) {
+            fail("Invalid joint feedback or position command at entry");
+            return;
+        }
+        // Preserve the load-bearing command rather than dropping PD error to zero.
+        q_start_[i] = q_target_[i] = commanded;
+        if (std::abs(commanded - default_position_[i]) > entry_tolerance_rad_) {
+            fail("Standing command too far from trained pose; preserving current command");
+            return;
+        }
+        last_action_[i] = std::clamp((commanded-default_position_[i])/cfg::kActionScale[i],
+                                     -cfg::kActionClip, cfg::kActionClip);
+        const double kp = ctrl_interfaces_.joint_kp_command_interface_[kp_index_[i]].get().get_value();
+        const double kd = ctrl_interfaces_.joint_kd_command_interface_[kd_index_[i]].get().get_value();
+        kp_start_[i] = kp_target_[i] = std::isfinite(kp) && kp >= 0 ? kp : cfg::kKp[i];
+        kd_start_[i] = kd_target_[i] = std::isfinite(kd) && kd >= 0 ? kd : cfg::kKd[i];
+    }
+    RCLCPP_INFO(ctrl_interfaces_.node->get_logger(), "[RLWALK] %s; blending directly from current standing command", model_path_.c_str());
+    sendJointCommand();
+}
 
+void StateRLWalk::run(const rclcpp::Time& /*time*/, const rclcpp::Duration& period) {
+    if (fault_ || !configured_) return;
+    const double dt = period.seconds();
+    if (!std::isfinite(dt) || dt < 0 || dt > max_period_s_) {
+        fail("Invalid or excessive control period; policy target held");
+        return;
+    }
+    if (dt == 0) return;
+    if (!policy_started_) {
+        entry_elapsed_s_ += dt;
+        bool pose_ready = true;
+        for (std::size_t i = 0; i < cfg::kActionDim; ++i) {
+            const double q = ctrl_interfaces_.joint_position_state_interface_[q_index_[i]].get().get_value();
+            const double dq = ctrl_interfaces_.joint_velocity_state_interface_[dq_index_[i]].get().get_value();
+            if (!std::isfinite(q) || !std::isfinite(dq)) {
+                fail("Invalid joint feedback before policy takeover");
+                return;
+            }
+            pose_ready = pose_ready && std::abs(q - default_position_[i]) <= entry_tolerance_rad_ &&
+                         std::abs(dq) <= entry_velocity_rad_s_;
+        }
+        sendJointCommand();
+        if (!pose_ready) {
+            if (entry_elapsed_s_ > entry_timeout_s_) fail("Policy entry feedback conditions not satisfied before timeout");
+            return;
+        }
+        policy_started_ = true;
+        policy_elapsed_s_ = since_policy_s_ = 0.0;
+        runPolicy(0.0);  // clock starts immediately; first command preserves the standing target
+        sendJointCommand();
+        return;
+    }
+    policy_elapsed_s_ += dt;
+    since_policy_s_ += dt;
+    if (since_policy_s_ + 1e-12 >= cfg::kPolicyDt) {
+        const double intervals = std::floor((since_policy_s_ + 1e-12) / cfg::kPolicyDt);
+        since_policy_s_ = std::max(0.0, since_policy_s_ - intervals*cfg::kPolicyDt);
+        runPolicy(policy_elapsed_s_);  // one fresh observation; never replay stale catch-up steps
+    }
+    sendJointCommand();
+}
+
+void StateRLWalk::buildObservation(double elapsed_s) {
+    // The ROS description's imu_joint has identity rotation relative to trunk.
+    // Actor uses IMU attitude/gyro directly; no estimated translation/contact prior.
+    std::array<double, 7> imu{};
+    for (std::size_t i = 0; i < imu.size(); ++i) {
+        imu[i] = ctrl_interfaces_.imu_state_interface_[imu_index_[i]].get().get_value();
+        if (!std::isfinite(imu[i])) throw std::runtime_error("Nonfinite IMU state");
+    }
+    Eigen::Quaterniond rotation(imu[0], imu[1], imu[2], imu[3]);
+    if (!std::isfinite(rotation.norm()) || rotation.norm() < 1e-6)
+        throw std::runtime_error("Invalid IMU quaternion");
+    rotation.normalize();
+    const Eigen::Vector3d gravity = rotation.toRotationMatrix().transpose() * Eigen::Vector3d(0, 0, -1);
+    for (std::size_t i = 0; i < 3; ++i) {
+        observation_[i] = static_cast<float>(preprocess(imu[4+i], cfg::kAngularVelocityClipMin, cfg::kAngularVelocityClipMax, cfg::kAngularVelocityScale));
+        observation_[3+i] = static_cast<float>(preprocess(gravity(static_cast<int>(i)), cfg::kGravityClipMin, cfg::kGravityClipMax, cfg::kGravityScale));
+    }
+    for (std::size_t i = 0; i < cfg::kActionDim; ++i) {
+        const double q = ctrl_interfaces_.joint_position_state_interface_[q_index_[i]].get().get_value();
+        const double dq = ctrl_interfaces_.joint_velocity_state_interface_[dq_index_[i]].get().get_value();
+        observation_[6+i] = static_cast<float>(preprocess(q - default_position_[i], cfg::kJointPositionClipMin, cfg::kJointPositionClipMax, cfg::kJointPositionScale));
+        observation_[18+i] = static_cast<float>(preprocess(dq - cfg::kDefaultVelocity[i], cfg::kJointVelocityClipMin, cfg::kJointVelocityClipMax, cfg::kJointVelocityScale));
+        observation_[30+i] = static_cast<float>(preprocess(last_action_[i], cfg::kLastActionClipMin, cfg::kLastActionClipMax, cfg::kLastActionScale));
+    }
+    const double running = std::max(elapsed_s - cfg::kSettle, 0.0);
+    const double phase = std::fmod(running / cfg::kPeriod, 1.0);
+    observation_[42] = static_cast<float>(std::sin(2*kPi*phase));
+    observation_[43] = static_cast<float>(std::cos(2*kPi*phase));
+    observation_[44] = static_cast<float>(std::clamp(running / cfg::kRamp, 0.0, 1.0));
+}
+
+bool StateRLWalk::runPolicy(double elapsed_s) {
     try {
-        current_action_isaac_ = policy_.forward(obs);
-    } catch (const std::exception &e) {
-        std::cerr << "[StateRLWalk] policy forward failed: " << e.what() << std::endl;
-        current_action_isaac_.fill(0.0);
-        return;
+        buildObservation(elapsed_s);
+        auto action = policy_.forward(observation_);
+        // Direct takeover from the previous load-bearing COMMAND. The trained
+        // default remains the observation reference and policy action offset.
+        const double u = std::clamp(elapsed_s / transition_s_, 0.0, 1.0);
+        const double blend = u*u*u*(10.0 + u*(-15.0 + 6.0*u));
+        std::array<double, 12> target{};
+        for (std::size_t i = 0; i < cfg::kActionDim; ++i) {
+            action[i] = std::clamp(action[i], -cfg::kActionClip, cfg::kActionClip);
+            target[i] = std::clamp(default_position_[i] + cfg::kActionScale[i]*action[i], cfg::kTargetMin[i], cfg::kTargetMax[i]);
+            if (u < 1.0) {
+                target[i] = q_start_[i] + blend*(target[i] - q_start_[i]);
+                // Equivalent applied action, bounded like the trained history.
+                // Outside the policy envelope this is a clipped approximation.
+                action[i] = std::clamp((target[i]-default_position_[i])/cfg::kActionScale[i],
+                                       -cfg::kActionClip, cfg::kActionClip);
+            }
+            kp_target_[i] = kp_start_[i] + blend*(cfg::kKp[i] - kp_start_[i]);
+            kd_target_[i] = kd_start_[i] + blend*(cfg::kKd[i] - kd_start_[i]);
+        }
+        q_target_ = target;
+        // History must describe the clipped, blended action actually sent,
+        // before joint scaling/default offset, rather than the raw actor output.
+        last_action_ = action;
+        return true;
+    } catch (const std::exception& error) {
+        fail(error.what());  // keep the last valid command; no zero-action jump
+        return false;
     }
-
-    print_counter_++;
-
-    // policy 50Hz，50 次约 1 秒打印一次
-    if (print_counter_ >= 50) {
-        print_counter_ = 0;
-
-        std::cout << "[StateRLWalk] cmd = "
-                  << cmd_vx_ << " " << cmd_vy_ << " " << cmd_wz_ << std::endl;
-
-        std::cout << "[StateRLWalk] base_lin_vel_b = "
-                  << obs[0] << " " << obs[1] << " " << obs[2] << std::endl;
-
-        std::cout << "[StateRLWalk] gyro_b = "
-                  << obs[3] << " " << obs[4] << " " << obs[5] << std::endl;
-
-        std::cout << "[StateRLWalk] projected_gravity = "
-                  << obs[6] << " " << obs[7] << " " << obs[8] << std::endl;
-
-        std::cout << "[StateRLWalk] q_rel_isaac_order = ";
-        for (int isaac_i = 0; isaac_i < 12; ++isaac_i) {
-            std::cout << obs[12 + isaac_i] << " ";
-        }
-        std::cout << std::endl;
-
-        std::cout << "[StateRLWalk] qd_isaac_order = ";
-        for (int isaac_i = 0; isaac_i < 12; ++isaac_i) {
-            std::cout << obs[24 + isaac_i] << " ";
-        }
-        std::cout << std::endl;
-
-        std::cout << "[StateRLWalk] action_isaac_order = ";
-        for (int isaac_i = 0; isaac_i < 12; ++isaac_i) {
-            std::cout << current_action_isaac_[isaac_i] << " ";
-        }
-        std::cout << std::endl;
-
-        std::cout << "[StateRLWalk] q_target_ctrl_order = ";
-        for (int ctrl_i = 0; ctrl_i < 12; ++ctrl_i) {
-            std::cout << q_target_ctrl_[ctrl_i] << " ";
-        }
-        std::cout << std::endl;
-    }
-}
-
-void StateRLWalk::applyActionToTarget() {
-    // policy action 是 IsaacLab order
-    // controller command 必须转成 Gazebo / ROS2 controller order
-    for (int isaac_i = 0; isaac_i < 12; ++isaac_i) {
-        const int ctrl_i = isaac_to_ctrl_[isaac_i];
-        q_target_ctrl_[ctrl_i] =
-            q_default_isaac_[isaac_i] + current_action_isaac_[isaac_i] * action_scale_;
-    }
-
-    last_action_isaac_ = current_action_isaac_;
 }
 
 void StateRLWalk::sendJointCommand() {
-    for (int ctrl_i = 0; ctrl_i < 12; ++ctrl_i) {
-        ctrl_interfaces_.joint_position_command_interface_[ctrl_i].get().set_value(q_target_ctrl_[ctrl_i]);
-        ctrl_interfaces_.joint_velocity_command_interface_[ctrl_i].get().set_value(0.0);
-        ctrl_interfaces_.joint_torque_command_interface_[ctrl_i].get().set_value(0.0);
-
-        // controller order 是每条腿 hip/thigh/calf 排列，所以 ctrl_i % 3 == 0 是 hip
-        if (ctrl_i % 3 == 0) {
-            ctrl_interfaces_.joint_kp_command_interface_[ctrl_i].get().set_value(hip_kp_);
-        } else {
-            ctrl_interfaces_.joint_kp_command_interface_[ctrl_i].get().set_value(leg_kp_);
-        }
-
-        ctrl_interfaces_.joint_kd_command_interface_[ctrl_i].get().set_value(kd_);
+    if (!mapped_) return;
+    for (std::size_t i = 0; i < cfg::kActionDim; ++i) {
+        ctrl_interfaces_.joint_position_command_interface_[q_cmd_index_[i]].get().set_value(q_target_[i]);
+        ctrl_interfaces_.joint_velocity_command_interface_[dq_cmd_index_[i]].get().set_value(0.0);
+        ctrl_interfaces_.joint_torque_command_interface_[torque_index_[i]].get().set_value(0.0);
+        ctrl_interfaces_.joint_kp_command_interface_[kp_index_[i]].get().set_value(kp_target_[i]);
+        ctrl_interfaces_.joint_kd_command_interface_[kd_index_[i]].get().set_value(kd_target_[i]);
     }
+}
+
+void StateRLWalk::fail(const std::string& message) {
+    if (!fault_ && ctrl_interfaces_.node)
+        RCLCPP_ERROR(ctrl_interfaces_.node->get_logger(), "[RLWALK] %s; leaving policy mode", message.c_str());
+    fault_ = true;
+}
+
+void StateRLWalk::exit() {
+    policy_started_ = false;
+    last_action_.fill(0.0);
+}
+
+FSMStateName StateRLWalk::checkChange() {
+    if (ctrl_interfaces_.control_inputs_.command == 1) return FSMStateName::PASSIVE;
+    if (fault_) {
+        // FixedStand requires valid joint feedback for its own smooth transition.
+        if (mapped_) {
+            for (std::size_t i = 0; i < cfg::kActionDim; ++i)
+                if (!std::isfinite(ctrl_interfaces_.joint_position_state_interface_[q_index_[i]].get().get_value()) ||
+                    !std::isfinite(ctrl_interfaces_.joint_velocity_state_interface_[dq_index_[i]].get().get_value()))
+                    return FSMStateName::PASSIVE;
+        }
+        return FSMStateName::FIXEDSTAND;
+    }
+    if (ctrl_interfaces_.control_inputs_.command == 2) return FSMStateName::FIXEDSTAND;
+    return FSMStateName::RLWALK;
 }

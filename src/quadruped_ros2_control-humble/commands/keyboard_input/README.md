@@ -27,19 +27,25 @@ The keys map directly to the `command` field of `control_input_msgs/msg/Inputs`:
 
 | Key | command | Effect |
 | --- | --- | --- |
-| 1 | 1 | PASSIVE (motors disabled), always available |
+| 1 | 1 | PASSIVE (kp=0, kd=1 passive damping), always available |
 | 2 | 2 | Cycle the fixed poses: PRONE → DOWN → STAND → DOWN → STAND → ... |
 | 3 | 3 | FREE STAND (only from FIXED STAND) |
 | 4 | 4 | TROTTING (only from FIXED STAND) |
 | 5 | 5 | SWING TEST (only from FIXED STAND) |
 | 6 | 6 | BALANCE TEST (only from FIXED STAND) |
-| 7 | 7 | RL WALK (only from FIXED STAND) |
+| 7 | 7 | PPO in-place trot / RLWALK (only from FIXED STAND) |
 | 8 | 8 | PRONE: from FIXED STAND it goes to DOWN first and then continues to PRONE automatically |
 | 9 / 0 | 9 / 10 | Reserved, not handled by the guide controller |
 
 * Starting from PASSIVE, the first press of `2` goes to PRONE, then DOWN, then STAND, and afterwards
   `2` toggles between DOWN and STAND.
 * `1` switches to PASSIVE from any state, and is not blocked by the pose transition lock.
+* Wait for each fixed-pose transition to finish (about 2 seconds) before pressing the next mode key.
+* In RLWALK, `2` returns to FIXEDSTAND; `1` enters PASSIVE (passive damping, not power-off).
+  To switch between RLWALK and TROTTING, first return to FIXEDSTAND with `2`, wait for its
+  transition to finish, then press `7` for RLWALK or `4` for TROTTING.
+* The in-place PPO ignores WASD/IJKL. Space does not exit RLWALK. Ctrl+C only ends the keyboard
+  node and does not stop the controller's current mode; exit RL with `2` or `1` first.
 
 ### 1.2 Control Input
 * WASD IJKL: Move robot

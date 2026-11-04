@@ -68,6 +68,13 @@ sysu219_guide_controller:
     use_sim_time: true
     gazebo_com_visualization: true
     update_rate: 250  # Hz
+    # RLWALK only: 45D in-place PPO actor, relative to the controller's model/ directory.
+    rl_model_path: "policy_trot_ros_dr_7cm.onnx"
+    rl_pose_transition_s: 0.5
+    rl_entry_timeout_s: 5.0
+    rl_entry_tolerance_rad: 0.25
+    rl_entry_velocity_rad_s: 1.0
+    rl_max_control_period_s: 0.1
     command_prefix: "leg_pd_controller"
     joints:
       - FR_hip_joint
