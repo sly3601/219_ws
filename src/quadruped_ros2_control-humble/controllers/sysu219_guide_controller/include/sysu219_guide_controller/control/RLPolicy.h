@@ -1,11 +1,13 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include <onnxruntime_cxx_api.h>
+#include "sysu219_guide_controller/control/TrotPolicyConfig.h"
 
 class RLPolicy {
 public:
@@ -24,6 +26,6 @@ private:
 
   bool loaded_ = false;
 
-  static constexpr int obs_dim_ = 48;
-  static constexpr int action_dim_ = 12;
+  static constexpr std::size_t obs_dim_ = sysu219_trot::kObservationDim;
+  static constexpr std::size_t action_dim_ = sysu219_trot::kActionDim;
 };

@@ -9,6 +9,7 @@ set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CONTROLLER_INCLUDE_DEPENDS
+        ament_index_cpp
         pluginlib
         rcpputils
         controller_interface
@@ -161,6 +162,9 @@ install(
         DIRECTORY launch
         DESTINATION share/${PROJECT_NAME}/
 )
+
+install(DIRECTORY model
+        DESTINATION share/${PROJECT_NAME}/)
 
 install(PROGRAMS scripts/gazebo_com_visualizer.py
         DESTINATION lib/${PROJECT_NAME})

@@ -1,0 +1,295 @@
+{
+  "contract": {
+    "schema": "sysu219_trot_v1",
+    "observation_dimension": 45,
+    "action_dimension": 12,
+    "joint_names": [
+      "FR_hip_joint",
+      "FR_thigh_joint",
+      "FR_calf_joint",
+      "FL_hip_joint",
+      "FL_thigh_joint",
+      "FL_calf_joint",
+      "RR_hip_joint",
+      "RR_thigh_joint",
+      "RR_calf_joint",
+      "RL_hip_joint",
+      "RL_thigh_joint",
+      "RL_calf_joint"
+    ],
+    "observation_terms": [
+      "base_ang_vel",
+      "projected_gravity",
+      "joint_pos",
+      "joint_vel",
+      "actions",
+      "gait_clock"
+    ],
+    "observation_preprocessing": {
+      "base_ang_vel": {
+        "clip": [
+          -100.0,
+          100.0
+        ],
+        "scale": 0.25
+      },
+      "projected_gravity": {
+        "clip": [
+          -1.0,
+          1.0
+        ],
+        "scale": 1.0
+      },
+      "joint_pos": {
+        "clip": [
+          -100.0,
+          100.0
+        ],
+        "scale": 1.0
+      },
+      "joint_vel": {
+        "clip": [
+          -100.0,
+          100.0
+        ],
+        "scale": 0.05
+      },
+      "actions": {
+        "clip": [
+          -2.0,
+          2.0
+        ],
+        "scale": 1.0
+      },
+      "gait_clock": {
+        "clip": null,
+        "scale": 1.0
+      }
+    },
+    "default_joint_positions": [
+      0.0,
+      0.9,
+      -1.53,
+      0.0,
+      0.9,
+      -1.53,
+      0.0,
+      0.9,
+      -1.3,
+      0.0,
+      0.9,
+      -1.3
+    ],
+    "default_joint_velocities": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "action_scales": [
+      0.08,
+      0.2,
+      0.25,
+      0.08,
+      0.2,
+      0.25,
+      0.08,
+      0.2,
+      0.25,
+      0.08,
+      0.2,
+      0.25
+    ],
+    "action_clip": 2.0,
+    "target_min": [
+      -0.16,
+      0.5,
+      -2.0300000000000002,
+      -0.16,
+      0.5,
+      -2.0300000000000002,
+      -0.16,
+      0.5,
+      -1.8,
+      -0.16,
+      0.5,
+      -1.8
+    ],
+    "target_max": [
+      0.16,
+      1.3,
+      -1.03,
+      0.16,
+      1.3,
+      -1.03,
+      0.16,
+      1.3,
+      -0.888,
+      0.16,
+      1.3,
+      -0.888
+    ],
+    "kp": [
+      260.0,
+      260.0,
+      260.0,
+      260.0,
+      260.0,
+      260.0,
+      260.0,
+      260.0,
+      260.0,
+      260.0,
+      260.0,
+      260.0
+    ],
+    "kd": [
+      3.8,
+      3.8,
+      3.8,
+      3.8,
+      3.8,
+      3.8,
+      3.8,
+      3.8,
+      3.8,
+      3.8,
+      3.8,
+      3.8
+    ],
+    "effort_limits": [
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0
+    ],
+    "policy_dt_s": 0.02,
+    "clock": {
+      "period_s": 0.975,
+      "settle_s": 0.5,
+      "ramp_s": 1.0
+    },
+    "input_name": "obs",
+    "output_name": "actions"
+  },
+  "contract_sha256": "2c115bc9c503a576eb5b4681b5440dacbf987e2502dc940eea2dfedd3b722b48",
+  "training_randomization": {
+    "enabled": true,
+    "ranges": {
+      "schema": "sysu219_dr_v1",
+      "nominal_fraction": 0.2,
+      "friction_static": [
+        0.15,
+        0.8
+      ],
+      "friction_dynamic_ratio": [
+        0.8,
+        1.0
+      ],
+      "mass_scale": [
+        0.95,
+        1.05
+      ],
+      "trunk_com_offset_m": [
+        -0.005,
+        0.005
+      ],
+      "kp_scale": [
+        0.9,
+        1.1
+      ],
+      "kd_scale": [
+        0.9,
+        1.1
+      ],
+      "coulomb_scale": [
+        0.8,
+        1.2
+      ],
+      "viscous_scale": [
+        0.8,
+        1.2
+      ],
+      "armature_scale": [
+        0.9,
+        1.1
+      ],
+      "response_time_s": [
+        0.0,
+        0.008
+      ],
+      "action_delay_steps": [
+        0,
+        2
+      ],
+      "observation_delay_steps": [
+        0,
+        2
+      ],
+      "encoder_bias_rad": [
+        -0.005,
+        0.005
+      ],
+      "gyro_bias_rad_s": [
+        -0.01,
+        0.01
+      ],
+      "imu_tilt_bias_deg": [
+        -1.0,
+        1.0
+      ],
+      "joint_pos_noise_rad": [
+        -0.003,
+        0.003
+      ],
+      "joint_vel_noise_rad_s": [
+        -0.03,
+        0.03
+      ],
+      "gyro_noise_rad_s": [
+        -0.01,
+        0.01
+      ],
+      "initial_joint_offset_rad": [
+        -0.02,
+        0.02
+      ],
+      "initial_tilt_deg": [
+        -2.0,
+        2.0
+      ],
+      "initial_planar_velocity_m_s": [
+        -0.03,
+        0.03
+      ]
+    }
+  },
+  "checkpoint": "/home/sun/219_rl/robot_lab/logs/rsl_rl/sysu219_trot_in_place/2026-10-27_17-25-46_ros_dr_7cm/model_2999.pt",
+  "checkpoint_sha256": "be6560133b3ae7284a689debe72aa33bcedc23d428ab3fc011982fc1908b1a76",
+  "env_sha256": "47e66eb1ffe98ce1d3c68e81790e8cb662f5510fdd824991a32117d6a873a408",
+  "agent_sha256": "1656accb6095c32e4d1d13ccddfd648f2429c5b34b7ef306b0d42e9d22355c85",
+  "onnx_sha256": "d7f01cfeeabb908999e11cd06fcfd7901a242b2a15b3071b52dbf5abbd189e9c",
+  "onnx_ir_version": 8,
+  "verification": {
+    "backend": "onnx.reference.ReferenceEvaluator",
+    "samples": 256,
+    "max_abs_error": 9.5367431640625e-07,
+    "cpp_compiled_or_executed": false
+  }
+}

@@ -117,9 +117,9 @@ namespace sysu219_guide_controller
         }
 #endif
         last_odometry_ready_ = odometry_ready;
+        // RLWALK consumes raw IMU/joints and does not use translational odometry.
         if (ctrl_component_.odometry_mode != 0 && !odometry_ready &&
-            (current_state_ == state_list_.trotting || current_state_ == state_list_.balanceTest ||
-             current_state_ == state_list_.rlWalk)) {
+            (current_state_ == state_list_.trotting || current_state_ == state_list_.balanceTest)) {
             auto stop_state = ctrl_interfaces_.control_inputs_.command == 1 ?
                 std::shared_ptr<FSMState>(state_list_.passive) : std::shared_ptr<FSMState>(state_list_.fixedStand);
             stop_state->previous_state_name = current_state_->state_name;
@@ -273,7 +273,7 @@ namespace sysu219_guide_controller
         else if (mode_ == FSMMode::CHANGE)
         {
             const bool reject_odometry = !odometry_ready && (next_state_ == state_list_.trotting ||
-                next_state_ == state_list_.balanceTest || next_state_ == state_list_.rlWalk);
+                next_state_ == state_list_.balanceTest);
             if (reject_odometry) {
                 RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *get_node()->get_clock(), 1000,
                     "[ODOMETRY] InEKF 当前无可用状态，保持当前状态；具体原因见 [SHADOW_INEKF] 日志。");
@@ -430,6 +430,14 @@ namespace sysu219_guide_controller
             stand_kd_ = auto_declare<double>("stand_kd", stand_kd_);
             prone_kp_ = auto_declare<double>("prone_kp", prone_kp_);
             prone_kd_ = auto_declare<double>("prone_kd", prone_kd_);
+
+            // RLWALK-only parameters; relative model paths use this package's model/ directory.
+            auto_declare<std::string>("rl_model_path", "policy_trot_ros_dr_7cm.onnx");
+            auto_declare<double>("rl_pose_transition_s", 0.5);
+            auto_declare<double>("rl_entry_timeout_s", 5.0);
+            auto_declare<double>("rl_entry_tolerance_rad", 0.25);
+            auto_declare<double>("rl_entry_velocity_rad_s", 1.0);
+            auto_declare<double>("rl_max_control_period_s", 0.1);
 
             // 姿态向量长度校验：三个姿态都必须恰好 12 个关节角，
             // 否则各固定姿态状态里的 target_pos_[i] (i < 12) 会越界读
