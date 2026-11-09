@@ -11,6 +11,10 @@
 namespace {
 namespace cfg = sysu219_trot;
 constexpr double kPi = 3.14159265358979323846;
+constexpr std::array<const char*, 3> kPolicyModelFiles = {
+    "policy_trot_dr7cm_ar002_q010_dq030.onnx",
+    "policy_trot_dr7cm_ar003_q010_dq030.onnx",
+    "policy_trot_dr7cm_ar002_delay008_q010_dq030.onnx"};
 
 template <typename Interfaces>
 std::size_t findInterface(const Interfaces& interfaces, const std::string& joint, const std::string& type) {
@@ -71,13 +75,16 @@ StateRLWalk::StateRLWalk(CtrlInterfaces& interfaces, CtrlComponent& /*ctrl_compo
             default_position_[i] = stand[i];
         }
         q_target_ = default_position_;
-        std::filesystem::path path(ctrl_interfaces_.node->get_parameter("rl_model_path").as_string());
-        if (path.empty()) throw std::runtime_error("Empty rl_model_path");
-        if (path.is_relative())
-            path = std::filesystem::path(ament_index_cpp::get_package_share_directory("sysu219_guide_controller")) / "model" / path;
+        const auto policy_id = ctrl_interfaces_.node->get_parameter("rl_policy_id").as_int();
+        if (policy_id < 1 || static_cast<std::size_t>(policy_id) > kPolicyModelFiles.size())
+            throw std::runtime_error("rl_policy_id must be 1, 2 or 3; legacy models are disabled");
+        const auto path = std::filesystem::path(ament_index_cpp::get_package_share_directory("sysu219_guide_controller")) /
+            "model" / kPolicyModelFiles[static_cast<std::size_t>(policy_id - 1)];
         model_path_ = path.string();
         if (!policy_.load(model_path_)) throw std::runtime_error("Policy model load/contract validation failed");
         configured_ = true;
+        RCLCPP_INFO(ctrl_interfaces_.node->get_logger(), "[RLWALK] rl_policy_id=%lld, model=%s",
+                    static_cast<long long>(policy_id), model_path_.c_str());
     } catch (const std::exception& error) {
         configuration_error_ = error.what();
         if (ctrl_interfaces_.node)

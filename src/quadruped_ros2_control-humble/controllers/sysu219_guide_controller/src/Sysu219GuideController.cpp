@@ -431,8 +431,8 @@ namespace sysu219_guide_controller
             prone_kp_ = auto_declare<double>("prone_kp", prone_kp_);
             prone_kd_ = auto_declare<double>("prone_kd", prone_kd_);
 
-            // RLWALK-only parameters; relative model paths use this package's model/ directory.
-            auto_declare<std::string>("rl_model_path", "policy_trot_ros_dr_7cm.onnx");
+            // RLWALK: 1=AR002, 2=AR003, 3=AR002/8ms delay. Legacy models are disabled.
+            auto_declare<int>("rl_policy_id", 3);
             auto_declare<double>("rl_pose_transition_s", 0.5);
             auto_declare<double>("rl_entry_timeout_s", 5.0);
             auto_declare<double>("rl_entry_tolerance_rad", 0.25);

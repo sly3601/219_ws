@@ -108,6 +108,7 @@
 	<gazebo>
 		<plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
 			<parameters>$(find sysu219_description)/config/gazebo.yaml</parameters>
+			<parameters>$(find sysu219_description)/config/rl_policy.yaml</parameters>
 		</plugin>
 
 		<!-- 当前 MPC 以 base 原点近似质心；直接发布 Gazebo 的真实位姿。 -->

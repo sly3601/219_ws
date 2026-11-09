@@ -108,6 +108,7 @@
 	<gazebo>
 		<plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
 			<parameters>$(find sysu219_description)/config/gazebo.yaml</parameters>
+			<parameters>$(find sysu219_description)/config/rl_policy.yaml</parameters>
 		</plugin>
 		<plugin filename="gz-sim-imu-system"
 						name="gz::sim::systems::Imu">

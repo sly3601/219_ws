@@ -24,6 +24,7 @@ def launch_setup(context, *args, **kwargs):
             "robot_control.yaml",
         ]
     )
+    rl_policy_config = os.path.join(pkg_path, "config", "rl_policy.yaml")
 
     rviz_config_file = os.path.join(get_package_share_directory(package_description), "config", "visualize_urdf.rviz")
 
@@ -52,7 +53,7 @@ def launch_setup(context, *args, **kwargs):
     controller_manager = Node(
         package="controller_manager",
         executable="ros2_control_node",
-        parameters=[robot_controllers],
+        parameters=[robot_controllers, rl_policy_config],
         remappings=[
             ("~/robot_description", "/robot_description"),
         ],

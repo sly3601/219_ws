@@ -7,7 +7,6 @@ namespace sysu219_trot {
 inline constexpr std::size_t kObservationDim = 45;
 inline constexpr std::size_t kActionDim = 12;
 inline constexpr const char* kContractSha256 = "2c115bc9c503a576eb5b4681b5440dacbf987e2502dc940eea2dfedd3b722b48";
-inline constexpr const char* kModelFile = "policy_trot_ros_dr_7cm.onnx";
 inline constexpr std::array<const char*, 12> kJointNames = {"FR_hip_joint", "FR_thigh_joint", "FR_calf_joint", "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint", "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint", "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint"};
 inline constexpr std::array<double, 12> kDefaultPosition = {0, 0.90000000000000002, -1.53, 0, 0.90000000000000002, -1.53, 0, 0.90000000000000002, -1.3, 0, 0.90000000000000002, -1.3};
 inline constexpr std::array<double, 12> kDefaultVelocity = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
