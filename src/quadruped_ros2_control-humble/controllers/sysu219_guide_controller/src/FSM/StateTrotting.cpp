@@ -36,6 +36,10 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     gait_generator_(ctrl_component, this), ctrl_component_(ctrl_component){
     contact_fz_preview_.reserve(128);
     contact_fz_min_preview_.reserve(128);
+    motion_subscription_ = ctrl_interfaces_.node->create_subscription<control_input_msgs::msg::Inputs>(
+        "/trotting_motion_input", rclcpp::QoS(1), [motion_input = motion_input_](const control_input_msgs::msg::Inputs& input) {
+            motion_input->writeFromNonRT({input.ly, input.rx, std::chrono::steady_clock::now()});
+        });
 
     troting_kalman = 2;                             //总模式开关【已弃用】
     force_solver_mode_ = ForceSolverMode::MPC;       //总模式开关
@@ -103,7 +107,7 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     wbc_settings.kp_body_position = Vec3(8.84526931974, 8.20303476281, 177.464788732); // 机身平动增益。
     wbc_settings.kd_body_position = Vec3(4.1476145606, 4.4589367189, 25.6056338028); // 机身平动阻尼。
     wbc_settings.kp_swing = Vec3(80.698274152, 87.8873239437, 73.7353699663); // 加大摆腿任务增益的仿真试验失败，恢复基准
-    wbc_settings.kd_swing = Vec3(13.2857567943, 15.1563677842, 19.0676453084);  // 与摆腿位置增益一起恢复
+    wbc_settings.kd_swing = Vec3(13.2857567943, 15.1563677842, 38.0);  // 摆足速度误差反馈，依次为 x、y、z。
     wbc_settings.swing_hip_posture_weight = 3.30; // 四髋全时刻回零软任务权重，m/rad；0关闭，不是硬限幅。
     wbc_settings.kp_swing_hip_posture = 20.9154929577;     // 四髋回零加速度反馈。
     wbc_settings.kd_swing_hip_posture = 2.21830985915;      // 摆动髋角速度阻尼。
@@ -295,6 +299,7 @@ void StateTrotting::enter()
  * @param period 时间间隔
  */
 void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*period*/) {
+    if (first_run) wave_generator_->startTrotFromStand();
     if (quadruped_debug::Csv_DebugMode) debug_frame_ = TrottingDebug::Frame{};
     if (contact_control_enabled_) {
         const bool ok = contact_coordinator_.update(wave_generator_->getControlDt(), *wave_generator_,
@@ -555,7 +560,6 @@ void StateTrotting::run(const rclcpp::Time &/*time*/, const rclcpp::Duration &/*
     wbc_reference_contact_last_ = control_contact_;
     wbc_reference_applied_last_ = wbc_reference_applied;
     wbc_reference_initialized_ = true;
-    if (first_run) wave_generator_->status_ = WaveStatus::WAVE_ALL;
     first_run = false;
 
 
@@ -787,7 +791,39 @@ void StateTrotting::calcCmd() {
 
     else if(troting_kalman == 2)
     {
-        vel_target_.setZero();          // 目标平移速度 = 0，还未引入除了原地踏步以外的运动指令
+        vel_target_.setZero();
+        w_cmd_global_(2) = 0.0;
+        const auto now = std::chrono::steady_clock::now();
+        if (first_run) motion_entry_at_ = now;
+        if (contact_control_enabled_ && contact_coordinator_.recovering()) return;
+        const auto& motion = *motion_input_->readFromRT();
+        if (motion.received_at < motion_entry_at_ ||
+            now - motion.received_at > std::chrono::milliseconds(250)) return;
+
+        // ly/rx 是上位机提供的归一化指令，偏航沿用 rx 取反的约定。
+        constexpr double max_forward_speed = 0.3; // m/s
+        constexpr double max_yaw_rate = 0.3;      // rad/s
+        const double ly = motion.ly;
+        const double rx = motion.rx;
+
+        if (std::isfinite(ly) && ly != 0.0)
+        {
+            const double yaw = estimator_->getYaw();
+            if (std::isfinite(yaw))
+            {
+                const double vx = max_forward_speed * std::clamp(ly, -1.0, 1.0);
+                vel_target_ = rotz(yaw) * Vec3(vx, 0.0, 0.0);
+                pcd_.head<2>() += vel_target_.head<2>() * dt_;
+            }
+        }
+
+        if (std::isfinite(rx) && rx != 0.0)
+        {
+            const double wz = -max_yaw_rate * std::clamp(rx, -1.0, 1.0);
+            w_cmd_global_(2) = wz;
+            yaw_cmd_ += wz * dt_;
+            Rd = rotz(yaw_cmd_);
+        }
     }
 }
 

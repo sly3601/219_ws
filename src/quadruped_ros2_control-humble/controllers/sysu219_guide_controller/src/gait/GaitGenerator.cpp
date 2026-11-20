@@ -4,6 +4,7 @@
 
 #include "sysu219_guide_controller/gait/GaitGenerator.h"
 
+#include <algorithm>
 #include <utility>
 #include <sysu219_guide_controller/control/CtrlComponent.h>
 #include <sysu219_guide_controller/control/Estimator.h>
@@ -209,8 +210,17 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel,
                     + (d_yaw - d_yaw_goal_) * t_swing / 2.0
                     + k_yaw * (d_yaw_goal_ - d_yaw);
 
-                // yaw 预测也限一下，防止 cos/sin 的目标点跳太远
-                next_yaw = saturation(next_yaw, Vec2(-0.1, 0.1));
+                // 名义位移幅值 a、原地限幅 b 同单位；沿指令方向额外放宽 1.2*a²/(a+b)。
+                const auto extension_scale = [](double magnitude, double idle_limit) {
+                    return 1.2 * magnitude / (magnitude + idle_limit);
+                };
+                constexpr double idle_yaw_limit = 0.1; // rad
+                const double commanded_yaw = d_yaw_goal_
+                    * ((1.0 - motion_phase_(i)) * t_swing + 0.5 * t_stance);
+                const double yaw_extension = commanded_yaw
+                    * extension_scale(std::abs(commanded_yaw), idle_yaw_limit);
+                next_yaw = saturation(next_yaw, Vec2(-idle_yaw_limit + std::min(0.0, yaw_extension),
+                                                      idle_yaw_limit + std::max(0.0, yaw_extension)));
                 
 
                 // 始终使用起步实际布局，保留完整的实时速度/转向修正。
@@ -233,13 +243,26 @@ void GaitGenerator::generate(Vec34 &feet_pos, Vec34 &feet_vel,
                 double target_x = foot_pos(0);
                 double target_y = foot_pos(1);
                 
-                const double step_limit_xy = 0.04; // 步长限幅，防止迈步目标跳太远
+                constexpr double step_limit_xy = 0.04; // 原地踏步的单轴落点限幅，单位 m。
+                Vec2 step_lower = Vec2::Constant(-step_limit_xy);
+                Vec2 step_upper = Vec2::Constant(step_limit_xy);
+                if (!vxy_goal_.isZero(0.0) || d_yaw_goal_ != 0.0)
+                {
+                    // 用世界系名义足点计算该脚一周期的平移与偏航位移，只向所需方向放宽限幅。
+                    const Vec2 foot_offset_G = rotz(yaw).topLeftCorner<2, 2>() * feet_layout;
+                    const Vec2 yaw_tangent_G(-foot_offset_G.y(), foot_offset_G.x());
+                    const Vec2 step_displacement_G = wave_generator_->getGaitPeriod()
+                        * (vxy_goal_ + d_yaw_goal_ * yaw_tangent_G);
+                    const Vec2 step_extension_G = step_displacement_G
+                        * extension_scale(step_displacement_G.norm(), step_limit_xy);
+                    step_lower += step_extension_G.cwiseMin(0.0);
+                    step_upper += step_extension_G.cwiseMax(0.0);
+                }
 
-                // 最终 x 落点相对当前摆动起点限幅
-                target_x = saturation(target_x, Vec2(start_p_(0, i) - step_limit_xy,
-                                                    start_p_(0, i) + step_limit_xy));
-                target_y = saturation(target_y, Vec2(start_p_(1, i) - step_limit_xy,
-                                                    start_p_(1, i) + step_limit_xy));
+                target_x = saturation(target_x, Vec2(start_p_(0, i) + step_lower.x(),
+                                                    start_p_(0, i) + step_upper.x()));
+                target_y = saturation(target_y, Vec2(start_p_(1, i) + step_lower.y(),
+                                                    start_p_(1, i) + step_upper.y()));
 
                 end_p_.col(i) = start_p_.col(i);
                 end_p_(0, i) = target_x;

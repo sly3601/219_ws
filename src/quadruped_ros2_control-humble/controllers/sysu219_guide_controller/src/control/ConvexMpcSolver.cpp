@@ -329,11 +329,11 @@ ConvexMpcSolver::ConvexMpcSolver()
   Q.setZero();
   R.setZero();
   S.setZero();
-  Q.diagonal() << 741.549295775, 850.0, 43, // 3轴角度；按2026-11-03末次真机rev17固化。
-                      950.0,  1225.0,  1990.0,// 3轴位置。
-                      166.220987898,   176.669014085,   5, // 3轴角速度。
-                      1425.0,   1300.4542749460002,   360.0, // 3轴速度。
-                      0.0;          // 重力
+  Q.diagonal() << 2450.0, 5000.0, 650.0,      // roll、pitch、yaw；Gazebo 原地踏步调定。
+                  12500.0, 28000.0, 27500.0,   // x、y、z 位置。
+                  440.0, 510.0, 140.0,         // 三轴角速度。
+                  3250.0, 6400.0, 1800.0,      // 三轴线速度。
+                  0.0;                         // 重力。
 
   R.diagonal() << 1, 1, 1,  // 力大小限制惩罚权重
                       1, 1, 1,
@@ -346,10 +346,10 @@ ConvexMpcSolver::ConvexMpcSolver()
                   1e-4, 1e-4, 1e-6,  // RR
                   1e-4, 1e-4, 1e-6;  // RL
   // 各腿 fx/fy/fz 的最终对角权重，已计入原来的 2.5 倍缩放及 fz 耦合对角项。
-  S.diagonal() << 0.00601993232955, 0.007, 0.0035,  // FR: fx, fy, fz
-                  0.00601993232955, 0.007, 0.0035,  // FL
-                  0.00601993232955, 0.007, 0.0035,  // RR
-                  0.00601993232955, 0.007, 0.0035;  // RL
+  S.diagonal() << 0.003, 0.0013, 0.00254,  // FR: fx, fy, fz
+                  0.003, 0.0013, 0.00254,  // FL
+                  0.003, 0.0013, 0.00254,  // RR
+                  0.003, 0.0013, 0.00254;  // RL
 
   // 总竖直承重变化惩罚的跨腿耦合；对应的对角项已包含在上面的 fz 中。
   S(2, 5) = S(5, 2) = 0.0025;    // FR / FL
@@ -1196,7 +1196,12 @@ Vec34 ConvexMpcSolver::solveFromDogWrench(
   // ====== xRef (N + 1) ====== 计算N+1个时刻之后的期望状态值
   in.xRef.resize(in.N + 1); // 生成 N+1 个未来期望状态。
 
-  const Vec3 theta_ref = rotMatToRPY(Rd_GB);
+  Vec3 theta_ref = rotMatToRPY(Rd_GB);
+  // 将目标偏航放在最接近当前偏航的等价分支，避免跨 ±π 时产生近 2π 的跟踪误差。
+  const double yaw_error = theta_ref(2) - theta_now(2);
+  if (std::abs(yaw_error) > M_PI) {
+    theta_ref(2) -= std::copysign(2.0 * M_PI, yaw_error);
+  }
   const Vec3 p_com_ref_G = p_ref_G + Rd_GB * pcb_B;
 
   for (int k = 0; k <= in.N; ++k)

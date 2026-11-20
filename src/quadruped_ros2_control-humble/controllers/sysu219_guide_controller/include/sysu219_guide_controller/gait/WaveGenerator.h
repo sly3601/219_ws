@@ -23,6 +23,7 @@ public:
 
     ~WaveGenerator() = default;
 
+    void startTrotFromStand();
     void update(double control_dt);
     // 第 0 行是当前接触；保持当前请求模式，在副本上推进实际切换规则。
     [[nodiscard]] std::vector<std::array<int, 4>> getMpcContactTable(
@@ -58,7 +59,7 @@ private:
     VecInt4 switch_status_;
     WaveStatus status_past_;
 
-    double control_time_ = 0.0; // 累计控制周期时间，仿真和实机均以秒为单位。
+    double control_time_ = 0.0; // 步态相位时钟（秒），每次从站立进入踏步时对齐。
     double control_dt_ = 0.0;
 };
 

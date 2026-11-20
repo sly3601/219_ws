@@ -13,6 +13,9 @@
     <depend>control_input_msgs</depend>
     <depend>std_msgs</depend>
     <depend>ament_index_cpp</depend>
+    <depend>visualization_msgs</depend>
+    <build_depend>qtbase5-dev</build_depend>
+    <exec_depend>libqt5-widgets</exec_depend>
 
     <export>
         <build_type>ament_cmake</build_type>

@@ -13,8 +13,11 @@ find_package(rclcpp REQUIRED)
 find_package(control_input_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(ament_index_cpp REQUIRED)
+find_package(visualization_msgs REQUIRED)
+find_package(Qt5 REQUIRED COMPONENTS Widgets)
 
 add_executable(keyboard_input src/KeyboardInput.cpp)
+target_compile_features(keyboard_input PRIVATE cxx_std_17)
 target_include_directories(keyboard_input
         PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
@@ -23,7 +26,9 @@ ament_target_dependencies(
         keyboard_input PUBLIC
         rclcpp
         control_input_msgs
+        visualization_msgs
 )
+target_link_libraries(keyboard_input PRIVATE Qt5::Widgets)
 # 新增：FixedStand 专用键盘节点
 add_executable(fixedstand_offset_keyboard src/FixedStandOffsetKeyboard.cpp)
 target_include_directories(fixedstand_offset_keyboard

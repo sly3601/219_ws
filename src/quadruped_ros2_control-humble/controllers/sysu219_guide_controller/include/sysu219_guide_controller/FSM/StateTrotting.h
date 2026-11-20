@@ -4,12 +4,15 @@
 
 #ifndef STATETROTTING_H
 #define STATETROTTING_H
+#include <chrono>
+#include <control_input_msgs/msg/inputs.hpp>
 #include <sysu219_guide_controller/control/BalanceCtrl.h>
 #include <sysu219_guide_controller/gait/GaitGenerator.h>
 #include <sysu219_guide_controller/control/ConvexMpcSolver.h>
 #include <sysu219_guide_controller/control/MpcWbcRelaxation.h>
 #include <sysu219_guide_controller/control/OnlineTuning.h>
 #include <sysu219_guide_controller/control/ContactCoordinator.hpp>
+#include <realtime_tools/realtime_buffer.hpp>
 
 #include "controller_common/FSM/FSMState.h"
 // marker array可视化插件
@@ -111,6 +114,15 @@ private:
     RotMat B2P_RotMat, P2B_RotMat; // P系原点跟随机身中心，轴方向不随机身转动，与G平行
 
     // Robot command
+    struct MotionInput {
+        double ly = 0.0;
+        double rx = 0.0;
+        std::chrono::steady_clock::time_point received_at{};
+    };
+    std::shared_ptr<realtime_tools::RealtimeBuffer<MotionInput>> motion_input_ =
+        std::make_shared<realtime_tools::RealtimeBuffer<MotionInput>>();
+    rclcpp::Subscription<control_input_msgs::msg::Inputs>::SharedPtr motion_subscription_;
+    std::chrono::steady_clock::time_point motion_entry_at_{};
     Vec3 pcd_;
     double height_start_ = 0.0, height_target_ = 0.0;
     double height_ramp_elapsed_ = 0.0, height_ramp_duration_ = 0.65;

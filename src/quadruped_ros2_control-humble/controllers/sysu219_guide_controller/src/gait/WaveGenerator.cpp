@@ -34,6 +34,15 @@ WaveGenerator::WaveGenerator(const double period, const double st_ratio, const V
     }
 }
 
+void WaveGenerator::startTrotFromStand() {
+    // 半周期处两对腿均处于支撑期，下一对进入摆动的是右前、左后。
+    control_time_ = 0.5 * period_;
+    status_past_ = WaveStatus::STANCE_ALL;
+    switch_status_.setZero();
+    calcWave(phase_, contact_, status_past_);
+    status_ = WaveStatus::WAVE_ALL;
+}
+
 auto WaveGenerator::update(const double control_dt) -> void {
     control_dt_ = std::isfinite(control_dt) && control_dt > 0.0 ? control_dt : 0.0;
     control_time_ += control_dt_;
