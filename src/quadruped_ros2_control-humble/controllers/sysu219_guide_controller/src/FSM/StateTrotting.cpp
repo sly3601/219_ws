@@ -107,7 +107,7 @@ StateTrotting::StateTrotting(CtrlInterfaces &ctrl_interfaces,
     wbc_settings.kp_body_position = Vec3(8.84526931974, 8.20303476281, 177.464788732); // 机身平动增益。
     wbc_settings.kd_body_position = Vec3(4.1476145606, 4.4589367189, 25.6056338028); // 机身平动阻尼。
     wbc_settings.kp_swing = Vec3(80.698274152, 87.8873239437, 73.7353699663); // 加大摆腿任务增益的仿真试验失败，恢复基准
-    wbc_settings.kd_swing = Vec3(13.2857567943, 15.1563677842, 38.0);  // 摆足速度误差反馈，依次为 x、y、z。
+    wbc_settings.kd_swing = Vec3(13.2857567943, 15.1563677842, 19.0676453084);  // 与摆腿位置增益一起恢复
     wbc_settings.swing_hip_posture_weight = 3.30; // 四髋全时刻回零软任务权重，m/rad；0关闭，不是硬限幅。
     wbc_settings.kp_swing_hip_posture = 20.9154929577;     // 四髋回零加速度反馈。
     wbc_settings.kd_swing_hip_posture = 2.21830985915;      // 摆动髋角速度阻尼。
