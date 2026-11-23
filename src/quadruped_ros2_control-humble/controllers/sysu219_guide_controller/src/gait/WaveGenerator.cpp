@@ -4,6 +4,7 @@
 
 #include "sysu219_guide_controller/gait/WaveGenerator.h"
 
+#include <algorithm>
 #include <iostream>
 #include <cmath>
 
@@ -35,8 +36,8 @@ WaveGenerator::WaveGenerator(const double period, const double st_ratio, const V
 }
 
 void WaveGenerator::startTrotFromStand() {
-    // 半周期处两对腿均处于支撑期，下一对进入摆动的是右前、左后。
-    control_time_ = 0.5 * period_;
+    // 保留 162.5 ms 起步全支撑，随后右前、左后在半周期边界开始摆动。
+    control_time_ = 0.25 * period_;
     status_past_ = WaveStatus::STANCE_ALL;
     switch_status_.setZero();
     calcWave(phase_, contact_, status_past_);
@@ -72,7 +73,9 @@ auto WaveGenerator::update(const double control_dt) -> void {
         else if (status_ == WaveStatus::SWING_ALL && status_past_ == WaveStatus::STANCE_ALL) {
             contact_past_.setZero(); // 强制把旧接触状态设为全0，方便切换
         }
-        // 注意：这里没有处理【SWING_ALL -> WAVE_ALL】的情况！这是死锁的伏笔之一
+    } else {
+        // 模式请求取消时，清除尚未完成的换相。
+        switch_status_.setZero();
     }
 
     // 【第3步】状态切换平滑逻辑（死锁的核心！！！）
@@ -82,6 +85,9 @@ auto WaveGenerator::update(const double control_dt) -> void {
         // 遍历4条腿，逐条处理切换
         for (int i(0); i < 4; ++i) 
         {
+            // 已完成切换的腿继续按新模式运行。
+            if (!switch_status_(i)) continue;
+
             // 【3.1】如果这条腿的【新contact】和【旧contact_past_】一样
             if (contact_(i) == contact_past_(i)) {
                 switch_status_(i) = 0; // 这条腿切换完成，标志设为0
@@ -124,19 +130,22 @@ std::vector<std::array<int, 4>> WaveGenerator::getMpcContactTable(
     return table;
 }
 
-void WaveGenerator::calcWave(Vec4 &phase, VecInt4 &contact, const WaveStatus status) {
+void WaveGenerator::calcWave(Vec4 &phase, VecInt4 &contact, const WaveStatus status) const {
     switch (status) {
         case WaveStatus::WAVE_ALL: {
-            for (int i(0); i < 4; ++i) {
-                normal_t_(i) =
-                        fmod(control_time_ + period_ - period_ * bias_(i), period_) / period_;
-                if (normal_t_(i) < st_ratio_) {
-                    contact(i) = 1;
-                    phase(i) = normal_t_(i) / st_ratio_;
-                } else {
-                    contact(i) = 0;
-                    phase(i) = (normal_t_(i) - st_ratio_) / (1 - st_ratio_);
-                }
+            // 在同一周期相位上比较落地与离地边界，保证共用边界的两组腿同帧交接。
+            const double cycle = std::fmod(control_time_, period_) / period_;
+            for (int i = 0; i < 4; ++i) {
+                const double touchdown = bias_(i) == 1.0 ? 0.0 : bias_(i);
+                double liftoff = touchdown + st_ratio_;
+                if (liftoff >= 1.0) liftoff -= 1.0;
+                const bool stance = touchdown < liftoff
+                    ? cycle >= touchdown && cycle < liftoff
+                    : cycle >= touchdown || cycle < liftoff;
+                contact(i) = stance;
+                double elapsed = cycle - (stance ? touchdown : liftoff);
+                if (elapsed < 0.0) elapsed += 1.0;
+                phase(i) = std::clamp(elapsed / (stance ? st_ratio_ : 1.0 - st_ratio_), 0.0, 1.0);
             }
             break;
         }

@@ -47,13 +47,12 @@ private:
      * @param contact foot contact
      * @param status Wave Status
      */
-    void calcWave(Vec4 &phase, VecInt4 &contact, WaveStatus status);
+    void calcWave(Vec4 &phase, VecInt4 &contact, WaveStatus status) const;
 
     double period_{};
     double st_ratio_{}; // stance phase ratio
     Vec4 bias_;
 
-    Vec4 normal_t_ = Vec4::Zero(); // normalize time [0,1)
     Vec4 phase_past_; // foot phase
     VecInt4 contact_past_; // foot contact
     VecInt4 switch_status_;
