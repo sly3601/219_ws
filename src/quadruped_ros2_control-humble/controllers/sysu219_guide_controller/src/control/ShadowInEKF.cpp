@@ -481,7 +481,7 @@ private:
     struct Snapshot {
         std::int64_t stamp_ns = 0, steady_ns = 0;
         std::uint64_t session = 0;
-        double period = 0.0, stance = 0.0, swing = 0.0; // 相长由提交帧的 WaveGenerator 写入。
+        double period = 0.0, stance = 0.65, swing = 0.325;
         std::array<double, 12> q{}, qd{}, tau{};
         std::array<double, 10> imu{};
         std::array<int, 4> contact{};

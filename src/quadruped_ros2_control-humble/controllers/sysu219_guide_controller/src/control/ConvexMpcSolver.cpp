@@ -10,7 +10,6 @@
 #include <cstdlib>
 #include <new>
 #include <string>
-#include <utility>
 #include <vector>
 
 extern "C" {
@@ -308,7 +307,7 @@ ConvexMpcSolver::ConvexMpcSolver()
   // 状态顺序：
   // x = [Theta(3), p_com(3), omega(3), v_com(3), g_z(1)]
 
-  N = 15;                         // 预测步数上限；20 ms 步长下对应 300 ms。
+  N = 15;                          // 恢复 50 Hz MPC 的原预测时域：5 * 20 ms = 100 ms。
   mass = 41.5;                    // 机器人质量，单位 kg
   // 整机绕质心的等效惯量，B 系 x/y/z（横滚/俯仰/偏航），单位 kg*m^2。
   // 2026-11-02：按 DAE 几何和 DM-J10010-2EC 集中质量粗估，尚非实测标定。
@@ -713,7 +712,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
   // 0.5*x^T Q*x + 0.5*u^T R*u + q^T*x + r^T*u
   //
   // 当前在论文目标基础上，对真正会执行的 u0 额外加入：
-  // (u0 - u_ref)^T S (u0 - u_ref)，其中 u_ref 来自最近一次成功解。
+  // (u0 - last_u0)^T S (u0 - last_u0)，其中这个权重系数S代码中是S，不是HPIPM里的状态交叉项SS，完全不同的
 
 
   /* 
@@ -726,19 +725,7 @@ ConvexMpcOutput ConvexMpcSolver::solveMpc(const ConvexMpcInput& in) {
     // 上次求解会屏蔽摆动足的代价耦合，每次必须先恢复完整矩阵。
     R_cost_rate_.noalias() = R_cost_ + 2.0 * S;     // 这句是重新计算并覆盖整个矩阵
     // 保留上次所有腿的承重，避免抬脚时把总承重参考也一起减掉。
-    Vec12 force_rate_reference = last_u0_;
-    constexpr std::array<int, 4> fr_rl{{1, 0, 0, 1}};
-    constexpr std::array<int, 4> fl_rr{{0, 1, 1, 0}};
-    const auto& previous_contact = hpipm_->last_solution_contact;
-    const auto& current_contact = in.contact[0];
-    if ((previous_contact == fr_rl && current_contact == fl_rr) ||
-        (previous_contact == fl_rr && current_contact == fr_rl)) {
-      // 对角支撑直接交接时，将上次前、后足的法向承重参考分别交给同一排的新支撑足。
-      // 只换首节点代价参考，接触力约束和求解失败时的接触掩码检查照常执行。
-      std::swap(force_rate_reference(2), force_rate_reference(5));
-      std::swap(force_rate_reference(8), force_rate_reference(11));
-    }
-    r_cost_rate_.noalias() = -2.0 * S * force_rate_reference;
+    r_cost_rate_.noalias() = -2.0 * S * last_u0_; // 这里是计算之后的中间过程项
     hpipm_->RR[0] = R_cost_rate_.data();
     hpipm_->rr[0] = r_cost_rate_.data();
   } else {

@@ -583,10 +583,8 @@ namespace sysu219_guide_controller
 #endif
             });
 
-        // 保持原摆动时长，支撑相与摆动相等长。稳态两组对角腿直接交接。
-        constexpr double trot_phase_s = 0.325;
-        ctrl_component_.wave_generator_ = std::make_shared<WaveGenerator>(
-            2.0 * trot_phase_s, 0.5, Vec4(0, 0.5, 0.5, 0));
+        // 摆动保持 0.325 s，支撑加倍为 0.650 s；每次对角交接四足支撑 0.1625 s。
+        ctrl_component_.wave_generator_ = std::make_shared<WaveGenerator>(0.975, 2.0 / 3.0, Vec4(0, 0.5, 0.5, 0));
 
         return CallbackReturn::SUCCESS;
     }
